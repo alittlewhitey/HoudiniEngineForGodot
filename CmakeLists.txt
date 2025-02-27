@@ -1,0 +1,18 @@
+cmake_minimum_required(VERSION 3.10.2)
+
+project(HoudiniEngineForGodot)
+
+set(CMAKE_CXX_STANDARD 20)
+
+set(CMAKE_BUILD_TYPE "Debug")
+
+include_directories(deps)
+include_directories(.)
+
+aux_source_directory(deps DEP_SRC)
+aux_source_directory(. BIND_SRC)
+set(LIBRARY_OUTPUT_DIRECTORY out)
+
+add_library(HoudiniEngine_windows_4.3_editor SHARED ${DEP_SRC} ${BIND_SRC})
+
+target_link_libraries(HoudiniEngine_windows_4.3_editor  "${CMAKE_CURRENT_SOURCE_DIR}/lib/libgodot-cpp.windows.editor.x86_64.lib")
