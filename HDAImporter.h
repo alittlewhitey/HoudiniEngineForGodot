@@ -9,21 +9,34 @@
 #include <godot_cpp/classes/editor_import_plugin.hpp>
 #include <godot_cpp/classes/editor_plugin.hpp>
 #include <godot_cpp/classes/project_settings.hpp>
+#include <godot_cpp/variant/utility_functions.hpp>
 class HDAResource : public godot::Resource{
     GDCLASS(HDAResource,godot::Resource)
     static void _bind_methods(){
         godot::ClassDB::bind_method(godot::D_METHOD("get_path"),&HDAResource::get_path);
         godot::ClassDB::bind_method(godot::D_METHOD("set_path","path"),&HDAResource::set_path);
         godot::ClassDB::add_property("HDAResource",godot::PropertyInfo(godot::Variant::STRING,"path",godot::PROPERTY_HINT_FILE,"*.hda,*.otl"),"set_path","get_path");
+        godot::ClassDB::bind_method(godot::D_METHOD("get_assetId"),&HDAResource::get_assetId);
+        godot::ClassDB::bind_method(godot::D_METHOD("set_assetId","assetId"),&HDAResource::set_assetId);
+        godot::ClassDB::add_property("HDAResource",godot::PropertyInfo(godot::Variant::INT,"assetId"),"set_assetId","get_assetId");
     }
-public:
-    std::string path;
     godot::String get_path(){
         return godot::String::utf8(path.c_str());
     }
     void set_path(godot::String s){
         path = s.utf8().get_data();
     }
+    int get_assetId(){
+        return assetId;
+    }
+    void set_assetId(int assetId){
+        //this->assetId = assetId;
+        godot::UtilityFunctions::push_warning("Forbitten change assetId by inspector for safe");
+    }
+public:
+    std::string path;
+    // If id is -1, this instance is inactive.
+    int assetId = -1;
 };
 class HDAImporter : public godot::EditorImportPlugin{
     GDCLASS(HDAImporter,godot::EditorImportPlugin)

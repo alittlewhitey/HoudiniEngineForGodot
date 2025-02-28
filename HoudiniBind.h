@@ -10,12 +10,17 @@
 #include <memory>
 #include <thread>
 #include <map>
+#include <execution>
 #include <godot_cpp/godot.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/classes/resource.hpp>
 #include <godot_cpp/classes/project_settings.hpp>
+#include <godot_cpp/classes/scene_tree.hpp>
+#include <godot_cpp/classes/surface_tool.hpp>
+#include <godot_cpp/classes/mesh_instance3d.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
+#include <godot_cpp/core/math.hpp>
 #include "deps/HoudiniApi.h"
 #include "deps/HoudiniEngineUtility.h"
 #include "deps/HoudiniEnginePlatform.h"
@@ -39,6 +44,7 @@ enum SessionType
     ExistingSharedMemory = 6
 };
 VARIANT_ENUM_CAST(SessionType)
+class Void{};
 class NodeId: public godot::Object{
     GDCLASS(NodeId, godot::Object)
     static void _bind_methods(){
@@ -46,14 +52,14 @@ class NodeId: public godot::Object{
         godot::ClassDB::bind_method(godot::D_METHOD("get_id"),&NodeId::get_id);
         godot::ClassDB::add_property("NodeId",godot::PropertyInfo(godot::Variant::INT,"id"),"set_id","get_id");
     }
+    void _init(int id){
+        (*this->id) = id;
+    }
     void set_id(int id){
         (*this->id) = id;
     }
     int get_id(){
         return *id;
-    }
-    void _init(int id){
-        (*this->id) = id;
     }
 public:
     NodeId(int id){
@@ -123,30 +129,83 @@ public:
     }
     std::shared_ptr<int> id = std::make_shared<int>(0);
 };
+class HDANode: public godot::Resource{
+    GDCLASS(HDANode,godot::Resource)
+    static void _bind_methods(){
+        godot::ClassDB::bind_method(godot::D_METHOD("get_nodeId"),&HDANode::get_nodeId);
+        godot::ClassDB::bind_method(godot::D_METHOD("set_nodeId","id"),&HDANode::set_nodeId);
+        godot::ClassDB::add_property("HDANode",godot::PropertyInfo(godot::Variant::INT,"nodeId"),"set_nodeId","get_nodeId");
+    }
+    int get_nodeId(){
+        return nodeId;
+    }
+    void set_nodeId(int id){
+        nodeId = id;
+    }
+    godot::Dictionary get_nodeInfo();
+    void set_nodeInfo(godot::Dictionary){}
+public:
+    int nodeId;
+    godot::Dictionary nodeInfo;
+};
 class Action: public godot::Resource{
     GDCLASS(Action,godot::Resource)
     static void _bind_methods(){}
 public:
     virtual ~Action(){}
 };
-class CookAction: public Action{
-    GDCLASS(CookAction,Action)
+class SessionAction: public Action{
+    GDCLASS(SessionAction,Action)
+    static void _bind_methods(){}
+public:
+    virtual ~SessionAction(){}
+};
+class AssetAction: public Action{
+    GDCLASS(AssetAction,Action)
+    static void _bind_methods(){}
+public:
+    virtual ~AssetAction(){}
+};
+class NodeAction: public Action{
+    GDCLASS(NodeAction,Action)
+    static void _bind_methods(){}
+public:
+    virtual ~NodeAction(){}
+};
+class StartSessionAction: public SessionAction{
+    GDCLASS(StartSessionAction,SessionAction)
     static void _bind_methods(){}
 };
-class LoadAssetAction: public Action{
-    GDCLASS(LoadAssetAction,Action)
+class RestartSessionAction: public SessionAction{
+    GDCLASS(RestartSessionAction,SessionAction)
     static void _bind_methods(){}
 };
-class StartSessionAction: public Action{
-    GDCLASS(StartSessionAction,Action)
+class StopSessionAction: public SessionAction{
+    GDCLASS(StopSessionAction,SessionAction)
     static void _bind_methods(){}
 };
-class RestartSessionAction: public Action{
-    GDCLASS(RestartSessionAction,Action)
+class CookSessionAction: public SessionAction{
+    GDCLASS(CookSessionAction,SessionAction)
     static void _bind_methods(){}
 };
-class StopSessionAction: public Action{
-    GDCLASS(StopSessionAction,Action)
+class CookAssetAction: public AssetAction{
+    GDCLASS(CookAssetAction,AssetAction)
+    static void _bind_methods(){}
+};
+class LoadAssetAction: public AssetAction{
+    GDCLASS(LoadAssetAction,AssetAction)
+    static void _bind_methods(){}
+};
+class CookNodeAction: public NodeAction{
+    GDCLASS(CookNodeAction,NodeAction)
+    static void _bind_methods(){}
+};
+class DeleteNodeAction: public NodeAction{
+    GDCLASS(DeleteNodeAction,NodeAction)
+    static void _bind_methods(){}
+};
+class CreateMeshAction: public NodeAction{
+    GDCLASS(CreateMeshAction,NodeAction)
     static void _bind_methods(){}
 };
 
@@ -156,6 +215,12 @@ constexpr const char* DefaultHostName = "127.0.0.1";
 constexpr int DefaultTcpPort = 9090;
 class HoudiniEngineManager: public godot::Node{
     GDCLASS(HoudiniEngineManager,godot::Node)
+public:
+    static HoudiniEngineManager* get_singleton(){
+        return singleton;
+    }
+private:
+    static HoudiniEngineManager* singleton;
     static void _bind_methods(){
         BIND_ENUM_CONSTANT(HAPI_PACKEDPRIM_INSTANCING_MODE_INVALID)
         BIND_ENUM_CONSTANT(HAPI_PACKEDPRIM_INSTANCING_MODE_DISABLED)
@@ -242,51 +307,102 @@ class HoudiniEngineManager: public godot::Node{
 
         
     }
-    //      NodeId          ArgName            ArgValues
+    template <typename ...T>
+    void printFile(T... output){
+        if(!logFilePath.empty()){
+            logFile << std::chrono::system_clock::now() << " ### ";
+            int arr[] = {((logFile << output),0)...};
+            logFile << std::endl;
+        }
+    }
+    template <typename ...T>
+    void printLog(T... output){
+        printFile(output...);
+        godot::UtilityFunctions::push_warning(output...,'\n');
+    }
+    template <typename ...T>
+    bool printLog(HAPI_Result result,HAPI_Result target,T... output){
+        if(result != target)
+            return false;
+        printFile(output...);
+        godot::UtilityFunctions::push_warning(output...,'\n');
+        return true;
+    }
+    template <typename ...T>
+    void printErr(T... output){
+        printFile(output...);
+        godot::UtilityFunctions::push_error(output...,'\n');
+    }
+    template <typename ...T>
+    bool printErr(HAPI_Result result,HAPI_Result target,T... output){
+        if(result != target)
+            return false;
+        printFile(output...);
+        godot::UtilityFunctions::push_error(output...,'\n');
+        return true;
+    }
+
+
+    //      NodeId          ParamName            ParamValues
     std::map<int,std::map<std::string,std::vector<std::variant<int64_t,double,std::string>>>> parameters;
+
     void _get_property_list(godot::List<godot::PropertyInfo>* list){
         list->clear();
-        ADD_GROUP("HoudiniEngineManager","SessionType_");
-        list->push_back(godot::PropertyInfo(godot::Variant::INT,"SessionType_sessionType",PROPERTY_HINT_ENUM,"InProcess:1,NewNamedPipe:2,NewTCPSocket:3,ExistingNamedPipe:4,ExistingTCPSocket:5,ExistingSharedMemory:6"));
-        list->push_back(godot::PropertyInfo(godot::Variant::BOOL,"SessionType_useCookingThread"));
-        list->push_back(godot::PropertyInfo(godot::Variant::STRING,"SessionType_namedPipe"));
-        list->push_back(godot::PropertyInfo(godot::Variant::STRING,"SessionType_hostName"));
-        list->push_back(godot::PropertyInfo(godot::Variant::STRING,"SessionType_sharedMemoryName"));
-        list->push_back(godot::PropertyInfo(godot::Variant::INT,"SessionType_tcpPort"));
-        list->push_back(godot::PropertyInfo(godot::Variant::STRING,"logFilePath",PROPERTY_HINT_SAVE_FILE));
-        list->push_back(godot::PropertyInfo(godot::Variant::OBJECT,"otlPath",PROPERTY_HINT_RESOURCE_TYPE,"HDAResource"));
-        list->push_back(godot::PropertyInfo(godot::Variant::OBJECT,"action",PROPERTY_HINT_RESOURCE_TYPE,"Action"));
+
+        list->push_back(godot::PropertyInfo(godot::Variant::NIL,"Session Settings",godot::PROPERTY_HINT_NONE,"SessionSettings_",godot::PROPERTY_USAGE_GROUP));
+
+        list->push_back(godot::PropertyInfo(godot::Variant::OBJECT,"SessionSettings_sessionAction",godot::PROPERTY_HINT_RESOURCE_TYPE,"SessionAction"));
+        list->push_back(godot::PropertyInfo(godot::Variant::INT,"SessionSettings_sessionType",godot::PROPERTY_HINT_ENUM,"InProcess:1,NewNamedPipe:2,NewTCPSocket:3,ExistingNamedPipe:4,ExistingTCPSocket:5,ExistingSharedMemory:6"));
+        list->push_back(godot::PropertyInfo(godot::Variant::BOOL,"SessionSettings_useCookingThread"));
+        list->push_back(godot::PropertyInfo(godot::Variant::STRING,"SessionSettings_namedPipe"));
+        list->push_back(godot::PropertyInfo(godot::Variant::STRING,"SessionSettings_hostName"));
+        list->push_back(godot::PropertyInfo(godot::Variant::STRING,"SessionSettings_sharedMemoryName"));
+        list->push_back(godot::PropertyInfo(godot::Variant::INT,"SessionSettings_tcpPort"));
+
+
+        list->push_back(godot::PropertyInfo(godot::Variant::NIL,"Asset Settings",godot::PROPERTY_HINT_NONE,"AssetSettings_",godot::PROPERTY_USAGE_GROUP));
+        
+        list->push_back(godot::PropertyInfo(godot::Variant::OBJECT,"AssetSettings_assetAction",godot::PROPERTY_HINT_RESOURCE_TYPE,"AssetAction"));
+        list->push_back(godot::PropertyInfo(godot::Variant::OBJECT,"AssetSettings_nowAsset",godot::PROPERTY_HINT_RESOURCE_TYPE,"HDAResource"));
+        list->push_back(godot::PropertyInfo(godot::Variant::ARRAY,"AssetSettings_assets"));
         list->push_back(godot::PropertyInfo(godot::Variant::DICTIONARY,"cookOptions"));
+        list->push_back(godot::PropertyInfo(godot::Variant::STRING,"logFilePath",godot::PROPERTY_HINT_SAVE_FILE));
+
+
+        list->push_back(godot::PropertyInfo(godot::Variant::NIL,"Node Settings",godot::PROPERTY_HINT_NONE,"NodeSettings_",godot::PROPERTY_USAGE_GROUP));
+        list->push_back(godot::PropertyInfo(godot::Variant::OBJECT,"NodeSettings_nodeAction",godot::PROPERTY_HINT_RESOURCE_TYPE,"NodeAction"));
+        list->push_back(godot::PropertyInfo(godot::Variant::OBJECT,"NodeSettings_nowNode",godot::PROPERTY_HINT_RESOURCE_TYPE,"HDANode"));
+        list->push_back(godot::PropertyInfo(godot::Variant::ARRAY,"NodeSettings_nodes"));
+        
+
         
 
         if(HoudiniApi::IsSessionValid(&session)!=HAPI_RESULT_SUCCESS){
             return;
         }
-        static bool added = 0;
-        if(!added){
-            ADD_GROUP("Parameters","Parameters_");
-            added = 1;
-        }
+        //ADD_GROUP("Parameters","Parameters_");
+        list->push_back(godot::PropertyInfo(godot::Variant::NIL,"Parameters",godot::PROPERTY_HINT_NONE,"Parameters_",godot::PROPERTY_USAGE_GROUP));
         for(auto& a : nodeIds){
             int id = a.first;
 
             auto nodeInfo = getNodeInfo(a.first);
             std::string name = HoudiniEngineUtility::getString(&session,nodeInfo.nameSH);
+            list->push_back(godot::PropertyInfo(godot::Variant::NIL,(name+' '+std::to_string(id)+" Parameters").c_str(),godot::PROPERTY_HINT_NONE,("Parameters_"+std::to_string(id)+"_Parameters_").c_str(),godot::PROPERTY_USAGE_SUBGROUP));
             //ADD_SUBGROUP((name+" Parameters").c_str(),("Parameters_"+std::to_string(id)+"_Parameters_").c_str());
-            list->push_back(godot::PropertyInfo(Variant::INT,("Parameters_"+std::to_string(id)+"_Parameters_id").c_str()));
-            list->push_back(godot::PropertyInfo(Variant::INT,("Parameters_"+std::to_string(id)+"_Parameters_parentId").c_str()));
+            list->push_back(godot::PropertyInfo(godot::Variant::INT,("Parameters_"+std::to_string(id)+"_Parameters_id").c_str()));
+            list->push_back(godot::PropertyInfo(godot::Variant::INT,("Parameters_"+std::to_string(id)+"_Parameters_assetId").c_str()));
 
             for(auto& b: parameters[id]){
                 if(b.second.size() == 1){
                     if(std::holds_alternative<int64_t>(b.second[0])){
-                        list->push_back(godot::PropertyInfo(Variant::INT,("Parameters_"+std::to_string(id)+"_Parameters_"+b.first).c_str()));
+                        list->push_back(godot::PropertyInfo(godot::Variant::INT,("Parameters_"+std::to_string(id)+"_Parameters_"+b.first).c_str()));
                     }else if(std::holds_alternative<double>(b.second[0])){
-                        list->push_back(godot::PropertyInfo(Variant::FLOAT,("Parameters_"+std::to_string(id)+"_Parameters_"+b.first).c_str()));
+                        list->push_back(godot::PropertyInfo(godot::Variant::FLOAT,("Parameters_"+std::to_string(id)+"_Parameters_"+b.first).c_str()));
                     }else if(std::holds_alternative<std::string>(b.second[0])){
-                        list->push_back(godot::PropertyInfo(Variant::STRING,("Parameters_"+std::to_string(id)+"_Parameters_"+b.first).c_str()));
+                        list->push_back(godot::PropertyInfo(godot::Variant::STRING,("Parameters_"+std::to_string(id)+"_Parameters_"+b.first).c_str()));
                     }
                 }else{
-                    list->push_back(godot::PropertyInfo(Variant::ARRAY,("Parameters_"+std::to_string(id)+"_Parameters_"+b.first).c_str()));
+                    list->push_back(godot::PropertyInfo(godot::Variant::ARRAY,("Parameters_"+std::to_string(id)+"_Parameters_"+b.first).c_str()));
                 }
             }
         }
@@ -295,35 +411,50 @@ class HoudiniEngineManager: public godot::Node{
 
         std::string propertyName = property.c_escape().utf8().get_data();
 
-        if(propertyName == "SessionType_sessionType"){
+        if(propertyName == "SessionSettings_sessionAction"){
+            ret = sessionAction;
+            return true;
+        }else if(propertyName == "SessionSettings_sessionType"){
             ret = sessionType;
             return true;
-        }else if(propertyName == "SessionType_useCookingThread"){
+        }else if(propertyName == "SessionSettings_useCookingThread"){
             ret = useCookingThread;
             return true;
-        }else if(propertyName == "SessionType_namedPipe"){
+        }else if(propertyName == "SessionSettings_namedPipe"){
             ret = godot::String::utf8(namedPipe.c_str());
             return true;
-        }else if(propertyName == "SessionType_hostName"){
+        }else if(propertyName == "SessionSettings_hostName"){
             ret = godot::String::utf8(hostName.c_str());
             return true;
-        }else if(propertyName == "SessionType_sharedMemoryName"){
+        }else if(propertyName == "SessionSettings_sharedMemoryName"){
             ret = godot::String::utf8(sharedMemoryName.c_str());
             return true;
-        }else if(propertyName == "SessionType_tcpPort"){
+        }else if(propertyName == "SessionSettings_tcpPort"){
             ret = tcpPort;
             return true;
-        }else if(propertyName == "logFilePath"){
-            ret = godot::String::utf8(logFilePath.c_str());
+        }else if(propertyName == "AssetSettings_assetAction"){
+            ret = assetAction;
             return true;
-        }else if(propertyName == "otlPath"){
-            ret = otlPath;
+        }else if(propertyName == "AssetSettings_nowAsset"){
+            ret = nowAsset;
             return true;
-        }else if(propertyName == "action"){
-            ret = action;
+        }else if(propertyName == "AssetSettings_assets"){
+            ret = get_assets();
+            return true;
+        }else if(propertyName == "NodeSettings_nodeAction"){
+            ret = nodeAction;
+            return true;
+        }else if(propertyName == "NodeSettings_nowNode"){
+            ret = nowNode;
+            return true;
+        }else if(propertyName == "NodeSettings_nodes"){
+            ret = get_nodes();
             return true;
         }else if(propertyName == "cookOptions"){
             ret = get_cookOptions();
+            return true;
+        }else if(propertyName == "logFilePath"){
+            ret = godot::String::utf8(logFilePath.c_str());
             return true;
         }
 
@@ -337,7 +468,9 @@ class HoudiniEngineManager: public godot::Node{
             int id = std::stoi(propertyName.substr(beg,en-beg));
             int beg2 = en+strlen("_Parameters_");
             std::string argName = propertyName.substr(beg2);
-            if(argName == "parentId"){
+            if(argName == "id"){
+                ret = id;
+            }else if(argName == "assetId"){
                 ret = nodeIds[id];
             }else{
                 if(parameters.find(id)==parameters.end()||parameters[id].find(argName)==parameters[id].end()){
@@ -373,35 +506,50 @@ class HoudiniEngineManager: public godot::Node{
 
         std::string propertyName = property.c_escape().utf8().get_data();
 
-        if(propertyName == "SessionType_sessionType"){
+        if(propertyName == "SessionSettings_sessionAction"){
+            set_sessionAction((godot::Ref<SessionAction>)(value));
+            return true;
+        }else if(propertyName == "SessionSettings_sessionType"){
             sessionType = (SessionType)(int)value;
             return true;
-        }else if(propertyName == "SessionType_useCookingThread"){
+        }else if(propertyName == "SessionSettings_useCookingThread"){
             useCookingThread = (bool)value;
             return true;
-        }else if(propertyName == "SessionType_namedPipe"){
+        }else if(propertyName == "SessionSettings_namedPipe"){
             namedPipe = ((godot::String)value).utf8().get_data();
             return true;
-        }else if(propertyName == "SessionType_hostName"){
+        }else if(propertyName == "SessionSettings_hostName"){
             hostName = ((godot::String)value).utf8().get_data();
             return true;
-        }else if(propertyName == "SessionType_sharedMemoryName"){
+        }else if(propertyName == "SessionSettings_sharedMemoryName"){
             sharedMemoryName = ((godot::String)value).utf8().get_data();
             return true;
-        }else if(propertyName == "SessionType_tcpPort"){
+        }else if(propertyName == "SessionSettings_tcpPort"){
             tcpPort = (int)value;
+            return true;
+        }else if(propertyName == "AssetSettings_assetAction"){
+            set_assetAction((godot::Ref<AssetAction>)(value));
+            return true;
+        }else if(propertyName == "AssetSettings_nowAsset"){
+            nowAsset = (godot::Ref<HDAResource>)value;
+            return true;
+        }else if(propertyName == "AssetSettings_assets"){
+            
+            return false;
+        }else if(propertyName == "NodeSettings_nodeAction"){
+            set_nodeAction((godot::Ref<NodeAction>)(value));
+            return true;
+        }else if(propertyName == "NodeSettings_nowNode"){
+            nowNode = (godot::Ref<HDANode>)value;
+            return true;
+        }else if(propertyName == "NodeSettings_nodes"){
+
+            return false;
+        }else if(propertyName == "cookOptions"){
+            set_cookOptions((godot::Dictionary)value);
             return true;
         }else if(propertyName == "logFilePath"){
             set_logFilePath((godot::String)value);
-            return true;
-        }else if(propertyName == "otlPath"){
-            otlPath = (godot::Ref<HDAResource>)value;
-            return true;
-        }else if(propertyName == "action"){
-            set_action((godot::Ref<Action>)(value));
-            return true;
-        }else if(propertyName == "cookOptions"){
-            set_cookOptions((godot::Dictionary)value);
             return true;
         }
 
@@ -470,83 +618,186 @@ class HoudiniEngineManager: public godot::Node{
         case NOTIFICATION_PROCESS:{
             Contact::process_call();
         }break;
+        case NOTIFICATION_EXIT_TREE:{
+            term();
+        }break;
         }
     }
+    void* libHAPIL = nullptr;
     void init(){
+        singleton = this;
         if(putenv("HAPI_CLIENT_NAME=godot")){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << "Failed to change env \"HAPI_CLIENT_NAME\" to \"godot\".\n";
-            }
+            printLog("Failed to change env \"HAPI_CLIENT_NAME\" to \"godot\".\n");
         }
-        void* libHAPIL = HoudiniEnginePlatform::LoadLibHAPIL();
+        libHAPIL = HoudiniEnginePlatform::LoadLibHAPIL();
         if(libHAPIL != nullptr){
             HoudiniApi::InitializeHAPI(libHAPIL);
         }
         if(!HoudiniApi::IsHAPIInitialized()){
-            godot::UtilityFunctions::printerr("Failed to load and initialize the "
+            printErr("Failed to load and initialize the "
                         "Houdini Engine API from libHAPIL.\n");
         }
     }
-    
+    void term(){
+        if(HoudiniApi::IsSessionValid(&session) == HAPI_RESULT_SUCCESS){
+            if(!stopSession()){
+                printErr("Failed to stop session.\n");
+            }
+            
+        }
+        // if(libHAPIL != nullptr){
+        //     HoudiniApi::FinalizeHAPI();
+        //     HoudiniEnginePlatform::FreeLibHAPIL(libHAPIL);
+        // }
+    }
+    //      AssetId,Res
+    std::map<int,godot::Ref<HDAResource>> assetIds;
+    godot::Ref<HDAResource> nowAsset;
+    godot::Array get_assets(){
+        godot::Array arr;
+        for(auto& a : assetIds){
+            arr.push_back(a.second);
+        }
+        return arr;
+    }
+    //      NodeId,AssetId
     std::map<int,int> nodeIds;
-    void cook(){
+    godot::Ref<HDANode> nowNode;
+    godot::Array get_nodes(){
+        godot::Array arr;
+        for(auto& a : nodeIds){
+            godot::Ref<HDANode> node;
+            node.instantiate();
+            node->nodeId = a.first;
+            arr.push_back(node);
+        }
+        return arr;
+    }
+
+    void cookSession(){
         for(auto a : nodeIds){
             cookNode(a.first);
             getParameters(a.first);
         }
     }
-
-    godot::Ref<Action> action = nullptr;
-    void set_action(godot::Ref<Action> action){
+    void cookAsset(){
+        for(auto a : nodeIds){
+            if(a.second == nowAsset->assetId){
+                cookNode(a.first);
+                getParameters(a.first);
+            }
+        }
+    }
+    godot::Ref<SessionAction> sessionAction;
+    void set_sessionAction(godot::Ref<SessionAction> action){
         auto& type = typeid(*(action.ptr()));
-        if(type == typeid(CookAction)){
-            this->action = action;
-            std::jthread([this]{
-                cook();
-                this->action.unref();
-                Contact::add_call([this]{
-                    notify_property_list_changed();
-                });
-            }).detach();
-        }else if(type == typeid(LoadAssetAction)){
-            this->action = action;
-            std::jthread([this]{
-                loadAssets(this->otlPath->path,assetLibId);
-                this->action.unref();
-                Contact::add_call([this]{
-                    notify_property_list_changed();
-                });
-            }).detach();
-        }else if(type == typeid(StartSessionAction)){
-            this->action = action;
+        if(type == typeid(StartSessionAction)){
+            this->sessionAction = action;
             std::jthread([this]{
                 startSession(sessionType,useCookingThread);
-                this->action.unref();
+                this->sessionAction.unref();
                 Contact::add_call([this]{
                     notify_property_list_changed();
                 });
             }).detach();
         }else if(type == typeid(RestartSessionAction)){
-            this->action = action;
+            this->sessionAction = action;
             std::jthread([this]{
                 restartSession(sessionType,useCookingThread);
-                this->action.unref();
+                this->sessionAction.unref();
                 Contact::add_call([this]{
                     notify_property_list_changed();
                 });
             }).detach();
         }else if(type == typeid(StopSessionAction)){
-            this->action = action;
+            this->sessionAction = action;
             std::jthread([this]{
                 stopSession();
-                this->action.unref();
+                this->sessionAction.unref();
+                Contact::add_call([this]{
+                    notify_property_list_changed();
+                });
+            }).detach();
+        }else if(type == typeid(CookSessionAction)){
+            this->sessionAction = action;
+            std::jthread([this]{
+                cookSession();
+                this->sessionAction.unref();
                 Contact::add_call([this]{
                     notify_property_list_changed();
                 });
             }).detach();
         }else{
             return;
+        }
+    }
+    godot::Ref<AssetAction> assetAction;
+    void set_assetAction(godot::Ref<AssetAction> action){
+        auto& type = typeid(*(action.ptr()));
+        if(type == typeid(CookAssetAction)){
+            this->assetAction = action;
+            std::jthread([this]{
+                cookAsset();
+                this->assetAction.unref();
+                Contact::add_call([this]{
+                    notify_property_list_changed();
+                });
+            }).detach();
+        }else if(type == typeid(LoadAssetAction)){
+            this->assetAction = action;
+            std::jthread([this]{
+                if(nowAsset.is_null())
+                    return;
+                loadAssets(nowAsset,Void{});
+                this->assetAction.unref();
+                Contact::add_call([this]{
+                    notify_property_list_changed();
+                });
+            }).detach();
+        }else{
+            return;
+        }
+    }
+    godot::Ref<NodeAction> nodeAction;
+    void set_nodeAction(godot::Ref<NodeAction> action){
+        auto& type = typeid(*(action.ptr()));
+        if(type == typeid(CookNodeAction)){
+            this->nodeAction = action;
+            std::jthread([this]{
+                if(nowNode.is_null())
+                    return;
+                cookNode(nowNode->nodeId);
+                getParameters(nowNode->nodeId);
+
+                this->nodeAction.unref();
+                Contact::add_call([this]{
+                    notify_property_list_changed();
+                });
+            }).detach();
+        }
+        else if(type == typeid(DeleteNodeAction)){
+            this->nodeAction = action;
+            std::jthread([this]{
+                if(nowNode.is_null())
+                    return;
+                deleteNode(nowNode->nodeId);
+                this->nodeAction.unref();
+                Contact::add_call([this]{
+                    notify_property_list_changed();
+                });
+            }).detach();
+        }
+        else if(type == typeid(CreateMeshAction)){
+            this->nodeAction = action;
+            std::jthread([this]{
+                if(nowNode.is_null())
+                    return;
+                createMeshNode(nowNode->nodeId);
+                this->nodeAction.unref();
+                Contact::add_call([this]{
+                    notify_property_list_changed();
+                });
+            }).detach();
         }
     }
 
@@ -579,9 +830,7 @@ class HoudiniEngineManager: public godot::Node{
     HAPI_Session session;
     SessionType sessionType = InProcess;
     bool useCookingThread = true;
-    godot::Ref<HDAResource> otlPath;
 
-    int assetLibId;
 
     HAPI_CookOptions cookOptions;
     void set_cookOptions(godot::Dictionary options){
@@ -626,8 +875,8 @@ class HoudiniEngineManager: public godot::Node{
         dic["packedPrimInstancingMode"] = (int)cookOptions.packedPrimInstancingMode;
         return dic;
     }
-
-
+    //      nodeId        partId       Geo_Attrib    faces            P            vertexs             Cd                  N               uv
+    std::map<int,std::map<int,std::tuple<std::vector<int>,std::vector<float>,std::vector<int>,std::vector<float>,std::vector<float>,std::vector<float>>>> geometries;
 public:
     bool startSession(SessionType type,bool use_cooking_thread){
         if(HoudiniApi::IsSessionValid(&session) == HAPI_RESULT_SUCCESS){
@@ -648,15 +897,9 @@ public:
                 &session,&sessionInfo
             );
             if(SessionResult == HAPI_RESULT_SUCCESS){
-                if(!logFilePath.empty()){
-                    logFile << std::chrono::system_clock::now() << " ### ";
-                    logFile << "Successful create a HAPI in-process session\n";
-                }
+                printFile("Successful create a HAPI in-process session\n");
             }else{
-                if(!logFilePath.empty()){
-                    logFile << std::chrono::system_clock::now() << " ### ";
-                    logFile << "Error create session: "<< SessionResult << std::endl;
-                }
+                printErr("Error create session: ",SessionResult);
             }
         }break;
         case SessionType::NewNamedPipe:{
@@ -669,15 +912,9 @@ public:
                 &session,namedPipe.c_str(),&sessionInfo
             );
             if(SessionResult == HAPI_RESULT_SUCCESS){
-                if(!logFilePath.empty()){
-                    logFile << std::chrono::system_clock::now() << " ### ";
-                    logFile << "Successful create a HAPI named-pipe session\n";
-                }
+                printFile("Successful create a HAPI named-pipe session\n");
             }else{
-                if(!logFilePath.empty()){
-                    logFile << std::chrono::system_clock::now() << " ### ";
-                    logFile << "Error create session: "<< SessionResult << std::endl;
-                }
+                printErr("Error create session: ",SessionResult);
             }
         }break;
         case SessionType::NewTCPSocket:{
@@ -690,15 +927,9 @@ public:
                 &session,hostName.c_str(), tcpPort, &sessionInfo
             );
             if(SessionResult == HAPI_RESULT_SUCCESS){
-                if(!logFilePath.empty()){
-                    logFile << std::chrono::system_clock::now() << " ### ";
-                    logFile << "Successful create a HAPI TCP socket session\n";
-                }
+                printFile("Successful create a HAPI TCP socket session\n");
             }else{
-                if(!logFilePath.empty()){
-                    logFile << std::chrono::system_clock::now() << " ### ";
-                    logFile << "Error create session: "<< SessionResult << std::endl;
-                }
+                printErr("Error create session: ",SessionResult);
             }
         }break;
         case SessionType::ExistingNamedPipe:{
@@ -707,15 +938,9 @@ public:
                 &session,namedPipe.c_str(),&sessionInfo
             );
             if(SessionResult == HAPI_RESULT_SUCCESS){
-                if(!logFilePath.empty()){
-                    logFile << std::chrono::system_clock::now() << " ### ";
-                    logFile << "Successful connect to an existint HAPI named-pipe session\n";
-                }
+                printFile("Successful connect to an existint HAPI named-pipe session\n");
             }else{
-                if(!logFilePath.empty()){
-                    logFile << std::chrono::system_clock::now() << " ### ";
-                    logFile << "Error create session: "<< SessionResult << std::endl;
-                }
+                printErr("Error create session: ",SessionResult);
             }
         }break;
         case SessionType::ExistingTCPSocket:{
@@ -724,15 +949,9 @@ public:
                 &session,hostName.c_str(), tcpPort, &sessionInfo
             );
             if(SessionResult == HAPI_RESULT_SUCCESS){
-                if(!logFilePath.empty()){
-                    logFile << std::chrono::system_clock::now() << " ### ";
-                    logFile << "Successful connect to an existint HAPI TCP socket session\n";
-                }
+                printFile("Successful connect to an existint HAPI TCP socket session\n");
             }else{
-                if(!logFilePath.empty()){
-                    logFile << std::chrono::system_clock::now() << " ### ";
-                    logFile << "Error create session: "<< SessionResult << std::endl;
-                }
+                printErr("Error create session: ",SessionResult);
             }
         }break;
         case SessionType::ExistingSharedMemory:{
@@ -741,22 +960,13 @@ public:
                 &session,sharedMemoryName.c_str(), &sessionInfo
             );
             if(SessionResult == HAPI_RESULT_SUCCESS){
-                if(!logFilePath.empty()){
-                    logFile << std::chrono::system_clock::now() << " ### ";
-                    logFile << "Successful connect to an existint HAPI shared memory session\n";
-                }
+                printFile("Successful connect to an existint HAPI shared memory session\n");
             }else{
-                if(!logFilePath.empty()){
-                    logFile << std::chrono::system_clock::now() << " ### ";
-                    logFile << "Error create session: "<< SessionResult << std::endl;
-                }
+                printErr("Error create session: ",SessionResult);
             }
         }break;
         default:{
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << "Cannot connect to unknown session type (" << sessionType << ")\n";
-            }
+            printErr("Cannot connect to unknown session type (",sessionType,")");
             return false;
         }break;
         }
@@ -766,19 +976,13 @@ public:
             {
                 std::string connectionError = HoudiniEngineUtility::getConnectionError();
                 if (!connectionError.empty())
-                    if(!logFilePath.empty()){
-                        logFile << std::chrono::system_clock::now() << " ### ";
-                        logFile << "Houdini Engine Session failed to connect - " << connectionError << std::endl;
-                    }
+                    printErr("Houdini Engine Session failed to connect - ",connectionError.c_str());
             }
 
             return false;
         }
         if(!initialize(use_cooking_thread)){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << "Failed to start the Houdini Engine session - Failed to initialize HAPI" << std::endl;
-            }
+            printErr("Failed to start the Houdini Engine session - Failed to initialize HAPI");
             return false;
         }
 
@@ -798,19 +1002,13 @@ public:
         bool success = false;
         stopSession();
         if(!startSession(sessionType,use_cooking_thread)){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << "Failed to restart the Houdini Engine session - Failed to start the new Session" << std::endl;
-            }
+            printErr("Failed to restart the Houdini Engine session - Failed to start the new Session");
         }else{
             if(HoudiniApi::IsSessionValid(&session) != HAPI_RESULT_SUCCESS){
                 return false;
             }
             if(!initialize(use_cooking_thread)){
-                if(!logFilePath.empty()){
-                    logFile << std::chrono::system_clock::now() << " ### ";
-                    logFile << "Failed to restart the Houdini Engine session - Failed to initialize HAPI" << std::endl;
-                }
+                printErr("Failed to restart the Houdini Engine session - Failed to initialize HAPI");
             }else{
                 success = true;
             }
@@ -819,10 +1017,7 @@ public:
     }
     bool initialize(bool use_cooking_thread){
         if(HoudiniApi::IsSessionValid(&session) != HAPI_RESULT_SUCCESS){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << "Failed to initialize HAPI: The session is invalid." << std::endl;
-            }
+            printErr("Failed to initialize HAPI: The session is invalid.");
             return false;
         }
 
@@ -844,129 +1039,132 @@ public:
             );
             this->cookOptions = cookOptions;
             if(Result == HAPI_RESULT_SUCCESS){
-                if(!logFilePath.empty()){
-                    logFile << std::chrono::system_clock::now() << " ### ";
-                    logFile << "Successfully initialized Houdini Engine." << std::endl;
-                }
+                printFile("Successfully initialized Houdini Engine.");
             }else if(Result == HAPI_RESULT_ALREADY_INITIALIZED){
-                if(!logFilePath.empty()){
-                    logFile << std::chrono::system_clock::now() << " ### ";
-                    logFile << "Successfully initialized Houdini Engine - HAPI was already initialized." << std::endl;
-                }
+                printFile("Successfully initialized Houdini Engine - HAPI was already initialized.");
             }else{
-                if(!logFilePath.empty()){
-                    logFile << std::chrono::system_clock::now() << " ### ";
-                    logFile << "Houdini Engine API initialization failed" << std::endl;
-                }
+                printErr("Houdini Engine API initialization failed");
                 return false;
             }
         }
         return true;
     }
-    void loadAssets(std::string otlPath,int& assetId){
+    std::vector<int> loadAssets(godot::Ref<HDAResource> hdaRes,Void){
         
         if(auto a = HoudiniApi::IsSessionValid(&session);a != HAPI_RESULT_SUCCESS){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << "Error load Asset with invalid session: " << a << std::endl;
-            }
-            return;
+            printErr("Error load Asset with invalid session: ");
+            return {};
         }
-        if(auto a = HoudiniApi::LoadAssetLibraryFromFile(&session,otlPath.c_str(),true,&assetId);a != HAPI_RESULT_SUCCESS){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << "Error load Asset from file: " << a << std::endl;
-            }
-            return;
+        int assetId = -1;
+        if(auto a = HoudiniApi::LoadAssetLibraryFromFile(&session,hdaRes->path.c_str(),true,&assetId);a != HAPI_RESULT_SUCCESS){
+            printErr("Error load Asset from file: ");
+            return {};
         }
         int asset_count = 0;
         if(auto a = HoudiniApi::GetAvailableAssetCount(&session,assetId,&asset_count); a != HAPI_RESULT_SUCCESS){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << "Error get available asset count: " << a << std::endl;
-            }
-            return;
+            printErr("Error get available asset count: ",a);
+            return {};
         }
         std::vector<HAPI_StringHandle> assetSH;
         assetSH.resize(asset_count);
         if(auto a = HoudiniApi::GetAvailableAssets(&session,assetId,assetSH.data(),asset_count);a != HAPI_RESULT_SUCCESS){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << "Error get available assets: " << a << std::endl;
-            }
-            return;
+            printErr("Error get available assets: ",a);
+            return {};
         }
 
         std::string temp;
         int rootId = -1;
-        nodeIds.clear();
+        std::vector<int> result;
+        result.reserve(asset_count);
         for(int i = 0;i!=asset_count;++i){
             temp = HoudiniEngineUtility::getString(&session,assetSH[i]);
-            int id = 0;
-            createNode(temp,temp,id,rootId);
+            int id = -1;
+            createNode(temp,temp,id,rootId,assetId);
+            result.push_back(id);
         }
+        hdaRes->assetId = assetId;
+        assetIds.insert({assetId,hdaRes});
+        return result;
     }
-    godot::PackedInt32Array loadAssets(godot::String otlPath,AssetLibId* id){
-        loadAssets(std::string(otlPath.utf8().get_data()),*id->id.get());
+    godot::PackedInt32Array loadAssets(godot::Ref<HDAResource> hdaRes){
+        auto arr = loadAssets(hdaRes,Void{});
         godot::PackedInt32Array res;
-        for(auto a : nodeIds){
-            res.push_back(a.first);
+        for(auto a : arr){
+            res.push_back(a);
         }
         return res;
     }
-    bool createNode(std::string nodeLabel, std::string operatorName, int& id, int parentId){
+    bool createNode(std::string nodeLabel, std::string operatorName, int& id, int parentId, int assetId){
         if(HoudiniApi::IsSessionValid(&session) != HAPI_RESULT_SUCCESS){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << "Failed to create node: The session is invalid." << std::endl;
-            }
+            printErr("Failed to create node: The session is invalid.");
             return false;
         }
         if(HoudiniApi::CreateNode(&session,parentId,operatorName.c_str(),nodeLabel.c_str(),false,&id) != HAPI_RESULT_SUCCESS){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << HoudiniEngineUtility::getLastError() << std::endl;
-            }
+            printErr("Error create node: ",HoudiniEngineUtility::getLastError().c_str());
             return false;
+        }else{
+            printFile("Success create node, ID: ",id);
         }
-        nodeIds.insert({id,parentId});
+        nodeIds.insert({id,assetId});
         return true;
     }
-    bool createNode(godot::String nodeLabel,godot::String operatorName, NodeId* id, NodeId* parentId){
-        return createNode(std::string(nodeLabel.utf8().get_data()),std::string(operatorName.utf8().get_data()),*id->id.get(),(int)*parentId);
+    bool createNode(godot::String nodeLabel,godot::String operatorName, NodeId* id, NodeId* parentId, int assetId){
+        return createNode(std::string(nodeLabel.utf8().get_data()),std::string(operatorName.utf8().get_data()),*id->id.get(),(int)*parentId,assetId);
+    }
+    bool connectNode(int nodeId, int inputIndex,int node_to_connect,int outputIndex){
+        if(HoudiniApi::IsSessionValid(&session) != HAPI_RESULT_SUCCESS){
+            printErr("Failed to connect node: The session is invalid.");
+            return false;
+        }
+        if(HoudiniApi::ConnectNodeInput(&session,nodeId,inputIndex,node_to_connect,outputIndex) != HAPI_RESULT_SUCCESS){
+            printErr("Error connect node: ",HoudiniEngineUtility::getLastError().c_str());
+            return false;
+        }else{
+            printFile("Success connect node ",nodeId," with ",node_to_connect);
+        }
+        return true;
+    }
+    bool connectNode(NodeId* nodeId,int inputIndex,NodeId* node_to_connect,int outputIndex){
+        return connectNode(*nodeId,inputIndex,*node_to_connect,outputIndex);
     }
     bool cookNode(int id){
         if(HoudiniApi::IsSessionValid(&session) != HAPI_RESULT_SUCCESS){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << "Failed to cook node: The session is invalid." << std::endl;
-            }
+            printErr("Failed to cook node: The session is invalid.");
             return false;
         }
         if(HoudiniApi::CookNode(&session,id,&cookOptions) != HAPI_RESULT_SUCCESS){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << HoudiniEngineUtility::getLastError() << std::endl;
-            }
+            printErr("Failed to cook node",HoudiniEngineUtility::getLastCookError().c_str());
             return false;
         }
         if(waitForCook()){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << "Id: "<< id <<" - Cook complete." << std::endl;
-            }
+            printFile("Id: ",id," - Cook complete.");
         }
         return true;
     }
     bool cookNode(NodeId* id){
         return cookNode((int)*id);
     }
+    bool deleteNode(int id){
+        if(HoudiniApi::IsSessionValid(&session) != HAPI_RESULT_SUCCESS){
+            printErr("Failed to cook node: The session is invalid.");
+            return false;
+        }
+        if(auto a = HoudiniApi::DeleteNode(&session,id);a != HAPI_RESULT_SUCCESS){
+            printErr("Failed to delete node: ",a," - ",HoudiniEngineUtility::getLastError().c_str());
+            return false;
+        }
+        nodeIds.erase(id);
+        parameters.erase(id);
+        geometries.erase(id);
+
+        return true;
+    }
+    bool deleteNode(NodeId* id){
+        return deleteNode((int)*id);
+    }
     bool waitForCook(){
         if(HoudiniApi::IsSessionValid(&session) != HAPI_RESULT_SUCCESS){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << "Failed to cook node: The session is invalid." << std::endl;
-            }
+            printErr("Failed to cook node: The session is invalid.");
             return false;
         }
         int status;
@@ -976,21 +1174,90 @@ public:
             std::this_thread::sleep_for(std::chrono::microseconds(1));
         }while(status > HAPI_STATE_MAX_READY_STATE && result == HAPI_RESULT_SUCCESS);
         if(status != HAPI_STATE_READY || result != HAPI_RESULT_SUCCESS){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << "Cook failure: " << HoudiniEngineUtility::getLastCookError() << std::endl;
-            }
+            printErr("Cook failure: ",HoudiniEngineUtility::getLastCookError().c_str());
             return false;
+        }
+        return true;
+    }
+    bool createMeshNode(int nodeId){
+        getGeometry(nodeId);
+        if(geometries[nodeId].empty()){
+            return false;
+        }
+        for(auto part : geometries[nodeId]){
+            std::vector<int>& faces = std::get<0>(part.second);
+            std::vector<float>& positions = std::get<1>(part.second);
+            std::vector<int>& vertexs = std::get<2>(part.second);
+            std::vector<float>& colors = std::get<3>(part.second);
+            std::vector<float>& normals = std::get<4>(part.second);
+            std::vector<float>& uvs = std::get<5>(part.second);
+            std::vector<godot::Vector3> pos;
+            std::vector<godot::Color> cols;
+            int pos_num = positions.size()/3;
+            int col_num = colors.size()/3;
+            for(int i = 0;i!=pos_num;++i){
+                godot::Vector3 vec;
+                vec.x = positions[i*3];
+                vec.y = positions[i*3+1];
+                vec.z = positions[i*3+2];
+                pos.push_back(vec);
+                if(i+1 <= col_num){
+                    godot::Color color;
+                    color.r = colors[i*3];
+                    color.g = colors[i*3+1];
+                    color.b = colors[i*3+2];
+                    cols.push_back(color);
+                }
+            }
+            std::vector<godot::Vector3> nors;
+            std::vector<godot::Vector2> uv_s;
+            int vertex_num = vertexs.size()/3;
+            vertex_num -= vertex_num%3;
+            int nor_num = normals.size()/3;
+            int uv_num = uvs.size()/3;
+            for(int i = 0;i!=vertex_num;++i){
+                if(i+1 <= nor_num){
+                    godot::Vector3 nor;
+                    nor.x = normals[i*3];
+                    nor.y = normals[i*3+1];
+                    nor.z = normals[i*3+2];
+                    nors.push_back(nor);
+                }
+                if(i+1 <= uv_num){
+                    godot::Vector2 vec;
+                    vec.x = uvs[i*3];
+                    vec.y = uvs[i*3+1];
+                    uv_s.push_back(vec);
+                }
+            }
+            godot::SurfaceTool* st = memnew(godot::SurfaceTool());
+            st->begin(godot::Mesh::PRIMITIVE_TRIANGLES);
+            for(int i = 0;i!=vertex_num;++i){
+                if(vertexs[i]+1 > pos_num){
+                    break;
+                }
+                if(i+1 <= nor_num)
+                    st->set_normal(nors[i]);
+                if(i+1 <= uv_num)
+                    st->set_uv(uv_s[i]);
+                if(vertexs[i]+1 <= col_num)
+                    st->set_color(cols[vertexs[i]]);
+                st->add_vertex(pos[vertexs[i]]);
+            }
+            godot::Ref<godot::ArrayMesh> arr_mesh = st->commit();
+            godot::MeshInstance3D* instance = memnew(godot::MeshInstance3D());
+            instance->set_mesh(arr_mesh);
+            Contact::add_call([=,this]{
+                add_child(instance,true);
+                instance->set_owner(get_tree()->get_edited_scene_root());
+            });
         }
         return true;
     }
     HAPI_NodeInfo getNodeInfo(int id){
         HAPI_NodeInfo info;
         if(HoudiniApi::GetNodeInfo(&session,id,&info) != HAPI_RESULT_SUCCESS){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << HoudiniEngineUtility::getLastError() << std::endl;
-            }
+            printErr(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
         return info;
@@ -999,10 +1266,7 @@ public:
         
         HAPI_NodeInfo info;
         if(HoudiniApi::GetNodeInfo(&session,*id,&info) != HAPI_RESULT_SUCCESS){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << HoudiniEngineUtility::getLastError() << std::endl;
-            }
+            printErr(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
         godot::Dictionary dic;
@@ -1029,10 +1293,7 @@ public:
     HAPI_AssetInfo getAssetInfo(int id){
         HAPI_AssetInfo info;
         if(HoudiniApi::GetAssetInfo(&session,id,&info) != HAPI_RESULT_SUCCESS){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << HoudiniEngineUtility::getLastError() << std::endl;
-            }
+            printErr(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
         return info;
@@ -1041,10 +1302,7 @@ public:
         
         HAPI_AssetInfo info;
         if(HoudiniApi::GetAssetInfo(&session,*id,&info) != HAPI_RESULT_SUCCESS){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << HoudiniEngineUtility::getLastError() << std::endl;
-            }
+            printErr(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
         godot::Dictionary dic;
@@ -1077,10 +1335,7 @@ public:
     HAPI_ObjectInfo getObjectInfo(int id){
         HAPI_ObjectInfo info;
         if(HoudiniApi::GetObjectInfo(&session,id,&info) != HAPI_RESULT_SUCCESS){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << HoudiniEngineUtility::getLastError() << std::endl;
-            }
+            printErr(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
         return info;
@@ -1089,10 +1344,7 @@ public:
         
         HAPI_ObjectInfo info;
         if(HoudiniApi::GetObjectInfo(&session,*id,&info) != HAPI_RESULT_SUCCESS){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << HoudiniEngineUtility::getLastError() << std::endl;
-            }
+            printErr(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
         godot::Dictionary dic;
@@ -1114,10 +1366,7 @@ public:
         
         HAPI_GeoInfo info;
         if(HoudiniApi::GetGeoInfo(&session,id,&info) != HAPI_RESULT_SUCCESS){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << HoudiniEngineUtility::getLastError() << std::endl;
-            }
+            printErr(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
         return info;
@@ -1126,10 +1375,7 @@ public:
         
         HAPI_GeoInfo info;
         if(HoudiniApi::GetGeoInfo(&session,*id,&info) != HAPI_RESULT_SUCCESS){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << HoudiniEngineUtility::getLastError() << std::endl;
-            }
+            printErr(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
         godot::Dictionary dic;
@@ -1152,10 +1398,7 @@ public:
         
         HAPI_MaterialInfo info;
         if(HoudiniApi::GetMaterialInfo(&session,id,&info) != HAPI_RESULT_SUCCESS){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << HoudiniEngineUtility::getLastError() << std::endl;
-            }
+            printErr(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
         return info;
@@ -1164,10 +1407,7 @@ public:
         
         HAPI_MaterialInfo info;
         if(HoudiniApi::GetMaterialInfo(&session,*id,&info) != HAPI_RESULT_SUCCESS){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << HoudiniEngineUtility::getLastError() << std::endl;
-            }
+            printErr(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
         godot::Dictionary dic;
@@ -1178,20 +1418,14 @@ public:
     }
     void getParameters(int id){
         if(HoudiniApi::IsSessionValid(&session) != HAPI_RESULT_SUCCESS){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << "Failed to get parameters: The session is invalid." << std::endl;
-            }
+            printErr("Failed to get parameters: The session is invalid.");
             return;
         }
         HAPI_NodeInfo info = getNodeInfo(id);
         std::vector<HAPI_ParmInfo> parm_infos;
         parm_infos.resize(info.parmCount);
         if(HoudiniApi::GetParameters(&session,id,parm_infos.data(),0,info.parmCount) != HAPI_RESULT_SUCCESS){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << HoudiniEngineUtility::getLastError() << std::endl;
-            }
+            printErr(HoudiniEngineUtility::getLastError().c_str());
             return;
         }
         for(int i = 0;i!=info.parmCount;++i){
@@ -1203,10 +1437,7 @@ public:
                 parm_int_values.resize(parm_int_count);
 
                 if(HoudiniApi::GetParmIntValues(&session,id,parm_int_values.data(),parm_infos[i].intValuesIndex,parm_int_count) != HAPI_RESULT_SUCCESS){
-                    if(!logFilePath.empty()){
-                        logFile << std::chrono::system_clock::now() << " ### ";
-                        logFile << HoudiniEngineUtility::getLastError() << std::endl;
-                    }
+                    printErr(HoudiniEngineUtility::getLastError().c_str());
                     continue;
                 }
                 for(int v = 0;v != parm_int_count;++v){
@@ -1218,10 +1449,7 @@ public:
                 parm_float_values.resize(parm_float_count);
 
                 if(HoudiniApi::GetParmFloatValues(&session,id,parm_float_values.data(),parm_infos[i].floatValuesIndex,parm_float_count) != HAPI_RESULT_SUCCESS){
-                    if(!logFilePath.empty()){
-                        logFile << std::chrono::system_clock::now() << " ### ";
-                        logFile << HoudiniEngineUtility::getLastError() << std::endl;
-                    }
+                    printErr(HoudiniEngineUtility::getLastError().c_str());
                     continue;
                 }
                 for(int v = 0;v != parm_float_count;++v){
@@ -1231,10 +1459,7 @@ public:
                 int parm_string_count = HoudiniApi::ParmInfo_GetStringValueCount(&parm_infos[i]);
                 std::vector<HAPI_StringHandle> parmSH_values;
                 if(HoudiniApi::GetParmStringValues(&session,id,true,parmSH_values.data(),parm_infos[i].stringValuesIndex,parm_string_count)!=HAPI_RESULT_SUCCESS){
-                    if(!logFilePath.empty()){
-                        logFile << std::chrono::system_clock::now() << " ### ";
-                        logFile << HoudiniEngineUtility::getLastError() << std::endl;
-                    }
+                    printErr(HoudiniEngineUtility::getLastError().c_str());
                     continue;
                 }
                 for(int v = 0;v != parm_string_count;++v){
@@ -1265,19 +1490,13 @@ public:
     }
     godot::Dictionary getAttributes(NodeId* nodeId,PartId* partId){
         if(HoudiniApi::IsSessionValid(&session) != HAPI_RESULT_SUCCESS){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << "Failed to get attributes: The session is invalid." << std::endl;
-            }
+            printErr("Failed to get attributes: The session is invalid.");
             return {};
         }
         HAPI_PartInfo part_info;
         HoudiniApi::PartInfo_Init(&part_info);
         if(HoudiniApi::GetPartInfo(&session,*nodeId, *partId, &part_info) != HAPI_RESULT_SUCCESS){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << HoudiniEngineUtility::getLastError() << std::endl;
-            }
+            printErr(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
         int vertex_attr_count = part_info.attributeCounts[HAPI_ATTROWNER_VERTEX];
@@ -1288,10 +1507,7 @@ public:
         std::vector<HAPI_StringHandle> attrNameSH;
         attrNameSH.resize(point_attr_count);
         if(HoudiniApi::GetAttributeNames(&session,*nodeId,*partId,HAPI_ATTROWNER_POINT,attrNameSH.data(),point_attr_count) != HAPI_RESULT_SUCCESS){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << HoudiniEngineUtility::getLastError()<< std::endl;
-            }
+            printErr(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
 
@@ -1303,10 +1519,7 @@ public:
             HAPI_AttributeInfo attr_info;
             HoudiniApi::AttributeInfo_Init(&attr_info);
             if(HoudiniApi::GetAttributeInfo(&session,*nodeId,*partId,attr_name.c_str(),HAPI_ATTROWNER_POINT,&attr_info) != HAPI_RESULT_SUCCESS){
-                if(!logFilePath.empty()){
-                    logFile << std::chrono::system_clock::now() << " ### ";
-                    logFile << HoudiniEngineUtility::getLastError()<< std::endl;
-                }
+                printErr(HoudiniEngineUtility::getLastError().c_str());
                 return {};
             }
             point_attr["Name"] = godot::String::utf8(attr_name.c_str());
@@ -1324,10 +1537,7 @@ public:
         attrNameSH.clear();
         attrNameSH.resize(vertex_attr_count);
         if(HoudiniApi::GetAttributeNames(&session,*nodeId,*partId,HAPI_ATTROWNER_VERTEX,attrNameSH.data(),vertex_attr_count) != HAPI_RESULT_SUCCESS){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << HoudiniEngineUtility::getLastError()<< std::endl;
-            }
+            printErr(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
         
@@ -1338,10 +1548,7 @@ public:
             HAPI_AttributeInfo attr_info;
             HoudiniApi::AttributeInfo_Init(&attr_info);
             if(HoudiniApi::GetAttributeInfo(&session,*nodeId,*partId,attr_name.c_str(),HAPI_ATTROWNER_VERTEX,&attr_info) != HAPI_RESULT_SUCCESS){
-                if(!logFilePath.empty()){
-                    logFile << std::chrono::system_clock::now() << " ### ";
-                    logFile << HoudiniEngineUtility::getLastError()<< std::endl;
-                }
+                printErr(HoudiniEngineUtility::getLastError().c_str());
                 return {};
             }
             vertex_attr["Name"] = godot::String::utf8(attr_name.c_str());
@@ -1359,10 +1566,7 @@ public:
         attrNameSH.clear();
         attrNameSH.resize(prim_attr_count);
         if(HoudiniApi::GetAttributeNames(&session,*nodeId,*partId,HAPI_ATTROWNER_PRIM,attrNameSH.data(),prim_attr_count) != HAPI_RESULT_SUCCESS){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << HoudiniEngineUtility::getLastError()<< std::endl;
-            }
+            printErr(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
 
@@ -1373,10 +1577,7 @@ public:
             HAPI_AttributeInfo attr_info;
             HoudiniApi::AttributeInfo_Init(&attr_info);
             if(HoudiniApi::GetAttributeInfo(&session,*nodeId,*partId,attr_name.c_str(),HAPI_ATTROWNER_PRIM,&attr_info) != HAPI_RESULT_SUCCESS){
-                if(!logFilePath.empty()){
-                    logFile << std::chrono::system_clock::now() << " ### ";
-                    logFile << HoudiniEngineUtility::getLastError()<< std::endl;
-                }
+                printErr(HoudiniEngineUtility::getLastError().c_str());
                 return {};
             }
             prim_attr["Name"] = godot::String::utf8(attr_name.c_str());
@@ -1395,10 +1596,7 @@ public:
         attrNameSH.clear();
         attrNameSH.resize(detail_attr_count);
         if(HoudiniApi::GetAttributeNames(&session,*nodeId,*partId,HAPI_ATTROWNER_DETAIL,attrNameSH.data(),detail_attr_count) != HAPI_RESULT_SUCCESS){
-            if(!logFilePath.empty()){
-                logFile << std::chrono::system_clock::now() << " ### ";
-                logFile << HoudiniEngineUtility::getLastError()<< std::endl;
-            }
+            printErr(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
 
@@ -1409,10 +1607,7 @@ public:
             HAPI_AttributeInfo attr_info;
             HoudiniApi::AttributeInfo_Init(&attr_info);
             if(HoudiniApi::GetAttributeInfo(&session,*nodeId,*partId,attr_name.c_str(),HAPI_ATTROWNER_DETAIL,&attr_info) != HAPI_RESULT_SUCCESS){
-                if(!logFilePath.empty()){
-                    logFile << std::chrono::system_clock::now() << " ### ";
-                    logFile << HoudiniEngineUtility::getLastError()<< std::endl;
-                }
+                printErr(HoudiniEngineUtility::getLastError().c_str());
                 return {};
             }
             detail_attr["Name"] = godot::String::utf8(attr_name.c_str());
@@ -1428,6 +1623,116 @@ public:
         dict["Detail"] = point_attrs;
 
         return dict;
+    }
+    void getGeometry(int id){
+        HAPI_GeoInfo mesh_geo_info;
+        if(HoudiniApi::GetDisplayGeoInfo(&session, id, &mesh_geo_info) != HAPI_RESULT_SUCCESS){
+            printErr(HoudiniEngineUtility::getLastError().c_str());
+            return;
+        }
+        for(int partId = 0;partId!=mesh_geo_info.partCount;++partId){
+            HAPI_PartInfo mesh_part_info;
+            if(HoudiniApi::GetPartInfo(&session, mesh_geo_info.nodeId, partId, &mesh_part_info) != HAPI_RESULT_SUCCESS){
+                printErr(HoudiniEngineUtility::getLastError().c_str());
+                return;
+            }
+            std::vector<int> mesh_face_counts(mesh_part_info.faceCount);
+            if(HoudiniApi::GetFaceCounts(&session,mesh_geo_info.nodeId,mesh_part_info.id,mesh_face_counts.data(),0,mesh_part_info.faceCount) != HAPI_RESULT_SUCCESS){
+                printErr(HoudiniEngineUtility::getLastError().c_str());
+                return;
+            }
+            std::vector<int> mesh_vertex_list(mesh_part_info.vertexCount);
+            if(HoudiniApi::GetVertexList(&session,mesh_geo_info.nodeId,mesh_part_info.id,mesh_vertex_list.data(),0, mesh_part_info.vertexCount) != HAPI_RESULT_SUCCESS){
+                printErr(HoudiniEngineUtility::getLastError().c_str());
+                return;
+            }
+            std::for_each(std::execution::par_unseq,mesh_face_counts.begin(),mesh_face_counts.end(),[](int& data){
+                //TODO: triangulate
+            });
+            auto fetchPointAttrib = [&](HAPI_AttributeOwner owner,const char* attrib_name,std::vector<float>& mesh_attrib_data)->bool{
+                HAPI_AttributeInfo mesh_attrib_info;
+                if(HoudiniApi::GetAttributeInfo(&session,mesh_geo_info.nodeId,mesh_part_info.id,attrib_name, owner,&mesh_attrib_info) != HAPI_RESULT_SUCCESS){
+                    printFile(HoudiniEngineUtility::getLastError().c_str(),"Attribute name : ",attrib_name);
+                    return false;
+                }
+                mesh_attrib_data.resize(mesh_attrib_info.count * mesh_attrib_info.tupleSize);
+                if(HoudiniApi::GetAttributeFloatData(&session,mesh_geo_info.nodeId,mesh_part_info.id,attrib_name,&mesh_attrib_info,-1,mesh_attrib_data.data(),0,mesh_attrib_info.count) != HAPI_RESULT_SUCCESS){
+                    printFile(HoudiniEngineUtility::getLastError().c_str(),"Attribute name : ",attrib_name);
+                    return false;
+                }
+                return true;
+            };
+            std::vector<float> mesh_p_attrib_info;
+            fetchPointAttrib(HAPI_ATTROWNER_POINT, "P", mesh_p_attrib_info);
+
+            std::vector<float> mesh_cd_attrib_data;
+            fetchPointAttrib(HAPI_ATTROWNER_POINT, "Cd", mesh_cd_attrib_data);
+
+            std::vector<float> mesh_N_attrib_data;
+            fetchPointAttrib(HAPI_ATTROWNER_VERTEX , "N", mesh_N_attrib_data);
+
+            std::vector<float> mesh_uv_attrib_data;
+            fetchPointAttrib(HAPI_ATTROWNER_VERTEX , "uv", mesh_uv_attrib_data);
+
+            geometries[id][partId] = {std::move(mesh_face_counts),std::move(mesh_p_attrib_info),std::move(mesh_vertex_list),std::move(mesh_cd_attrib_data),std::move(mesh_N_attrib_data),std::move(mesh_uv_attrib_data)};
+        }
+    }
+    int setGeometry(int id){
+        for(auto part : geometries[id]){
+            std::vector<int>& faces = std::get<0>(part.second);
+            std::vector<float>& positions = std::get<1>(part.second);
+            std::vector<int>& vertexs = std::get<2>(part.second);
+            std::vector<float>& colors = std::get<3>(part.second);
+            std::vector<float>& normals = std::get<4>(part.second);
+            std::vector<float>& uvs = std::get<5>(part.second);
+
+            HAPI_AttributeInfo pointInfo = HoudiniApi::AttributeInfo_Create();
+            pointInfo.count = positions.size()/3;
+            pointInfo.tupleSize = 3;
+            pointInfo.exists = true;
+            pointInfo.storage = HAPI_STORAGETYPE_FLOAT;
+            pointInfo.owner = HAPI_ATTROWNER_POINT;
+            if(HoudiniApi::AddAttribute(&session,id,part.first,"P",&pointInfo) != HAPI_RESULT_SUCCESS){
+                printErr(HoudiniEngineUtility::getLastError().c_str());
+                return -1;
+            }
+            if(HoudiniApi::SetAttributeFloatData(&session,id,part.first,"P",&pointInfo,positions.data(),0,positions.size()/3) != HAPI_RESULT_SUCCESS){
+                printErr(HoudiniEngineUtility::getLastError().c_str());
+                return -1;
+            }
+            if(HoudiniApi::SetVertexList(&session,id,part.first,vertexs.data(),0,vertexs.size()) != HAPI_RESULT_SUCCESS){
+                printErr(HoudiniEngineUtility::getLastError().c_str());
+                return -1;
+            }
+            if(HoudiniApi::SetFaceCounts(&session,id,part.first,faces.data(),0,faces.size()) != HAPI_RESULT_SUCCESS){
+                printErr(HoudiniEngineUtility::getLastError().c_str());
+                return -1;
+            }
+        }
+        if(HoudiniApi::CommitGeo(&session,id) != HAPI_RESULT_SUCCESS){
+            printErr(HoudiniEngineUtility::getLastError().c_str());
+            return -1;
+        }
+        HAPI_NodeInfo nodeInfo = getNodeInfo(id);
+        HAPI_NodeId parentId = nodeInfo.parentId;
+
+        HAPI_NodeId colorNode = -1;
+        createNode("Color","color",colorNode,parentId,nowAsset->assetId);
+        connectNode(colorNode,0,id,0);
+        HAPI_NodeId normalNode = -1;
+        createNode("Normal","normal",normalNode,id,nowAsset->assetId);
+        connectNode(normalNode,0,id,0);
+        HAPI_NodeId uvProjectNode = -1;
+        createNode("UV","uvproject",uvProjectNode,id,nowAsset->assetId);
+        connectNode(uvProjectNode,0,id,0);
+        HAPI_NodeId outputNode = -1;
+        createNode("Output","output",outputNode,id,nowAsset->assetId);
+        connectNode(outputNode,0,id,0);
+        if(HoudiniApi::SetNodeDisplay(&session,outputNode,1)!=HAPI_RESULT_SUCCESS){
+            printErr(HoudiniEngineUtility::getLastError().c_str());
+            return -1;
+        }
+        return outputNode;
     }
 };
 

@@ -30,13 +30,22 @@ void initialize_module(ModuleInitializationLevel p_level){
     GDREGISTER_CLASS(PartId)
 
     GDREGISTER_ABSTRACT_CLASS(Action)
-    GDREGISTER_CLASS(CookAction)
-    GDREGISTER_CLASS(LoadAssetAction)
+    GDREGISTER_ABSTRACT_CLASS(SessionAction)
+    GDREGISTER_ABSTRACT_CLASS(AssetAction)
+    GDREGISTER_ABSTRACT_CLASS(NodeAction)
+    GDREGISTER_CLASS(CookSessionAction)
     GDREGISTER_CLASS(StartSessionAction)
     GDREGISTER_CLASS(RestartSessionAction)
     GDREGISTER_CLASS(StopSessionAction)
+    GDREGISTER_CLASS(CookAssetAction)
+    GDREGISTER_CLASS(LoadAssetAction)
+    GDREGISTER_CLASS(CookNodeAction)
+    GDREGISTER_CLASS(DeleteNodeAction)
+    GDREGISTER_CLASS(CreateMeshAction)
 
     GDREGISTER_CLASS(HoudiniEngineManager)
+
+    GDREGISTER_CLASS(HDANode)
     
     GDREGISTER_CLASS(HDAResource)
     GDREGISTER_CLASS(HDAImporter)
