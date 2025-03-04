@@ -35,7 +35,6 @@ void initialize_module(ModuleInitializationLevel p_level){
     GDREGISTER_ABSTRACT_CLASS(NodeAction)
     GDREGISTER_CLASS(CookSessionAction)
     GDREGISTER_CLASS(StartSessionAction)
-    GDREGISTER_CLASS(RestartSessionAction)
     GDREGISTER_CLASS(StopSessionAction)
     GDREGISTER_CLASS(CookAssetAction)
     GDREGISTER_CLASS(LoadAssetAction)

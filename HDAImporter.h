@@ -52,6 +52,7 @@ public:
         godot::PackedStringArray arr;
         arr.push_back("hda");
         arr.push_back("otl");
+        arr.push_back("hdalc");
         return arr;
     }
     godot::String _get_save_extension(){
