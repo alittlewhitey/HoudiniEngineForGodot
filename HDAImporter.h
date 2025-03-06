@@ -42,12 +42,15 @@ class HDAImporter : public godot::EditorImportPlugin{
     GDCLASS(HDAImporter,godot::EditorImportPlugin)
     static void _bind_methods(){}
 public:
+    GDE_EXPORT
     godot::String _get_importer_name(){
         return "littlewhite.houdini_digital_assets";
     }
+    GDE_EXPORT
     godot::String _get_visible_name(){
         return "Houdini Digital Assets";
     }
+    GDE_EXPORT
     godot::PackedStringArray _get_recognized_extensions(){
         godot::PackedStringArray arr;
         arr.push_back("hda");
@@ -55,24 +58,30 @@ public:
         arr.push_back("hdalc");
         return arr;
     }
+    GDE_EXPORT
     godot::String _get_save_extension(){
         return "res";
     }
+    GDE_EXPORT
     godot::String _get_resource_type(){
         return "HDAResource";
     }
     enum Presets{
         PresetSize
     };
+    GDE_EXPORT
     int32_t _get_preset_count(){
         return PresetSize;
     }
+    GDE_EXPORT
     double _get_priority(){
         return 1.0;
     }
+    GDE_EXPORT
     int32_t _get_import_order(){
         return 1;
     }
+    GDE_EXPORT
     godot::String _get_preset_name(int32_t p_preset_index){
         switch((Presets)p_preset_index){
         default:{
@@ -80,12 +89,15 @@ public:
         }break;
         }
     }
+    GDE_EXPORT
     godot::TypedArray<godot::Dictionary> _get_import_options(const godot::String &p_path, int32_t p_preset_index){
         return {};
     }
+    GDE_EXPORT
     bool _get_option_visibility(const godot::String &p_path, const godot::StringName &p_option_name, const godot::Dictionary &p_options){
         return true;
     }
+    GDE_EXPORT
     godot::Error _import(const godot::String &p_source_file, const godot::String &p_save_path, const godot::Dictionary &p_options, const godot::TypedArray<godot::String> &p_platform_variants, const godot::TypedArray<godot::String> &p_gen_files){
         godot::Ref<HDAResource> res;
         res.instantiate();
