@@ -579,6 +579,10 @@ private:
             return true;
         }else if(propertyName == "NodeSettings_nowNode"){
             nowNode = (godot::Ref<HDANode>)value;
+            if(nowNode.is_null()||nowNode->nodeId == -1){
+                internalNodeId = -1;
+                internelModel->set_mesh(nullptr);
+            }
             if(showModel){
                 cookNode(nowNode);
                 updateInternalModel();
