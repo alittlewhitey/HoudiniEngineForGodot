@@ -10,6 +10,8 @@
 #include <memory>
 #include <thread>
 #include <map>
+#include <set>
+#include <queue>
 #include <execution>
 #include <godot_cpp/godot.hpp>
 #include <godot_cpp/core/class_db.hpp>
@@ -25,9 +27,9 @@
 #include <godot_cpp/classes/mesh_instance3d.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 #include <godot_cpp/core/math.hpp>
-#include "deps/HoudiniApi.h"
-#include "deps/HoudiniEngineUtility.h"
-#include "deps/HoudiniEnginePlatform.h"
+#include <HoudiniApi.h>
+#include <HoudiniEngineUtility.h>
+#include <HoudiniEnginePlatform.h>
 #include "HDAImporter.h"
 #include "Contact.h"
 
@@ -322,6 +324,7 @@ private:
         godot::ClassDB::bind_method(godot::D_METHOD("cookNode","nodeId"),static_cast<bool(HoudiniEngineManager::*)(godot::Ref<NodeId>)>(&HoudiniEngineManager::cookNode));
         godot::ClassDB::bind_method(godot::D_METHOD("deleteNode","nodeId"),static_cast<bool(HoudiniEngineManager::*)(godot::Ref<NodeId>)>(&HoudiniEngineManager::deleteNode));
         godot::ClassDB::bind_method(godot::D_METHOD("createMeshNode","nodeId"),static_cast<bool(HoudiniEngineManager::*)(godot::Ref<NodeId>)>(&HoudiniEngineManager::createMeshNode));
+        godot::ClassDB::bind_method(godot::D_METHOD("freeGDNode","node"),static_cast<bool(HoudiniEngineManager::*)(godot::Node*)>(&HoudiniEngineManager::freeGDNode));
         godot::ClassDB::bind_method(godot::D_METHOD("getNodeInfo","nodeId"),static_cast<godot::Dictionary(HoudiniEngineManager::*)(godot::Ref<NodeId>)>(&HoudiniEngineManager::getNodeInfo));
         godot::ClassDB::bind_method(godot::D_METHOD("getAssetInfo","nodeId"),static_cast<godot::Dictionary(HoudiniEngineManager::*)(godot::Ref<NodeId>)>(&HoudiniEngineManager::getAssetInfo));
         godot::ClassDB::bind_method(godot::D_METHOD("getObjectInfo","nodeId"),static_cast<godot::Dictionary(HoudiniEngineManager::*)(godot::Ref<NodeId>)>(&HoudiniEngineManager::getObjectInfo));
@@ -655,7 +658,7 @@ private:
                     }
                 }
             }
-            if(autoCook){
+            if(autoCook&&nowNode.is_valid()){
                 cookNode(nowNode->nodeId);
             }
             return true;
@@ -683,6 +686,9 @@ private:
 
     godot::MeshInstance3D* internelModel = nullptr;
     int internalNodeId = -1;
+    std::set<godot::Node*> createdGDNodes;
+    std::map<godot::Node*, std::shared_ptr<std::jthread>> freeGDNodeTasks;
+    int freeTimeoutSecond = 5;
     GDE_EXPORT
     void init(){
         singleton = this;
@@ -704,6 +710,8 @@ private:
         internelModel = memnew(godot::MeshInstance3D());
         add_child(internelModel,false,godot::Node::INTERNAL_MODE_FRONT);
         //internelModel->set_owner(get_tree()->get_edited_scene_root());
+        
+        get_tree()->connect("node_removed",godot::Callable(this,"freeGDNode"));
 
         sessionAction.unref();
         assetAction.unref();
@@ -780,6 +788,8 @@ private:
     godot::Ref<SessionAction> sessionAction;
     GDE_EXPORT
     void set_sessionAction(godot::Ref<SessionAction> action){
+        if(action.is_null())
+            return;
         auto& type = typeid(*(action.ptr()));
         if(type == typeid(StartSessionAction)){
             this->sessionAction = action;
@@ -815,6 +825,8 @@ private:
     godot::Ref<AssetAction> assetAction;
     GDE_EXPORT
     void set_assetAction(godot::Ref<AssetAction> action){
+        if(action.is_null()||nowAsset.is_null())
+            return;
         auto& type = typeid(*(action.ptr()));
         if(type == typeid(CookAssetAction)){
             this->assetAction = action;
@@ -843,6 +855,8 @@ private:
     godot::Ref<NodeAction> nodeAction;
     GDE_EXPORT
     void set_nodeAction(godot::Ref<NodeAction> action){
+        if(action.is_null()||nowNode.is_null())
+            return;
         auto& type = typeid(*(action.ptr()));
         if(type == typeid(CookNodeAction)){
             this->nodeAction = action;
@@ -1499,6 +1513,7 @@ public:
             add_child(instance,true);
             instance->set_owner(get_tree()->get_edited_scene_root());
             instance->set_visible(true);
+            createdGDNodes.insert(instance);
             internelModel->set_visible(showModel);
         });
     }
@@ -1655,6 +1670,7 @@ public:
             Contact::add_call([=,this]{
                 add_child(instance,true);
                 instance->set_owner(get_tree()->get_edited_scene_root());
+                createdGDNodes.insert(instance);
             });
             godot::memdelete(st);
         }
@@ -1663,6 +1679,32 @@ public:
     GDE_EXPORT
     bool createMeshNode(godot::Ref<NodeId> id){
         return createMeshNode(*id);
+    }
+    GDE_EXPORT
+    bool freeGDNode(godot::Node* node){
+        if(createdGDNodes.find(node) != createdGDNodes.end()){
+            freeGDNodeTasks[node] = std::make_shared<std::jthread>([this,node](std::stop_token st){
+                std::shared_ptr<std::jthread> nowThread = freeGDNodeTasks[node];
+                std::this_thread::sleep_for(std::chrono::seconds(freeTimeoutSecond));
+                freeGDNodeTasks.erase(node);
+                if(st.stop_requested())
+                    return;
+                Contact::add_call([=]{
+                    node->queue_free();
+                });
+            });
+            freeGDNodeTasks[node]->detach();
+            return true;
+        }
+        return false;
+    }
+    GDE_EXPORT
+    bool stopFreeGDNode(godot::Node* node){
+        if(freeGDNodeTasks.find(node)!=freeGDNodeTasks.end()){
+            freeGDNodeTasks[node]->request_stop();
+            return true;
+        }
+        return false;
     }
     GDE_EXPORT
     HAPI_NodeInfo getNodeInfo(int id){

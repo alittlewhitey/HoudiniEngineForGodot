@@ -8,11 +8,11 @@ set(CMAKE_BUILD_TYPE "Debug")
 
 set(CMAKE_BUILD_PARALLEL_LEVEL 19)
 
-include_directories(deps)
-include_directories(.)
+include_directories(deps/Houdini)
+include_directories(src)
 
-aux_source_directory(deps DEP_SRC)
-aux_source_directory(. BIND_SRC)
+aux_source_directory(deps/Houdini DEP_SRC)
+aux_source_directory(src BIND_SRC)
 set(LIBRARY_OUTPUT_DIRECTORY out)
 
 add_library(HoudiniEngine_windows_4.3_editor SHARED ${DEP_SRC} ${BIND_SRC})
