@@ -12,6 +12,7 @@
 #include <map>
 #include <set>
 #include <queue>
+#include <filesystem>
 #include <execution>
 #include <godot_cpp/godot.hpp>
 #include <godot_cpp/core/class_db.hpp>
@@ -30,8 +31,9 @@
 #include <HoudiniApi.h>
 #include <HoudiniEngineUtility.h>
 #include <HoudiniEnginePlatform.h>
-#include "HDAImporter.h"
+#include "Utility.h"
 #include "Contact.h"
+#include "HDAImporter.h"
 
 VARIANT_ENUM_CAST(HAPI_PackedPrimInstancingMode)
 VARIANT_ENUM_CAST(HAPI_StorageType)
@@ -401,9 +403,10 @@ private:
         list->push_back(godot::PropertyInfo(godot::Variant::ARRAY,"NodeSettings_nodes"));
         
 
+        list->push_back(godot::PropertyInfo(godot::Variant::STRING,"houdiniRootPath",godot::PROPERTY_HINT_GLOBAL_DIR));
+        list->push_back(godot::PropertyInfo(godot::Variant::STRING,"logFilePath",godot::PROPERTY_HINT_SAVE_FILE));
         list->push_back(godot::PropertyInfo(godot::Variant::BOOL,"autoCook"));
         list->push_back(godot::PropertyInfo(godot::Variant::DICTIONARY,"cookOptions"));
-        list->push_back(godot::PropertyInfo(godot::Variant::STRING,"logFilePath",godot::PROPERTY_HINT_SAVE_FILE));
         
 
         if(!sessionOpened){
@@ -480,14 +483,17 @@ private:
         }else if(propertyName == "NodeSettings_nodes"){
             ret = get_nodes();
             return true;
+        }else if(propertyName == "houdiniRootPath"){
+            ret = godot::String::utf8(houdiniRootPath.c_str());
+            return true;
+        }else if(propertyName == "logFilePath"){
+            ret = godot::String::utf8(logFilePath.c_str());
+            return true;
         }else if(propertyName == "autoCook"){
             ret = autoCook;
             return true;
         }else if(propertyName == "cookOptions"){
             ret = get_cookOptions();
-            return true;
-        }else if(propertyName == "logFilePath"){
-            ret = godot::String::utf8(logFilePath.c_str());
             return true;
         }
 
@@ -594,15 +600,18 @@ private:
         }else if(propertyName == "NodeSettings_nodes"){
 
             return false;
+        }else if(propertyName == "houdiniRootPath"){
+            set_houdiniRootPath((godot::String)value);
+            return true;
+        }else if(propertyName == "logFilePath"){
+            set_logFilePath((godot::String)value);
+            return true;
         }else if(propertyName == "autoCook"){
             autoCook = (bool)value;
             cookNode(nowNode);
             return true;
         }else if(propertyName == "cookOptions"){
             set_cookOptions((godot::Dictionary)value);
-            return true;
-        }else if(propertyName == "logFilePath"){
-            set_logFilePath((godot::String)value);
             return true;
         }
 
@@ -692,17 +701,7 @@ private:
     GDE_EXPORT
     void init(){
         singleton = this;
-        if(putenv("HAPI_CLIENT_NAME=godot")){
-            printLog("Failed to change env \"HAPI_CLIENT_NAME\" to \"godot\".\n");
-        }
-        libHAPIL = HoudiniEnginePlatform::LoadLibHAPIL();
-        if(libHAPIL != nullptr){
-            HoudiniApi::InitializeHAPI(libHAPIL);
-        }
-        if(!HoudiniApi::IsHAPIInitialized()){
-            printErr(__FILE__, " : ", __LINE__," - ", "Failed to load and initialize the "
-                        "Houdini Engine API from libHAPIL.\n");
-        }
+
         godot::Ref<godot::Material> defaultMaterial;
         defaultMaterial.instantiate();
         materialRes[""] = defaultMaterial;
@@ -901,6 +900,54 @@ private:
     bool autoCook = 0;
     bool showModel = 0;
 
+    std::string houdiniRootPath = "";
+    void set_houdiniRootPath(godot::String path){
+        path = godot::ProjectSettings::get_singleton()->globalize_path(path);
+        if(path == "")
+            return;
+        std::string houdiniPath = path.utf8().get_data();
+        std::string hconfigPath = houdiniPath+"/bin/hconfig";
+        if(!std::filesystem::exists(hconfigPath)){
+            hconfigPath += ".exe";
+            if(!std::filesystem::exists(hconfigPath)){
+                printErr("Invalid houdini root path. Make sure \"${HoudiniRootPath}/bin/hconfig\" is exist.");
+                return;
+            }
+        }
+        std::string output = exec_output(hconfigPath.c_str());
+        if(output.empty())
+            return;
+        std::istringstream iss(output);
+        std::string envLine,envKey,envValue,temp;
+        while(std::getline(iss,envLine)){
+            if(!iss)
+                break;
+            std::istringstream iss2(envLine);
+            iss2 >> envKey >> temp >> envValue;
+            std::cout << "envKey: " << envKey << '\n' 
+                        << "envValue: " << envValue << std::endl;
+            if(envKey.empty())
+                continue;
+            envValue.erase(0,1);
+            envValue.erase(envValue.size()-1,1);
+            addenv(envKey,envValue);
+        }
+        houdiniRootPath = houdiniPath;
+        initHoudini();
+    }
+    void initHoudini(){
+        if(putenv("HAPI_CLIENT_NAME=godot")){
+            printLog("Failed to change env \"HAPI_CLIENT_NAME\" to \"godot\".\n");
+        }
+        libHAPIL = HoudiniEnginePlatform::LoadLibHAPIL();
+        if(libHAPIL != nullptr){
+            HoudiniApi::InitializeHAPI(libHAPIL);
+        }
+        if(!HoudiniApi::IsHAPIInitialized()){
+            printErr(__FILE__, " : ", __LINE__," - ", "Failed to load and initialize the "
+                        "Houdini Engine API from libHAPIL.\n");
+        }
+    }
     std::string logFilePath = "";
     std::ofstream logFile;
     GDE_EXPORT
@@ -982,6 +1029,9 @@ private:
     enum class AttribOwner{
         Point,Vertex,Prim,Detail
     };
+    enum class PartType{
+        Mesh,Curve,Volume,Instancer,Box,Sphere
+    };
 
     //      NodeId,AssetId
     std::map<int,int> nodeIds;
@@ -989,6 +1039,8 @@ private:
     std::map<int,godot::Ref<HDAResource>> assetIds;
     //      NodeId          ParamName            ParamValues
     std::map<int,std::map<std::string,std::vector<std::variant<int64_t,double,std::string>>>> parameters;
+    //      nodeId      partId  type
+    std::map<int,std::map<int,PartType>> partType;
     //      nodeId        partId       Geo_Attrib    faces            P            vertexs                          Cd                                      N                                           uv                                  uv2
     std::map<int,std::map<int,std::tuple<std::vector<int>,std::vector<float>,std::vector<int>,std::pair<AttribOwner,std::vector<float>>,std::pair<AttribOwner,std::vector<float>>,std::pair<AttribOwner,std::vector<float>>,std::pair<AttribOwner,std::vector<float>>>>> geometries;
     //      nodeId       partId                 Point-Attrib                Vertex-Attrib               Prim-Attrib                     Detail-Attrib    
@@ -1010,7 +1062,6 @@ public:
             printFile(__FILE__, " : ", __LINE__," - ", "Now session is valid.\n");
             return true;
         }
-        sessionOpened = true;
 
         HoudiniApi::ClearConnectionError();
         HAPI_ThriftServerOptions server_options = HoudiniApi::ThriftServerOptions_Create();
@@ -1111,6 +1162,7 @@ public:
             printErr(__FILE__, " : ", __LINE__," - ", "Houdini Engine Session failed to start");
             return false;
         }
+        sessionOpened = true;
         if(!initialize(use_cooking_thread)){
             printErr(__FILE__, " : ", __LINE__," - ", "Failed to start the Houdini Engine session - Failed to initialize HAPI");
             return false;
@@ -2199,6 +2251,9 @@ public:
     }
     GDE_EXPORT
     int setGeometry(int id){
+        auto geoInfo = getGeoInfo(id);
+        if(geoInfo.isTemplated)
+            return -1;
         for(auto part : geometries[id]){
             std::vector<int>& faces = std::get<0>(part.second);
             std::vector<float>& positions = std::get<1>(part.second);
