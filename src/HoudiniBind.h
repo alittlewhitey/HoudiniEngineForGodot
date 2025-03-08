@@ -307,6 +307,7 @@ private:
         BIND_ENUM_CONSTANT(HAPI_GEOTYPE_MAX)
         
 
+        godot::ClassDB::bind_method(godot::D_METHOD("_settings_changed"),&HoudiniEngineManager::_settings_changed);
         godot::ClassDB::bind_method(godot::D_METHOD("get_assets"),&HoudiniEngineManager::get_assets);
         godot::ClassDB::bind_method(godot::D_METHOD("get_nodes"),&HoudiniEngineManager::get_nodes);
         godot::ClassDB::bind_method(godot::D_METHOD("cookSession"),&HoudiniEngineManager::cookSession);
@@ -378,15 +379,14 @@ private:
     void _get_property_list(godot::List<godot::PropertyInfo>* list){
         list->clear();
 
-        list->push_back(godot::PropertyInfo(godot::Variant::NIL,"Session Settings",godot::PROPERTY_HINT_NONE,"SessionSettings_",godot::PROPERTY_USAGE_GROUP));
+        //list->push_back(godot::PropertyInfo(godot::Variant::NIL,"Session Settings",godot::PROPERTY_HINT_NONE,"SessionSettings_",godot::PROPERTY_USAGE_GROUP));
 
-        list->push_back(godot::PropertyInfo(godot::Variant::OBJECT,"SessionSettings_sessionAction",godot::PROPERTY_HINT_RESOURCE_TYPE,"SessionAction"));
-        list->push_back(godot::PropertyInfo(godot::Variant::INT,"SessionSettings_sessionType",godot::PROPERTY_HINT_ENUM,"InProcess:1,NewNamedPipe:2,NewTCPSocket:3,ExistingNamedPipe:4,ExistingTCPSocket:5,ExistingSharedMemory:6"));
-        list->push_back(godot::PropertyInfo(godot::Variant::BOOL,"SessionSettings_useCookingThread"));
-        list->push_back(godot::PropertyInfo(godot::Variant::STRING,"SessionSettings_namedPipe"));
-        list->push_back(godot::PropertyInfo(godot::Variant::STRING,"SessionSettings_hostName"));
-        list->push_back(godot::PropertyInfo(godot::Variant::STRING,"SessionSettings_sharedMemoryName"));
-        list->push_back(godot::PropertyInfo(godot::Variant::INT,"SessionSettings_tcpPort"));
+        // list->push_back(godot::PropertyInfo(godot::Variant::INT,"SessionSettings_sessionType",godot::PROPERTY_HINT_ENUM,"InProcess:1,NewNamedPipe:2,NewTCPSocket:3,ExistingNamedPipe:4,ExistingTCPSocket:5,ExistingSharedMemory:6"));
+        // list->push_back(godot::PropertyInfo(godot::Variant::BOOL,"SessionSettings_useCookingThread"));
+        // list->push_back(godot::PropertyInfo(godot::Variant::STRING,"SessionSettings_namedPipe"));
+        // list->push_back(godot::PropertyInfo(godot::Variant::STRING,"SessionSettings_hostName"));
+        // list->push_back(godot::PropertyInfo(godot::Variant::STRING,"SessionSettings_sharedMemoryName"));
+        // list->push_back(godot::PropertyInfo(godot::Variant::INT,"SessionSettings_tcpPort"));
 
 
         list->push_back(godot::PropertyInfo(godot::Variant::NIL,"Asset Settings",godot::PROPERTY_HINT_NONE,"AssetSettings_",godot::PROPERTY_USAGE_GROUP));
@@ -403,12 +403,13 @@ private:
         list->push_back(godot::PropertyInfo(godot::Variant::ARRAY,"NodeSettings_nodes"));
         
 
-        list->push_back(godot::PropertyInfo(godot::Variant::STRING,"houdiniRootPath",godot::PROPERTY_HINT_GLOBAL_DIR));
-        list->push_back(godot::PropertyInfo(godot::Variant::STRING,"logFilePath",godot::PROPERTY_HINT_SAVE_FILE));
+        list->push_back(godot::PropertyInfo(godot::Variant::OBJECT,"sessionAction",godot::PROPERTY_HINT_RESOURCE_TYPE,"SessionAction"));
         list->push_back(godot::PropertyInfo(godot::Variant::BOOL,"autoCook"));
-        list->push_back(godot::PropertyInfo(godot::Variant::DICTIONARY,"cookOptions"));
-        
+        // list->push_back(godot::PropertyInfo(godot::Variant::STRING,"houdiniRootPath",godot::PROPERTY_HINT_GLOBAL_DIR));
+        // list->push_back(godot::PropertyInfo(godot::Variant::STRING,"logFilePath",godot::PROPERTY_HINT_SAVE_FILE));
+        // list->push_back(godot::PropertyInfo(godot::Variant::DICTIONARY,"cookOptions"));
 
+        
         if(!sessionOpened){
             return;
         }
@@ -441,28 +442,29 @@ private:
 
         std::string propertyName = property.c_escape().utf8().get_data();
 
-        if(propertyName == "SessionSettings_sessionAction"){
-            ret = sessionAction;
-            return true;
-        }else if(propertyName == "SessionSettings_sessionType"){
-            ret = sessionType;
-            return true;
-        }else if(propertyName == "SessionSettings_useCookingThread"){
-            ret = useCookingThread;
-            return true;
-        }else if(propertyName == "SessionSettings_namedPipe"){
-            ret = godot::String::utf8(namedPipe.c_str());
-            return true;
-        }else if(propertyName == "SessionSettings_hostName"){
-            ret = godot::String::utf8(hostName.c_str());
-            return true;
-        }else if(propertyName == "SessionSettings_sharedMemoryName"){
-            ret = godot::String::utf8(sharedMemoryName.c_str());
-            return true;
-        }else if(propertyName == "SessionSettings_tcpPort"){
-            ret = tcpPort;
-            return true;
-        }else if(propertyName == "AssetSettings_assetAction"){
+        // if(propertyName == "SessionSettings_sessionAction"){
+        //     ret = sessionAction;
+        //     return true;
+        // }else if(propertyName == "SessionSettings_sessionType"){
+        //     ret = sessionType;
+        //     return true;
+        // }else if(propertyName == "SessionSettings_useCookingThread"){
+        //     ret = useCookingThread;
+        //     return true;
+        // }else if(propertyName == "SessionSettings_namedPipe"){
+        //     ret = godot::String::utf8(namedPipe.c_str());
+        //     return true;
+        // }else if(propertyName == "SessionSettings_hostName"){
+        //     ret = godot::String::utf8(hostName.c_str());
+        //     return true;
+        // }else if(propertyName == "SessionSettings_sharedMemoryName"){
+        //     ret = godot::String::utf8(sharedMemoryName.c_str());
+        //     return true;
+        // }else if(propertyName == "SessionSettings_tcpPort"){
+        //     ret = tcpPort;
+        //     return true;
+        // }else 
+        if(propertyName == "AssetSettings_assetAction"){
             ret = assetAction;
             return true;
         }else if(propertyName == "AssetSettings_nowAsset"){
@@ -483,17 +485,22 @@ private:
         }else if(propertyName == "NodeSettings_nodes"){
             ret = get_nodes();
             return true;
-        }else if(propertyName == "houdiniRootPath"){
-            ret = godot::String::utf8(houdiniRootPath.c_str());
-            return true;
-        }else if(propertyName == "logFilePath"){
-            ret = godot::String::utf8(logFilePath.c_str());
-            return true;
-        }else if(propertyName == "autoCook"){
+        }else 
+        // if(propertyName == "houdiniRootPath"){
+        //     ret = godot::String::utf8(houdiniRootPath.c_str());
+        //     return true;
+        // }else if(propertyName == "logFilePath"){
+        //     ret = godot::String::utf8(logFilePath.c_str());
+        //     return true;
+        // }else if(propertyName == "cookOptions"){
+        //     ret = get_cookOptions();
+        //     return true;
+        // }
+        if(propertyName == "autoCook"){
             ret = autoCook;
             return true;
-        }else if(propertyName == "cookOptions"){
-            ret = get_cookOptions();
+        }else if(propertyName == "sessionAction"){
+            ret = sessionAction;
             return true;
         }
 
@@ -545,28 +552,29 @@ private:
 
         std::string propertyName = property.c_escape().utf8().get_data();
 
-        if(propertyName == "SessionSettings_sessionAction"){
-            set_sessionAction((godot::Ref<SessionAction>)(value));
-            return true;
-        }else if(propertyName == "SessionSettings_sessionType"){
-            sessionType = (SessionType)(int)value;
-            return true;
-        }else if(propertyName == "SessionSettings_useCookingThread"){
-            useCookingThread = (bool)value;
-            return true;
-        }else if(propertyName == "SessionSettings_namedPipe"){
-            namedPipe = ((godot::String)value).utf8().get_data();
-            return true;
-        }else if(propertyName == "SessionSettings_hostName"){
-            hostName = ((godot::String)value).utf8().get_data();
-            return true;
-        }else if(propertyName == "SessionSettings_sharedMemoryName"){
-            sharedMemoryName = ((godot::String)value).utf8().get_data();
-            return true;
-        }else if(propertyName == "SessionSettings_tcpPort"){
-            tcpPort = (int)value;
-            return true;
-        }else if(propertyName == "AssetSettings_assetAction"){
+        // if(propertyName == "SessionSettings_sessionAction"){
+        //     set_sessionAction((godot::Ref<SessionAction>)(value));
+        //     return true;
+        // }else if(propertyName == "SessionSettings_sessionType"){
+        //     sessionType = (SessionType)(int)value;
+        //     return true;
+        // }else if(propertyName == "SessionSettings_useCookingThread"){
+        //     useCookingThread = (bool)value;
+        //     return true;
+        // }else if(propertyName == "SessionSettings_namedPipe"){
+        //     namedPipe = ((godot::String)value).utf8().get_data();
+        //     return true;
+        // }else if(propertyName == "SessionSettings_hostName"){
+        //     hostName = ((godot::String)value).utf8().get_data();
+        //     return true;
+        // }else if(propertyName == "SessionSettings_sharedMemoryName"){
+        //     sharedMemoryName = ((godot::String)value).utf8().get_data();
+        //     return true;
+        // }else if(propertyName == "SessionSettings_tcpPort"){
+        //     tcpPort = (int)value;
+        //     return true;
+        // }else 
+        if(propertyName == "AssetSettings_assetAction"){
             set_assetAction((godot::Ref<AssetAction>)(value));
             return true;
         }else if(propertyName == "AssetSettings_nowAsset"){
@@ -600,18 +608,23 @@ private:
         }else if(propertyName == "NodeSettings_nodes"){
 
             return false;
-        }else if(propertyName == "houdiniRootPath"){
-            set_houdiniRootPath((godot::String)value);
-            return true;
-        }else if(propertyName == "logFilePath"){
-            set_logFilePath((godot::String)value);
-            return true;
-        }else if(propertyName == "autoCook"){
+        }else 
+        // if(propertyName == "houdiniRootPath"){
+        //     set_houdiniRootPath((godot::String)value);
+        //     return true;
+        // }else if(propertyName == "logFilePath"){
+        //     set_logFilePath((godot::String)value);
+        //     return true;
+        // }else if(propertyName == "cookOptions"){
+        //     set_cookOptions((godot::Dictionary)value);
+        //     return true;
+        // }else 
+        if(propertyName == "autoCook"){
             autoCook = (bool)value;
             cookNode(nowNode);
             return true;
-        }else if(propertyName == "cookOptions"){
-            set_cookOptions((godot::Dictionary)value);
+        }else if(propertyName == "sessionAction"){
+            set_sessionAction((godot::Ref<SessionAction>)(value));
             return true;
         }
 
@@ -674,8 +687,155 @@ private:
         }
         return false;
     }
+    void _init_settings(){
+        
+        auto tempDic = godot::Dictionary();
+        godot::ProjectSettings* settings = godot::ProjectSettings::get_singleton();
+        auto addSetting = [&tempDic,settings](godot::String name,godot::Variant value,godot::Variant::Type type,godot::PropertyHint hint = godot::PROPERTY_HINT_NONE,godot::String hint_string = ""){
+            if(!settings->has_setting(name)){
+                settings->set_setting(name,value);
+            }
+            tempDic["name"] = name;
+            tempDic["type"] = type;
+            tempDic["hint"] = hint;
+            tempDic["hint_string"] = hint_string;
+            settings->add_property_info(tempDic);
+            settings->set_initial_value(name,value);
+            tempDic.clear();
+        };
+        addSetting("houdini/config/houdiniRootPath","",godot::Variant::STRING,godot::PROPERTY_HINT_GLOBAL_DIR);
+        
+        addSetting("houdini/config/logFilePath","",godot::Variant::STRING,godot::PROPERTY_HINT_SAVE_FILE);
+
+        addSetting("houdini/config/cookOptions",get_cookOptions(),godot::Variant::DICTIONARY);
+
+        addSetting("houdini/config/session/sessionType",1,godot::Variant::INT,godot::PROPERTY_HINT_ENUM,"InProcess:1,NewNamedPipe:2,NewTCPSocket:3,ExistingNamedPipe:4,ExistingTCPSocket:5,ExistingSharedMemory:6");
+
+        addSetting("houdini/config/session/useCookingThread",true,godot::Variant::BOOL);
+
+        addSetting("houdini/config/session/namedPipe","hapi",godot::Variant::STRING);
+
+        addSetting("houdini/config/session/sharedMemoryName","hapi",godot::Variant::STRING);
+
+        addSetting("houdini/config/session/hostName","127.0.0.1",godot::Variant::STRING);
+
+        addSetting("houdini/config/session/tcpPort",9090,godot::Variant::INT);
+
+    }
+    void _update_settings(){
+        godot::Variant value;
+        godot::String tempStr;
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/houdiniRootPath");
+        tempStr = godot::String::utf8(houdiniRootPath.c_str());
+        if(tempStr != value){
+            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/houdiniRootPath",tempStr);
+        }
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/logFilePath");
+        tempStr = godot::String::utf8(logFilePath.c_str());
+        if(tempStr != value){
+            set_logFilePath((godot::String)value);
+            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/logFilePath",tempStr);
+        }
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/cookOptions");
+        if(auto options = get_cookOptions();options != (godot::Dictionary)value){
+            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/cookOptions",options);
+        }
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/session/sessionType");
+        if((int)value != (int)sessionType){
+            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/session/sessionType",(int)sessionType);
+        }
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/session/useCookingThread");
+        if((bool)value != useCookingThread){
+            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/session/useCookingThread",useCookingThread);
+        }
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/session/namedPipe");
+        tempStr = godot::String::utf8(namedPipe.c_str());
+        if(tempStr != value){
+            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/session/namedPipe",tempStr);
+        }
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/session/sharedMemoryName");
+        tempStr = godot::String::utf8(sharedMemoryName.c_str());
+        if(tempStr != value){
+            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/session/sharedMemoryName",tempStr);
+        }
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/session/hostName");
+        tempStr = godot::String::utf8(hostName.c_str());
+        if(tempStr != value){
+            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/session/hostName",tempStr);
+        }
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/session/tcpPort");
+        if((int)value != tcpPort){
+            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/session/tcpPort",tcpPort);
+        }
+    }
+    void _settings_changed(){
+        godot::Variant value;
+        std::string tempStr;
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/houdiniRootPath");
+        tempStr = ((godot::String)value).utf8().get_data();
+        if(tempStr != houdiniRootPath){
+            set_houdiniRootPath((godot::String)value);
+        }
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/logFilePath");
+        tempStr = ((godot::String)value).utf8().get_data();
+        if(tempStr != logFilePath){
+            set_logFilePath((godot::String)value);
+        }
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/cookOptions");
+        if((godot::Dictionary)value != get_cookOptions()){
+            set_cookOptions((godot::Dictionary)value);
+        }
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/session/sessionType");
+        if((int)value != (int)sessionType){
+            sessionType = (SessionType)(int)value;
+        }
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/session/useCookingThread");
+        if((bool)value != useCookingThread){
+            useCookingThread = (bool)value;
+        }
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/session/namedPipe");
+        tempStr = ((godot::String)value).utf8().get_data();
+        if(tempStr != namedPipe){
+            namedPipe = tempStr;
+        }
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/session/sharedMemoryName");
+        tempStr = ((godot::String)value).utf8().get_data();
+        if(tempStr != sharedMemoryName){
+            sharedMemoryName = tempStr;
+        }
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/session/hostName");
+        tempStr = ((godot::String)value).utf8().get_data();
+        if(tempStr != hostName){
+            hostName = tempStr;
+        }
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/session/tcpPort");
+        if((int)value != tcpPort){
+            tcpPort = (int)value;
+        }
+    }
     void _notification(int what){
         switch(what){
+        case NOTIFICATION_POSTINITIALIZE:{
+            _init_settings();
+        }break;
         case NOTIFICATION_ENTER_TREE:{
             init();
             set_process(1);
@@ -684,7 +844,7 @@ private:
             Contact::process_call();
             process();
         }break;
-        case NOTIFICATION_EXIT_TREE:{
+        case NOTIFICATION_PREDELETE:{
             term();
         }break;
         }
@@ -711,6 +871,8 @@ private:
         //internelModel->set_owner(get_tree()->get_edited_scene_root());
         
         get_tree()->connect("node_removed",godot::Callable(this,"freeGDNode"));
+        godot::ProjectSettings::get_singleton()->connect("settings_changed",godot::Callable(this,"_settings_changed"));
+        _settings_changed();
 
         sessionAction.unref();
         assetAction.unref();
@@ -915,8 +1077,10 @@ private:
             }
         }
         std::string output = exec_output(hconfigPath.c_str());
-        if(output.empty())
+        if(output.empty()){
+            printErr("Houdini environment is null");
             return;
+        }
         std::istringstream iss(output);
         std::string envLine,envKey,envValue,temp;
         while(std::getline(iss,envLine)){
@@ -924,8 +1088,6 @@ private:
                 break;
             std::istringstream iss2(envLine);
             iss2 >> envKey >> temp >> envValue;
-            std::cout << "envKey: " << envKey << '\n' 
-                        << "envValue: " << envValue << std::endl;
             if(envKey.empty())
                 continue;
             envValue.erase(0,1);
@@ -942,6 +1104,8 @@ private:
         libHAPIL = HoudiniEnginePlatform::LoadLibHAPIL();
         if(libHAPIL != nullptr){
             HoudiniApi::InitializeHAPI(libHAPIL);
+        }else{
+            printErr("Failed to initialize hapi");
         }
         if(!HoudiniApi::IsHAPIInitialized()){
             printErr(__FILE__, " : ", __LINE__," - ", "Failed to load and initialize the "
@@ -1228,6 +1392,7 @@ public:
                 &session,&cookOptions,use_cooking_thread,-1,"",nullptr,nullptr,nullptr,nullptr
             );
             this->cookOptions = cookOptions;
+            _update_settings();
             if(Result == HAPI_RESULT_SUCCESS){
                 printFile(__FILE__, " : ", __LINE__," - ", "Successfully initialized Houdini Engine.");
             }else if(Result == HAPI_RESULT_ALREADY_INITIALIZED){

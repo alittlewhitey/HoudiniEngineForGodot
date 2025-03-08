@@ -33,7 +33,7 @@ inline std::string exec_output(const char* cmd){
 #endif
 
 
-#if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
+#if defined (__unix__)
 GDE_EXPORT
 inline void addenv(std::string key,std::string value){
     putenv((key+"="+value).c_str());
@@ -42,5 +42,10 @@ inline void addenv(std::string key,std::string value){
 GDE_EXPORT
 inline void addenv(std::string key,std::string value){
     _putenv((key+"="+value).c_str());
+}
+#elif defined (__APPLE__) && defined (__MACH__)
+GDE_EXPORT
+inline void addenv(std::string key,std::string value){
+    setenv(key.c_str(),value.c_str(),1);
 }
 #endif
