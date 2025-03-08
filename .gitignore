@@ -6,3 +6,12 @@
 lib
 
 build
+
+project/.godot
+project/*.*
+project/addons/houdini_engine_godot/bin
+
+.sconsign.dblite
+
+*.os
+compile_commands.json
