@@ -4,6 +4,7 @@
 
 #ifndef GALENGINE_CONTACT_H
 #define GALENGINE_CONTACT_H
+#include <iostream>
 #include <functional>
 #include <atomic>
 #include <list>

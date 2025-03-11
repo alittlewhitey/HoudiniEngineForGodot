@@ -871,6 +871,7 @@ private:
         //internelModel->set_owner(get_tree()->get_edited_scene_root());
         
         get_tree()->connect("node_removed",godot::Callable(this,"freeGDNode"));
+        get_tree()->connect("node_added",godot::Callable(this,"stopFreeGDNode"));
         godot::ProjectSettings::get_singleton()->connect("settings_changed",godot::Callable(this,"_settings_changed"));
         _settings_changed();
 
@@ -1194,7 +1195,13 @@ private:
         Point,Vertex,Prim,Detail
     };
     enum class PartType{
-        Mesh,Curve,Volume,Instancer,Box,Sphere
+        Invalid = HAPI_PARTTYPE_INVALID,
+        Mesh = HAPI_PARTTYPE_MESH,
+        Curve = HAPI_PARTTYPE_CURVE,
+        Volume = HAPI_PARTTYPE_VOLUME,
+        Instancer = HAPI_PARTTYPE_INSTANCER,
+        Box = HAPI_PARTTYPE_BOX,
+        Sphere = HAPI_PARTTYPE_SPHERE,
     };
 
     //      NodeId,AssetId
@@ -1207,6 +1214,8 @@ private:
     std::map<int,std::map<int,PartType>> partType;
     //      nodeId        partId       Geo_Attrib    faces            P            vertexs                          Cd                                      N                                           uv                                  uv2
     std::map<int,std::map<int,std::tuple<std::vector<int>,std::vector<float>,std::vector<int>,std::pair<AttribOwner,std::vector<float>>,std::pair<AttribOwner,std::vector<float>>,std::pair<AttribOwner,std::vector<float>>,std::pair<AttribOwner,std::vector<float>>>>> geometries;
+    //      nodeId      partId      sharedMesh
+    std::map<int,std::map<int,godot::Ref<godot::ArrayMesh>>> instanceNodeMeshRef;
     //      nodeId       partId                 Point-Attrib                Vertex-Attrib               Prim-Attrib                     Detail-Attrib    
     std::map<int,std::map<int,std::tuple<std::vector<HAPI_AttributeInfo>,std::vector<HAPI_AttributeInfo>,std::vector<HAPI_AttributeInfo>,std::vector<HAPI_AttributeInfo>>>> attributes;
     //      nodeId      partId      materialResPath
@@ -1360,6 +1369,10 @@ public:
         nodeIds.clear();
         assetIds.clear();
         parameters.clear();
+        partType.clear();
+        geometries.clear();
+        instanceNodeMeshRef.clear();
+        materials.clear();
         materialIds.clear();
         attributes.clear();
         Contact::add_call([this]{
@@ -1530,9 +1543,17 @@ public:
             if(internalNodeId == id)
                 internelModel->set_mesh(nullptr);
         });
+        if(nowNode.is_valid()&&nowNode->nodeId == id){
+            nowNode.unref();
+        }
         nodeIds.erase(id);
         parameters.erase(id);
+        partType.erase(id);
         geometries.erase(id);
+        instanceNodeMeshRef.erase(id);
+        materials.erase(id);
+        materialIds.erase(id);
+        attributes.erase(id);
 
         return true;
     }
@@ -1706,14 +1727,33 @@ public:
                 }
                 st->add_vertex(pos[vertexs[i]]);
             }
-         
             st->commit(arr_mesh);
-            Contact::add_call([=,this]{
-                if(internelModel){
-                    internelModel->set_mesh(arr_mesh);
-                    internalNodeId = nodeId;
+            switch(partType[nodeId][part.first]){
+            case PartType::Mesh:{
+                Contact::add_call([=,this]{
+                    if(internelModel){
+                        internelModel->set_mesh(arr_mesh);
+                        internalNodeId = nodeId;
+                    }
+                });
+            }break;
+            case PartType::Instancer:{
+                auto& meshRef = instanceNodeMeshRef[nodeId][part.first];
+                if(meshRef.is_null())
+                    meshRef.instantiate();
+                meshRef->clear_surfaces();
+                for(auto i = 0,count = arr_mesh->get_surface_count();i!=count;++i){
+                    meshRef->add_surface_from_arrays(godot::Mesh::PRIMITIVE_TRIANGLES,arr_mesh->surface_get_arrays(i));
                 }
-            });
+                Contact::add_call([=,this]{
+                    if(internelModel){
+                        internelModel->set_mesh(meshRef);
+                        internalNodeId = nodeId;
+                    }
+                });
+            }break;
+            }
+            
             godot::memdelete(st);
         }
         return true;
@@ -1901,6 +1941,7 @@ public:
     bool freeGDNode(godot::Node* node){
         if(createdGDNodes.find(node) != createdGDNodes.end()){
             freeGDNodeTasks[node] = std::make_shared<std::jthread>([this,node](std::stop_token st){
+                std::cerr << "freeGDNode" << std::endl;
                 std::shared_ptr<std::jthread> nowThread = freeGDNodeTasks[node];
                 std::this_thread::sleep_for(std::chrono::seconds(freeTimeoutSecond));
                 freeGDNodeTasks.erase(node);
@@ -1908,6 +1949,7 @@ public:
                     return;
                 Contact::add_call([=]{
                     node->queue_free();
+                    std::cerr << "queue_free" << std::endl;
                 });
             });
             freeGDNodeTasks[node]->detach();
@@ -1919,6 +1961,7 @@ public:
     bool stopFreeGDNode(godot::Node* node){
         if(freeGDNodeTasks.find(node)!=freeGDNodeTasks.end()){
             freeGDNodeTasks[node]->request_stop();
+            std::cerr << "request_stop" << std::endl;
             return true;
         }
         return false;
@@ -2410,7 +2453,8 @@ public:
                 mesh_uv2_attrib_owner = AttribOwner::Point;
             }
             std::cout << "get: mesh_uv2_attrib_data.size()" << mesh_uv2_attrib_data.size() << std::endl;
-
+            
+            partType[id][partId] = (PartType)mesh_part_info.type;
             geometries[id][partId] = {std::move(mesh_face_counts),std::move(mesh_p_attrib_info),std::move(mesh_vertex_list),{mesh_cd_attrib_owner,std::move(mesh_cd_attrib_data)},{mesh_N_attrib_owner,std::move(mesh_N_attrib_data)},{mesh_uv_attrib_owner,std::move(mesh_uv_attrib_data)},{mesh_uv2_attrib_owner,std::move(mesh_uv2_attrib_data)}};
         }
     }

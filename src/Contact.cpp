@@ -26,6 +26,10 @@ void Contact::process_call() {
     auto a = call_pool.front();
     call_pool.erase(call_pool.begin());
     is_changing.store(0);
-    a();
+    try{
+        a();
+    }catch(std::exception& e){
+        std::cerr << e.what() << std::endl;
+    }
 }
 #endif //GALENGINE_CONTACT_SRC
