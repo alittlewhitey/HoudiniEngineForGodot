@@ -7,6 +7,8 @@ lib
 
 build
 
+temp
+
 project/.godot
 project/*.*
 project/addons/houdini_engine_godot/bin

@@ -406,10 +406,6 @@ private:
 
         list->push_back(godot::PropertyInfo(godot::Variant::OBJECT,"sessionAction",godot::PROPERTY_HINT_RESOURCE_TYPE,"SessionAction"));
         list->push_back(godot::PropertyInfo(godot::Variant::BOOL,"autoCook"));
-        // list->push_back(godot::PropertyInfo(godot::Variant::STRING,"houdiniRootPath",godot::PROPERTY_HINT_GLOBAL_DIR));
-        // list->push_back(godot::PropertyInfo(godot::Variant::STRING,"logFilePath",godot::PROPERTY_HINT_SAVE_FILE));
-        // list->push_back(godot::PropertyInfo(godot::Variant::DICTIONARY,"cookOptions"));
-
         
         if(!sessionOpened){
             return;
@@ -486,18 +482,7 @@ private:
         }else if(propertyName == "NodeSettings_nodes"){
             ret = get_nodes();
             return true;
-        }else 
-        // if(propertyName == "houdiniRootPath"){
-        //     ret = godot::String::utf8(houdiniRootPath.c_str());
-        //     return true;
-        // }else if(propertyName == "logFilePath"){
-        //     ret = godot::String::utf8(logFilePath.c_str());
-        //     return true;
-        // }else if(propertyName == "cookOptions"){
-        //     ret = get_cookOptions();
-        //     return true;
-        // }
-        if(propertyName == "autoCook"){
+        }else if(propertyName == "autoCook"){
             ret = autoCook;
             return true;
         }else if(propertyName == "sessionAction"){
@@ -589,8 +574,8 @@ private:
             if(nowNode.is_valid()){
                 updateInternalModel();
             }
-            if(internelModel)
-                internelModel->set_visible(showModel);
+            for(auto a : internelModels)
+                a.second->set_visible(showModel);
             return true;
         }else if(propertyName == "NodeSettings_nodeAction"){
             set_nodeAction((godot::Ref<NodeAction>)(value));
@@ -599,7 +584,10 @@ private:
             nowNode = (godot::Ref<HDANode>)value;
             if(nowNode.is_null()||nowNode->nodeId == -1){
                 internalNodeId = -1;
-                internelModel->set_mesh(nullptr);
+                for(auto a : internelModels){
+                    remove_child(a.second);
+                }
+                internelModels.clear();
             }
             if(showModel){
                 cookNode(nowNode);
@@ -609,18 +597,7 @@ private:
         }else if(propertyName == "NodeSettings_nodes"){
 
             return false;
-        }else 
-        // if(propertyName == "houdiniRootPath"){
-        //     set_houdiniRootPath((godot::String)value);
-        //     return true;
-        // }else if(propertyName == "logFilePath"){
-        //     set_logFilePath((godot::String)value);
-        //     return true;
-        // }else if(propertyName == "cookOptions"){
-        //     set_cookOptions((godot::Dictionary)value);
-        //     return true;
-        // }else 
-        if(propertyName == "autoCook"){
+        }else if(propertyName == "autoCook"){
             autoCook = (bool)value;
             cookNode(nowNode);
             return true;
@@ -708,7 +685,7 @@ private:
         
         addSetting("houdini/config/logFilePath","",godot::Variant::STRING,godot::PROPERTY_HINT_SAVE_FILE);
 
-        addSetting("houdini/config/cookOptions",get_cookOptions(),godot::Variant::DICTIONARY);
+        addSetting("houdini/config/cookOptions",default_cookOptions(),godot::Variant::DICTIONARY);
 
         addSetting("houdini/config/session/sessionType",1,godot::Variant::INT,godot::PROPERTY_HINT_ENUM,"InProcess:1,NewNamedPipe:2,NewTCPSocket:3,ExistingNamedPipe:4,ExistingTCPSocket:5,ExistingSharedMemory:6");
 
@@ -853,8 +830,8 @@ private:
     void* libHAPIL = nullptr;
     bool sessionOpened = false;
 
-
-    godot::MeshInstance3D* internelModel = nullptr;
+    //      partId  mesh
+    std::map<int,godot::MeshInstance3D*> internelModels;
     int internalNodeId = -1;
     std::set<godot::Node*> createdGDNodes;
     std::map<godot::Node*, std::shared_ptr<std::jthread>> freeGDNodeTasks;
@@ -867,9 +844,6 @@ private:
         defaultMaterial.instantiate();
         materialRes[""] = defaultMaterial;
 
-        internelModel = memnew(godot::MeshInstance3D());
-        add_child(internelModel,false,godot::Node::INTERNAL_MODE_FRONT);
-        //internelModel->set_owner(get_tree()->get_edited_scene_root());
         
         get_tree()->connect("node_removed",godot::Callable(this,"freeGDNode"));
         get_tree()->connect("node_added",godot::Callable(this,"stopFreeGDNode"));
@@ -907,7 +881,11 @@ private:
                 printErr(__FILE__, " : ", __LINE__," - ", "Failed to stop session.\n");
             }
         }
-        internelModel = nullptr;
+        internalNodeId = -1;
+        for(auto a : internelModels){
+            remove_child(a.second);
+        }
+        internelModels.clear();
         // if(libHAPIL != nullptr){
         //     HoudiniApi::FinalizeHAPI();
         //     HoudiniEnginePlatform::FreeLibHAPIL(libHAPIL);
@@ -1192,6 +1170,21 @@ private:
         dic["packedPrimInstancingMode"] = (int)cookOptions.packedPrimInstancingMode;
         return dic;
     }
+    GDE_EXPORT
+    godot::Dictionary default_cookOptions(){
+        HAPI_CookOptions cookOptions = HoudiniApi::CookOptions_Create();
+        cookOptions.curveRefineLOD = 8.0f;
+        cookOptions.clearErrorsAndWarnings = false;
+        cookOptions.maxVerticesPerPrimitive = 3;
+        cookOptions.splitGeosByGroup = false;
+        cookOptions.refineCurveToLinear = true;
+        cookOptions.handleBoxPartTypes = false;
+        cookOptions.handleSpherePartTypes = false;
+        cookOptions.splitPointsByVertexAttributes = false;
+        cookOptions.packedPrimInstancingMode = HAPI_PACKEDPRIM_INSTANCING_MODE_FLAT;
+        this->cookOptions = cookOptions;
+        return get_cookOptions();
+    }
     enum class AttribOwner{
         Point,Vertex,Prim,Detail
     };
@@ -1213,10 +1206,12 @@ private:
     std::map<int,std::map<std::string,std::vector<std::variant<int64_t,double,std::string>>>> parameters;
     //      nodeId      partId  type
     std::map<int,std::map<int,PartType>> partType;
-    //      nodeId        partId       Geo_Attrib    faces            P            vertexs                          Cd                                      N                                           uv                                  uv2
+    //      nodeId    meshPartId       Geo_Attrib    faces            P            vertexs                          Cd                                      N                                           uv                                  uv2
     std::map<int,std::map<int,std::tuple<std::vector<int>,std::vector<float>,std::vector<int>,std::pair<AttribOwner,std::vector<float>>,std::pair<AttribOwner,std::vector<float>>,std::pair<AttribOwner,std::vector<float>>,std::pair<AttribOwner,std::vector<float>>>>> geometries;
+    //      nodeId  instancerPartId     transform
+    std::map<int,std::map<int,std::vector<HAPI_Transform>>> instanceTransforms;
     //      nodeId      partId      sharedMesh
-    std::map<int,std::map<int,godot::Ref<godot::ArrayMesh>>> instanceNodeMeshRef;
+    std::map<int,std::map<int,godot::Ref<godot::ArrayMesh>>> meshRef;
     //      nodeId       partId                 Point-Attrib                Vertex-Attrib               Prim-Attrib                     Detail-Attrib    
     std::map<int,std::map<int,std::tuple<std::vector<HAPI_AttributeInfo>,std::vector<HAPI_AttributeInfo>,std::vector<HAPI_AttributeInfo>,std::vector<HAPI_AttributeInfo>>>> attributes;
     //      nodeId      partId      materialResPath
@@ -1372,12 +1367,16 @@ public:
         parameters.clear();
         partType.clear();
         geometries.clear();
-        instanceNodeMeshRef.clear();
+        meshRef.clear();
         materials.clear();
         materialIds.clear();
         attributes.clear();
         Contact::add_call([this]{
-            internelModel->set_mesh(nullptr);
+            internalNodeId = -1;
+            for(auto a : internelModels){
+                remove_child(a.second);
+            }
+            internelModels.clear();
         });
         internalNodeId = -1;
         return true;
@@ -1390,17 +1389,6 @@ public:
         }
 
         if(HoudiniApi::IsInitialized(&session) == HAPI_RESULT_NOT_INITIALIZED){
-            HAPI_CookOptions cookOptions = HoudiniApi::CookOptions_Create();
-            
-            cookOptions.curveRefineLOD = 8.0f;
-            cookOptions.clearErrorsAndWarnings = false;
-            cookOptions.maxVerticesPerPrimitive = 3;
-            cookOptions.splitGeosByGroup = false;
-            cookOptions.refineCurveToLinear = true;
-            cookOptions.handleBoxPartTypes = false;
-            cookOptions.handleSpherePartTypes = false;
-            cookOptions.splitPointsByVertexAttributes = false;
-            cookOptions.packedPrimInstancingMode = HAPI_PACKEDPRIM_INSTANCING_MODE_FLAT;
 
             HAPI_Result Result = HoudiniApi::Initialize(
                 &session,&cookOptions,use_cooking_thread,-1,"",nullptr,nullptr,nullptr,nullptr
@@ -1412,7 +1400,7 @@ public:
             }else if(Result == HAPI_RESULT_ALREADY_INITIALIZED){
                 printFile(__FILE__, " : ", __LINE__," - ", "Successfully initialized Houdini Engine - HAPI was already initialized.");
             }else{
-                printErr(__FILE__, " : ", __LINE__," - ", "Houdini Engine API initialization failed");
+                printErr(__FILE__, " : ", __LINE__," - ", "Houdini Engine API initialization failed: ",Result);
                 return false;
             }
         }
@@ -1541,8 +1529,13 @@ public:
             return false;
         }
         Contact::add_call([=,this]{
-            if(internalNodeId == id)
-                internelModel->set_mesh(nullptr);
+            if(internalNodeId == id){
+                internalNodeId = -1;
+                for(auto a : internelModels){
+                    remove_child(a.second);
+                }
+                internelModels.clear();
+            }
         });
         if(nowNode.is_valid()&&nowNode->nodeId == id){
             nowNode.unref();
@@ -1551,7 +1544,8 @@ public:
         parameters.erase(id);
         partType.erase(id);
         geometries.erase(id);
-        instanceNodeMeshRef.erase(id);
+        instanceTransforms.erase(id);
+        meshRef.erase(id);
         materials.erase(id);
         materialIds.erase(id);
         attributes.erase(id);
@@ -1729,34 +1723,25 @@ public:
                 st->add_vertex(pos[vertexs[i]]);
             }
             st->commit(arr_mesh);
-            switch(partType[nodeId][part.first]){
-            case PartType::Mesh:{
-                Contact::add_call([=,this]{
-                    if(internelModel){
-                        internelModel->set_mesh(arr_mesh);
-                        internalNodeId = nodeId;
-                    }
-                });
-            }break;
-            case PartType::Instancer:{
-                auto& meshRef = instanceNodeMeshRef[nodeId][part.first];
-                if(meshRef.is_null())
-                    meshRef.instantiate();
-                meshRef->clear_surfaces();
-                for(auto i = 0,count = arr_mesh->get_surface_count();i!=count;++i){
-                    meshRef->add_surface_from_arrays(godot::Mesh::PRIMITIVE_TRIANGLES,arr_mesh->surface_get_arrays(i));
-                }
-                Contact::add_call([=,this]{
-                    if(internelModel){
-                        internelModel->set_mesh(meshRef);
-                        internalNodeId = nodeId;
-                    }
-                });
-            }break;
-            }
+            auto& ref = meshRef[nodeId][part.first];
+            if(ref.is_null())
+                ref.instantiate();
+            ref->clear_surfaces();
             
+            for(auto i = 0,count = arr_mesh->get_surface_count();i!=count;++i){
+                ref->add_surface_from_arrays(godot::Mesh::PRIMITIVE_TRIANGLES,arr_mesh->surface_get_arrays(i));
+            }
+            Contact::add_call([=,this]{
+                if(internelModels.find(part.first)==internelModels.end()){
+                    internelModels[part.first] = memnew(godot::MeshInstance3D());
+                    createdGDNodes.insert(internelModels[part.first]);
+                    add_child(internelModels[part.first],false,godot::Node::INTERNAL_MODE_FRONT);
+                }
+                internelModels[part.first]->set_mesh(ref);
+            });
             godot::memdelete(st);
         }
+        internalNodeId = nodeId;
         return true;
     }
     GDE_EXPORT
@@ -1764,15 +1749,99 @@ public:
         if(!showModel)
             updateInternalModel();
         Contact::add_call([=,this]{
-            if(!internelModel)
+
+
+        if(instanceTransforms.find(internalNodeId) == instanceTransforms.end()||instanceTransforms[internalNodeId].empty()){
+            godot::Node3D* father = this;
+            if(internelModels.size() == 0){
                 return;
-            godot::MeshInstance3D* instance = (godot::MeshInstance3D*)internelModel->duplicate();
-            instance->set_mesh(internelModel->get_mesh()->duplicate());
-            add_child(instance,true);
-            instance->set_owner(get_tree()->get_edited_scene_root());
-            instance->set_visible(true);
-            createdGDNodes.insert(instance);
-            internelModel->set_visible(showModel);
+            }else if(internelModels.size() == 1){
+                ;
+            }else{
+                godot::Node3D* group = memnew(godot::Node3D());
+                group->set_name("group");
+                add_child(group,true);
+                group->set_owner(get_tree()->get_edited_scene_root());
+                group->set_visible(true);
+                createdGDNodes.insert(group);
+                father = group;
+            }
+            for(auto a : internelModels){
+                auto internelModel = a.second;
+
+                godot::MeshInstance3D* instance = (godot::MeshInstance3D*)internelModel->duplicate();
+                instance->set_mesh(internelModel->get_mesh()->duplicate());
+                father->add_child(instance,true);
+                instance->set_owner(get_tree()->get_edited_scene_root());
+                instance->set_visible(true);
+                createdGDNodes.insert(instance);
+                internelModel->set_visible(showModel);
+            }
+        }else{
+            for(auto& a : instanceTransforms[internalNodeId]){
+                godot::Node3D* father = this;
+                if(a.second.size() == 0){
+                    break;
+                }else if(a.second.size() == 1){
+                    ;
+                }else{
+                    godot::Node3D* group = memnew(godot::Node3D());
+                    group->set_name("refGroup");
+                    add_child(group,true);
+                    group->set_owner(get_tree()->get_edited_scene_root());
+                    group->set_visible(true);
+                    createdGDNodes.insert(group);
+                    father = group;
+                }
+                godot::Node3D* instanceGroup = nullptr;
+                if(internelModels.size() == 0){
+                    break;
+                }else if(internelModels.size() == 1){
+                    godot::Node3D* group = (godot::MeshInstance3D*)internelModels[0]->duplicate();
+                    group->set_owner(get_tree()->get_edited_scene_root());
+                    group->set_visible(true);
+                    createdGDNodes.insert(group);
+                    instanceGroup = group;
+                }else{
+                    godot::Node3D* group = memnew(godot::Node3D());
+                    group->set_name("group");
+                    group->set_owner(get_tree()->get_edited_scene_root());
+                    group->set_visible(true);
+                    createdGDNodes.insert(group);
+                    instanceGroup = group;
+
+                    for(auto a : internelModels){
+                        auto internelModel = a.second;
+
+                        godot::MeshInstance3D* instance = (godot::MeshInstance3D*)internelModel->duplicate();
+                        instanceGroup->add_child(instance,true);
+                        instance->set_owner(get_tree()->get_edited_scene_root());
+                        instance->set_visible(true);
+                        createdGDNodes.insert(instance);
+                        internelModel->set_visible(showModel);
+                    }
+                }
+                for(auto& b : a.second){
+                    godot::Node3D* node = (godot::Node3D*)instanceGroup->duplicate();
+                    node->set_position(godot::Vector3(b.position[0],b.position[1],b.position[2]));
+                    node->set_rotation(godot::Vector3(b.rotationQuaternion[0],b.rotationQuaternion[1],b.rotationQuaternion[2]));
+                    node->set_scale(godot::Vector3(b.scale[0],b.scale[1],b.scale[2]));
+                    
+                    father->add_child(node,true);
+                    node->set_owner(get_tree()->get_edited_scene_root());
+                    node->set_visible(true);
+                    createdGDNodes.insert(node);
+                    auto instances = node->get_children();
+                    int instanceNum = instances.size();
+                    for(int i = 0;i!=instanceNum;++i){
+                        auto instance = (godot::Node*)(godot::Object*)instances[i];
+                        createdGDNodes.insert(instance);
+                    }
+                }
+            }
+        }
+            
+            
         });
     }
     GDE_EXPORT
@@ -2371,93 +2440,104 @@ public:
     }
     GDE_EXPORT
     void getGeometry(int id){
-        std::cerr << "getGeometry" << std::endl;
+
         HAPI_GeoInfo mesh_geo_info;
         if(HoudiniApi::GetDisplayGeoInfo(&session, id, &mesh_geo_info) != HAPI_RESULT_SUCCESS){
             printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
             return;
         }
         for(int partId = 0;partId!=mesh_geo_info.partCount;++partId){
-            HAPI_PartInfo mesh_part_info;
-            HoudiniApi::PartInfo_Init(&mesh_part_info);
-            if(HoudiniApi::GetPartInfo(&session, mesh_geo_info.nodeId, partId, &mesh_part_info) != HAPI_RESULT_SUCCESS){
+            HAPI_PartInfo partInfo;
+            HoudiniApi::PartInfo_Init(&partInfo);
+            if(HoudiniApi::GetPartInfo(&session, mesh_geo_info.nodeId, partId, &partInfo) != HAPI_RESULT_SUCCESS){
                 printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
                 return;
             }
-            std::vector<int> mesh_face_counts(mesh_part_info.faceCount);
-            if(HoudiniApi::GetFaceCounts(&session,mesh_geo_info.nodeId,mesh_part_info.id,mesh_face_counts.data(),0,mesh_part_info.faceCount) != HAPI_RESULT_SUCCESS){
-                printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
-                return;
-            }
-            std::vector<int> mesh_vertex_list(mesh_part_info.vertexCount);
-            if(HoudiniApi::GetVertexList(&session,mesh_geo_info.nodeId,mesh_part_info.id,mesh_vertex_list.data(),0, mesh_part_info.vertexCount) != HAPI_RESULT_SUCCESS){
-                printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
-                return;
-            }
-             
-             
-             
-            // std::for_each(std::execution::par_unseq,mesh_face_counts.begin(),mesh_face_counts.end(),[](int& data){
-            //     //TODO: triangulate
-            // });
-            auto fetchPointAttrib = [&](HAPI_AttributeOwner owner,const char* attrib_name,std::vector<float>& mesh_attrib_data)->bool{
-                HAPI_AttributeInfo mesh_attrib_info;
-                if(HoudiniApi::GetAttributeInfo(&session,mesh_geo_info.nodeId,mesh_part_info.id,attrib_name, owner,&mesh_attrib_info) != HAPI_RESULT_SUCCESS){
+            auto type = partType[id][partId] = (PartType)partInfo.type;
+            switch(type){
+            case PartType::Mesh:{
+                std::vector<int> mesh_face_counts(partInfo.faceCount);
+                if(HoudiniApi::GetFaceCounts(&session,mesh_geo_info.nodeId,partInfo.id,mesh_face_counts.data(),0,partInfo.faceCount) != HAPI_RESULT_SUCCESS){
+                    printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+                    return;
+                }
+                std::vector<int> mesh_vertex_list(partInfo.vertexCount);
+                if(HoudiniApi::GetVertexList(&session,mesh_geo_info.nodeId,partInfo.id,mesh_vertex_list.data(),0, partInfo.vertexCount) != HAPI_RESULT_SUCCESS){
+                    printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+                    return;
+                }
+                
+                // std::for_each(std::execution::par_unseq,mesh_face_counts.begin(),mesh_face_counts.end(),[](int& data){
+                //     //TODO: triangulate
+                // });
+                auto fetchPointAttrib = [&](HAPI_AttributeOwner owner,const char* attrib_name,std::vector<float>& mesh_attrib_data)->bool{
+                    HAPI_AttributeInfo mesh_attrib_info;
+                    if(HoudiniApi::GetAttributeInfo(&session,mesh_geo_info.nodeId,partInfo.id,attrib_name, owner,&mesh_attrib_info) != HAPI_RESULT_SUCCESS){
+                        printFile(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+                        return false;
+                    }
+                    std::cerr << "mesh_attrib_info.exists: " << mesh_attrib_info.exists << std::endl;
+                    if(!mesh_attrib_info.exists)
+                        return false;
+                    std::size_t dataSize = mesh_attrib_info.count * mesh_attrib_info.tupleSize;
+                    std::cerr << "dataSize" << dataSize << std::endl;
+
+                    std::cerr << "mesh_attrib_info.count: " << mesh_attrib_info.count << std::endl;
+                    mesh_attrib_data.resize(dataSize);
+                    if(HoudiniApi::GetAttributeFloatData(&session,mesh_geo_info.nodeId,partInfo.id,attrib_name,&mesh_attrib_info,-1,mesh_attrib_data.data(),0,mesh_attrib_info.count) != HAPI_RESULT_SUCCESS){
+                        printFile(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str()," Attribute name : ",attrib_name);
+                        return false;
+                    }
+                    return true;
+                };
+                std::vector<float> mesh_p_attrib_info;
+                fetchPointAttrib(HAPI_ATTROWNER_POINT, "P", mesh_p_attrib_info);
+                std::cout << "get: mesh_p_attrib_info.size()" << mesh_p_attrib_info.size() << std::endl;
+
+                std::vector<float> mesh_cd_attrib_data;
+                AttribOwner mesh_cd_attrib_owner = AttribOwner::Vertex;
+                if(!fetchPointAttrib(HAPI_ATTROWNER_VERTEX, "Cd", mesh_cd_attrib_data)){
+                    fetchPointAttrib(HAPI_ATTROWNER_POINT, "Cd", mesh_cd_attrib_data);
+                    mesh_cd_attrib_owner = AttribOwner::Point;
+                }
+                std::cout << "get: mesh_cd_attrib_data.size()" << mesh_cd_attrib_data.size() << std::endl;
+
+                std::vector<float> mesh_N_attrib_data;
+                AttribOwner mesh_N_attrib_owner = AttribOwner::Vertex;
+                if(!fetchPointAttrib(HAPI_ATTROWNER_VERTEX , "N", mesh_N_attrib_data)){
+                    fetchPointAttrib(HAPI_ATTROWNER_POINT , "N", mesh_N_attrib_data);
+                    mesh_N_attrib_owner = AttribOwner::Point;
+                }
+                std::cout << "get: mesh_N_attrib_data.size()" << mesh_N_attrib_data.size() << std::endl;
+                
+                std::vector<float> mesh_uv_attrib_data;
+                AttribOwner mesh_uv_attrib_owner = AttribOwner::Vertex;
+                if(!fetchPointAttrib(HAPI_ATTROWNER_VERTEX , "uv", mesh_uv_attrib_data)){
+                    fetchPointAttrib(HAPI_ATTROWNER_POINT , "uv", mesh_uv_attrib_data);
+                    mesh_uv_attrib_owner = AttribOwner::Point;
+                }
+                std::cout << "get: mesh_uv_attrib_data.size()" << mesh_uv_attrib_data.size() << std::endl;
+                
+                std::vector<float> mesh_uv2_attrib_data;
+                AttribOwner mesh_uv2_attrib_owner = AttribOwner::Vertex;
+                if(!fetchPointAttrib(HAPI_ATTROWNER_VERTEX , "uv2", mesh_uv2_attrib_data)){
+                    fetchPointAttrib(HAPI_ATTROWNER_POINT , "uv2", mesh_uv2_attrib_data);
+                    mesh_uv2_attrib_owner = AttribOwner::Point;
+                }
+                std::cout << "get: mesh_uv2_attrib_data.size()" << mesh_uv2_attrib_data.size() << std::endl;
+                
+                geometries[id][partId] = {std::move(mesh_face_counts),std::move(mesh_p_attrib_info),std::move(mesh_vertex_list),{mesh_cd_attrib_owner,std::move(mesh_cd_attrib_data)},{mesh_N_attrib_owner,std::move(mesh_N_attrib_data)},{mesh_uv_attrib_owner,std::move(mesh_uv_attrib_data)},{mesh_uv2_attrib_owner,std::move(mesh_uv2_attrib_data)}};
+            }break;
+            case PartType::Instancer:{
+                std::vector<HAPI_Transform> instancer_transforms(partInfo.instanceCount);
+                auto result = HoudiniApi::GetInstancerPartTransforms(&session,id,partId,HAPI_SRT,instancer_transforms.data(),0,partInfo.instanceCount);
+                if(result != HAPI_RESULT_SUCCESS){
                     printFile(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
-                    return false;
+                    continue;
                 }
-                std::cerr << "mesh_attrib_info.exists: " << mesh_attrib_info.exists << std::endl;
-                if(!mesh_attrib_info.exists)
-                    return false;
-                std::size_t dataSize = mesh_attrib_info.count * mesh_attrib_info.tupleSize;
-                std::cerr << "dataSize" << dataSize << std::endl;
-
-                std::cerr << "mesh_attrib_info.count: " << mesh_attrib_info.count << std::endl;
-                mesh_attrib_data.resize(dataSize);
-                if(HoudiniApi::GetAttributeFloatData(&session,mesh_geo_info.nodeId,mesh_part_info.id,attrib_name,&mesh_attrib_info,-1,mesh_attrib_data.data(),0,mesh_attrib_info.count) != HAPI_RESULT_SUCCESS){
-                    printFile(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str()," Attribute name : ",attrib_name);
-                    return false;
-                }
-                return true;
-            };
-            std::vector<float> mesh_p_attrib_info;
-            fetchPointAttrib(HAPI_ATTROWNER_POINT, "P", mesh_p_attrib_info);
-            std::cout << "get: mesh_p_attrib_info.size()" << mesh_p_attrib_info.size() << std::endl;
-
-            std::vector<float> mesh_cd_attrib_data;
-            AttribOwner mesh_cd_attrib_owner = AttribOwner::Vertex;
-            if(!fetchPointAttrib(HAPI_ATTROWNER_VERTEX, "Cd", mesh_cd_attrib_data)){
-                fetchPointAttrib(HAPI_ATTROWNER_POINT, "Cd", mesh_cd_attrib_data);
-                mesh_cd_attrib_owner = AttribOwner::Point;
+                instanceTransforms[id][partId] = std::move(instancer_transforms);
+            }break;
             }
-            std::cout << "get: mesh_cd_attrib_data.size()" << mesh_cd_attrib_data.size() << std::endl;
-
-            std::vector<float> mesh_N_attrib_data;
-            AttribOwner mesh_N_attrib_owner = AttribOwner::Vertex;
-            if(!fetchPointAttrib(HAPI_ATTROWNER_VERTEX , "N", mesh_N_attrib_data)){
-                fetchPointAttrib(HAPI_ATTROWNER_POINT , "N", mesh_N_attrib_data);
-                mesh_N_attrib_owner = AttribOwner::Point;
-            }
-            std::cout << "get: mesh_N_attrib_data.size()" << mesh_N_attrib_data.size() << std::endl;
-//wrong!
-            std::vector<float> mesh_uv_attrib_data;
-            AttribOwner mesh_uv_attrib_owner = AttribOwner::Vertex;
-            if(!fetchPointAttrib(HAPI_ATTROWNER_VERTEX , "uv", mesh_uv_attrib_data)){
-                fetchPointAttrib(HAPI_ATTROWNER_POINT , "uv", mesh_uv_attrib_data);
-                mesh_uv_attrib_owner = AttribOwner::Point;
-            }
-            std::cout << "get: mesh_uv_attrib_data.size()" << mesh_uv_attrib_data.size() << std::endl;
-            
-            std::vector<float> mesh_uv2_attrib_data;
-            AttribOwner mesh_uv2_attrib_owner = AttribOwner::Vertex;
-            if(!fetchPointAttrib(HAPI_ATTROWNER_VERTEX , "uv2", mesh_uv2_attrib_data)){
-                fetchPointAttrib(HAPI_ATTROWNER_POINT , "uv2", mesh_uv2_attrib_data);
-                mesh_uv2_attrib_owner = AttribOwner::Point;
-            }
-            std::cout << "get: mesh_uv2_attrib_data.size()" << mesh_uv2_attrib_data.size() << std::endl;
-            
-            partType[id][partId] = (PartType)mesh_part_info.type;
-            geometries[id][partId] = {std::move(mesh_face_counts),std::move(mesh_p_attrib_info),std::move(mesh_vertex_list),{mesh_cd_attrib_owner,std::move(mesh_cd_attrib_data)},{mesh_N_attrib_owner,std::move(mesh_N_attrib_data)},{mesh_uv_attrib_owner,std::move(mesh_uv_attrib_data)},{mesh_uv2_attrib_owner,std::move(mesh_uv2_attrib_data)}};
         }
     }
     GDE_EXPORT
