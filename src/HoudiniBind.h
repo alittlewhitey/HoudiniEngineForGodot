@@ -328,6 +328,7 @@ private:
         godot::ClassDB::bind_method(godot::D_METHOD("deleteNode","nodeId"),static_cast<bool(HoudiniEngineManager::*)(godot::Ref<NodeId>)>(&HoudiniEngineManager::deleteNode));
         godot::ClassDB::bind_method(godot::D_METHOD("createMeshNode","nodeId"),static_cast<bool(HoudiniEngineManager::*)(godot::Ref<NodeId>)>(&HoudiniEngineManager::createMeshNode));
         godot::ClassDB::bind_method(godot::D_METHOD("freeGDNode","node"),static_cast<bool(HoudiniEngineManager::*)(godot::Node*)>(&HoudiniEngineManager::freeGDNode));
+        godot::ClassDB::bind_method(godot::D_METHOD("stopFreeGDNode","node"),static_cast<bool(HoudiniEngineManager::*)(godot::Node*)>(&HoudiniEngineManager::stopFreeGDNode));
         godot::ClassDB::bind_method(godot::D_METHOD("getNodeInfo","nodeId"),static_cast<godot::Dictionary(HoudiniEngineManager::*)(godot::Ref<NodeId>)>(&HoudiniEngineManager::getNodeInfo));
         godot::ClassDB::bind_method(godot::D_METHOD("getAssetInfo","nodeId"),static_cast<godot::Dictionary(HoudiniEngineManager::*)(godot::Ref<NodeId>)>(&HoudiniEngineManager::getAssetInfo));
         godot::ClassDB::bind_method(godot::D_METHOD("getObjectInfo","nodeId"),static_cast<godot::Dictionary(HoudiniEngineManager::*)(godot::Ref<NodeId>)>(&HoudiniEngineManager::getObjectInfo));
@@ -1959,6 +1960,7 @@ public:
     }
     GDE_EXPORT
     bool stopFreeGDNode(godot::Node* node){
+        
         if(freeGDNodeTasks.find(node)!=freeGDNodeTasks.end()){
             freeGDNodeTasks[node]->request_stop();
             std::cerr << "request_stop" << std::endl;
