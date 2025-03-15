@@ -972,6 +972,7 @@ private:
         if(type == typeid(CookAssetAction)){
             this->assetAction = action;
             std::jthread([this]{
+                
                 cookAsset();
                 this->assetAction.unref();
                 Contact::add_call([this]{

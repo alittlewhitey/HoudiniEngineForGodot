@@ -9,6 +9,8 @@ build
 
 temp
 
+deps/godot-cpp/*
+
 project/.godot
 project/*.*
 project/addons/houdini_engine_godot/bin
