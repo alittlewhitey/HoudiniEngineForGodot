@@ -25,11 +25,12 @@
 */
 
 #pragma once
+#include <string>
 
 struct HoudiniEnginePlatform
 {
     // Dynamically load the libHAPIL shared library
-    static void* LoadLibHAPIL();
+    static void* LoadLibHAPIL(std::string libDir = "");
 
     // Decrement the reference count of the libHAPIL module, freed at 0
     static bool FreeLibHAPIL(void* libHAPIL);

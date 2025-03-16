@@ -3,7 +3,8 @@
 #define HOUDINI_BIND_GODOT
 
 #include <HAPI/HAPI.h>
-#include <cstdlib>
+#include <stdlib.h>
+#include <string.h>
 #include <string>
 #include <fstream>
 #include <chrono>
@@ -681,8 +682,18 @@ private:
             settings->set_initial_value(name,value);
             tempDic.clear();
         };
+        addSetting("houdini/config/useEnvLibPath",true,godot::Variant::BOOL);
+
+        settings->set_restart_if_changed("houdini/config/useEnvLibPath",true);
+
         addSetting("houdini/config/houdiniRootPath","",godot::Variant::STRING,godot::PROPERTY_HINT_GLOBAL_DIR);
+
+        settings->set_restart_if_changed("houdini/config/houdiniRootPath",true);
+
+        addSetting("houdini/config/houdiniLibPath","",godot::Variant::STRING,godot::PROPERTY_HINT_GLOBAL_DIR);
         
+        settings->set_restart_if_changed("houdini/config/houdiniLibPath",true);
+
         addSetting("houdini/config/logFilePath","",godot::Variant::STRING,godot::PROPERTY_HINT_SAVE_FILE);
 
         addSetting("houdini/config/cookOptions",default_cookOptions(),godot::Variant::DICTIONARY);
@@ -704,10 +715,21 @@ private:
         godot::Variant value;
         godot::String tempStr;
 
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/useEnvLibPath");
+        if(useEnvLibPath != (bool)value){
+            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/useEnvLibPath",useEnvLibPath);
+        }
+
         value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/houdiniRootPath");
         tempStr = godot::String::utf8(houdiniRootPath.c_str());
         if(tempStr != value){
             godot::ProjectSettings::get_singleton()->set_setting("houdini/config/houdiniRootPath",tempStr);
+        }
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/houdiniLibPath");
+        tempStr = godot::String::utf8(houdiniLibPath.c_str());
+        if(tempStr != value){
+            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/houdiniLibPath",tempStr);
         }
 
         value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/logFilePath");
@@ -759,10 +781,21 @@ private:
         godot::Variant value;
         std::string tempStr;
 
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/useEnvLibPath");
+        if(useEnvLibPath != (bool)value){
+            useEnvLibPath = (bool)value;
+        }
+
         value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/houdiniRootPath");
         tempStr = ((godot::String)value).utf8().get_data();
         if(tempStr != houdiniRootPath){
             set_houdiniRootPath((godot::String)value);
+        }
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/houdiniLibPath");
+        tempStr = ((godot::String)value).utf8().get_data();
+        if(tempStr != houdiniRootPath){
+            set_houdiniLibPath((godot::String)value);
         }
 
         value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/logFilePath");
@@ -1043,11 +1076,15 @@ private:
     bool autoCook = 0;
     bool showModel = 0;
 
+    bool useEnvLibPath = true;
+
     std::string houdiniRootPath = "";
     void set_houdiniRootPath(godot::String path){
         path = godot::ProjectSettings::get_singleton()->globalize_path(path);
-        if(path == "")
+        if(path == ""){
+            houdiniRootPath.clear();
             return;
+        }
         std::string houdiniPath = path.utf8().get_data();
         std::string hconfigPath = houdiniPath+"/bin/hconfig";
         if(!std::filesystem::exists(hconfigPath)){
@@ -1076,13 +1113,36 @@ private:
             addenv(envKey,envValue);
         }
         houdiniRootPath = houdiniPath;
-        initHoudini();
+        if(useEnvLibPath)
+            initHoudini();
+    }
+
+    std::string houdiniLibPath = "";
+
+    void set_houdiniLibPath(godot::String path){
+        path = godot::ProjectSettings::get_singleton()->globalize_path(path);
+        if(path == ""){
+            houdiniLibPath.clear();
+            return;
+        }
+        std::string houdiniPath = path.utf8().get_data();
+        if(!std::filesystem::exists(houdiniPath)){
+            printErr("Invalid houdini lib path. Make sure the dir exists.");
+            return;
+        }
+        houdiniLibPath = houdiniPath;
+        std::cout << "lib path " << houdiniLibPath << std::endl;
+        if(!useEnvLibPath)
+            initHoudini();
     }
     void initHoudini(){
         if(putenv("HAPI_CLIENT_NAME=godot")){
             printLog("Failed to change env \"HAPI_CLIENT_NAME\" to \"godot\".\n");
         }
-        libHAPIL = HoudiniEnginePlatform::LoadLibHAPIL();
+        if(useEnvLibPath)
+            libHAPIL = HoudiniEnginePlatform::LoadLibHAPIL();
+        else 
+            libHAPIL = HoudiniEnginePlatform::LoadLibHAPIL(houdiniLibPath);
         if(libHAPIL != nullptr){
             HoudiniApi::InitializeHAPI(libHAPIL);
         }else{

@@ -41,10 +41,9 @@ const char* HAPI_LIB_OBJECT_LINUX = "libHAPIL.so";
 const char* HAPI_LIB_OBJECT_MAC = "libHAPIL.dylib";
 
 void*
-HoudiniEnginePlatform::LoadLibHAPIL()
+HoudiniEnginePlatform::LoadLibHAPIL(std::string libDir)
 {
     void* libHAPIL = nullptr;
-
 #if defined(WIN32) || defined(_WIN32)
     // Look up the HFS environment variable
 
@@ -71,9 +70,10 @@ HoudiniEnginePlatform::LoadLibHAPIL()
     }
 #elif __linux__
     // Location of libHAPIL on Mac & Linux added to the application's RPATH
-    libHAPIL = dlopen(HAPI_LIB_OBJECT_LINUX, RTLD_LAZY); 
+    libHAPIL = dlopen(((libDir.empty()?"":libDir+'/')+HAPI_LIB_OBJECT_LINUX).c_str(), RTLD_LAZY); 
 #else
-    libHAPIL = dlopen(HAPI_LIB_OBJECT_MAC, RTLD_LAZY); 
+    std::cout << (libDir.empty()?"":libDir+'/')+HAPI_LIB_OBJECT_MAC << std::endl;
+    libHAPIL = dlopen(((libDir.empty()?"":libDir+'/')+HAPI_LIB_OBJECT_MAC).c_str(), RTLD_LAZY); 
 #endif
 
     if (libHAPIL == nullptr)
