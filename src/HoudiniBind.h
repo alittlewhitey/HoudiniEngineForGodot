@@ -17,6 +17,7 @@
 #include <execution>
 #include <godot_cpp/godot.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/classes/os.hpp>
 #include <godot_cpp/classes/material.hpp>
 #include <godot_cpp/classes/ref_counted.hpp>
 #include <godot_cpp/classes/node.hpp>
@@ -381,7 +382,7 @@ private:
 
     void _get_property_list(godot::List<godot::PropertyInfo>* list){
         list->clear();
-        
+
 
         list->push_back(godot::PropertyInfo(godot::Variant::NIL,"Asset Settings",godot::PROPERTY_HINT_NONE,"AssetSettings_",godot::PROPERTY_USAGE_GROUP));
         
@@ -845,6 +846,7 @@ private:
     void init(){
         singleton = this;
 
+        godot::OS::get_singleton()->set_low_processor_usage_mode(true);
 
         godot::Ref<godot::Material> defaultMaterial;
         defaultMaterial.instantiate();
