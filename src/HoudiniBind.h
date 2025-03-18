@@ -26,8 +26,11 @@
 #include <godot_cpp/classes/project_settings.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/surface_tool.hpp>
+#include <godot_cpp/classes/multi_mesh.hpp>
 #include <godot_cpp/classes/mesh_instance3d.hpp>
+#include <godot_cpp/classes/multi_mesh_instance3d.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
+#include <godot_cpp/variant/transform3d.hpp>
 #include <godot_cpp/core/math.hpp>
 #include <HoudiniApi.h>
 #include <HoudiniEngineUtility.h>
@@ -151,9 +154,7 @@ class HDANode: public godot::Resource{
     int get_nodeId(){
         return nodeId;
     }
-    void set_nodeId(int id){
-        nodeId = id;
-    }
+    void set_nodeId(int id){}
     godot::Dictionary get_nodeInfo();
     void set_nodeInfo(godot::Dictionary){}
 public:
@@ -380,16 +381,7 @@ private:
 
     void _get_property_list(godot::List<godot::PropertyInfo>* list){
         list->clear();
-
-        //list->push_back(godot::PropertyInfo(godot::Variant::NIL,"Session Settings",godot::PROPERTY_HINT_NONE,"SessionSettings_",godot::PROPERTY_USAGE_GROUP));
-
-        // list->push_back(godot::PropertyInfo(godot::Variant::INT,"SessionSettings_sessionType",godot::PROPERTY_HINT_ENUM,"InProcess:1,NewNamedPipe:2,NewTCPSocket:3,ExistingNamedPipe:4,ExistingTCPSocket:5,ExistingSharedMemory:6"));
-        // list->push_back(godot::PropertyInfo(godot::Variant::BOOL,"SessionSettings_useCookingThread"));
-        // list->push_back(godot::PropertyInfo(godot::Variant::STRING,"SessionSettings_namedPipe"));
-        // list->push_back(godot::PropertyInfo(godot::Variant::STRING,"SessionSettings_hostName"));
-        // list->push_back(godot::PropertyInfo(godot::Variant::STRING,"SessionSettings_sharedMemoryName"));
-        // list->push_back(godot::PropertyInfo(godot::Variant::INT,"SessionSettings_tcpPort"));
-
+        
 
         list->push_back(godot::PropertyInfo(godot::Variant::NIL,"Asset Settings",godot::PROPERTY_HINT_NONE,"AssetSettings_",godot::PROPERTY_USAGE_GROUP));
         
@@ -440,28 +432,6 @@ private:
 
         std::string propertyName = property.c_escape().utf8().get_data();
 
-        // if(propertyName == "SessionSettings_sessionAction"){
-        //     ret = sessionAction;
-        //     return true;
-        // }else if(propertyName == "SessionSettings_sessionType"){
-        //     ret = sessionType;
-        //     return true;
-        // }else if(propertyName == "SessionSettings_useCookingThread"){
-        //     ret = useCookingThread;
-        //     return true;
-        // }else if(propertyName == "SessionSettings_namedPipe"){
-        //     ret = godot::String::utf8(namedPipe.c_str());
-        //     return true;
-        // }else if(propertyName == "SessionSettings_hostName"){
-        //     ret = godot::String::utf8(hostName.c_str());
-        //     return true;
-        // }else if(propertyName == "SessionSettings_sharedMemoryName"){
-        //     ret = godot::String::utf8(sharedMemoryName.c_str());
-        //     return true;
-        // }else if(propertyName == "SessionSettings_tcpPort"){
-        //     ret = tcpPort;
-        //     return true;
-        // }else 
         if(propertyName == "AssetSettings_assetAction"){
             ret = assetAction;
             return true;
@@ -538,29 +508,7 @@ private:
     bool _set(const godot::StringName& property, const godot::Variant& value){
 
         std::string propertyName = property.c_escape().utf8().get_data();
-
-        // if(propertyName == "SessionSettings_sessionAction"){
-        //     set_sessionAction((godot::Ref<SessionAction>)(value));
-        //     return true;
-        // }else if(propertyName == "SessionSettings_sessionType"){
-        //     sessionType = (SessionType)(int)value;
-        //     return true;
-        // }else if(propertyName == "SessionSettings_useCookingThread"){
-        //     useCookingThread = (bool)value;
-        //     return true;
-        // }else if(propertyName == "SessionSettings_namedPipe"){
-        //     namedPipe = ((godot::String)value).utf8().get_data();
-        //     return true;
-        // }else if(propertyName == "SessionSettings_hostName"){
-        //     hostName = ((godot::String)value).utf8().get_data();
-        //     return true;
-        // }else if(propertyName == "SessionSettings_sharedMemoryName"){
-        //     sharedMemoryName = ((godot::String)value).utf8().get_data();
-        //     return true;
-        // }else if(propertyName == "SessionSettings_tcpPort"){
-        //     tcpPort = (int)value;
-        //     return true;
-        // }else 
+        
         if(propertyName == "AssetSettings_assetAction"){
             set_assetAction((godot::Ref<AssetAction>)(value));
             return true;
@@ -573,7 +521,6 @@ private:
         }else if(propertyName == "NodeSettings_showModel"){
             showModel = (bool)value;
             if(nowNode.is_valid()){
-                std::cerr << __LINE__ << std::endl;
                 updateInternalModel();
             }
             for(auto a : internalModels)
@@ -586,11 +533,9 @@ private:
             nowNode = (godot::Ref<HDANode>)value;
             if(!sessionOpened)
                 return false;
-            if(nowNode.is_null()||nowNode->nodeId == -1)
-                clearInternalModels();
+            clearInternalModels();
             if(showModel){
                 cookNode(nowNode);
-                std::cerr << __LINE__ << std::endl;
                 updateInternalModel();
             }
             return true;
@@ -668,6 +613,20 @@ private:
         }
         return false;
     }
+    GDE_EXPORT 
+    void _init_hserver(){
+        if(!findproc("hserver")){
+            printErr("Can't find hserver. Try to restart it by hkey.");
+            printErr("Please restart the hserver to manually.");
+            printLog("Run ",(houdiniRootPath+"/bin/hkey").c_str()," to restart hserver");
+            if(houdiniRootPath.empty()){
+                printLog("Run Houdini License Administrator (hkey) to restart hserver");
+            }else{
+                printLog("Run ",(houdiniRootPath+"/bin/hkey").c_str()," to restart hserver");
+            }
+        }
+    }
+    GDE_EXPORT 
     void _init_settings(){
         
         auto tempDic = godot::Dictionary();
@@ -713,6 +672,7 @@ private:
         addSetting("houdini/config/session/tcpPort",9090,godot::Variant::INT);
 
     }
+    GDE_EXPORT 
     void _update_settings(){
         godot::Variant value;
         godot::String tempStr;
@@ -779,6 +739,7 @@ private:
             godot::ProjectSettings::get_singleton()->set_setting("houdini/config/session/tcpPort",tcpPort);
         }
     }
+    GDE_EXPORT 
     void _settings_changed(){
         godot::Variant value;
         std::string tempStr;
@@ -844,6 +805,7 @@ private:
             tcpPort = (int)value;
         }
     }
+    GDE_EXPORT 
     void _notification(int what){
         switch(what){
         case NOTIFICATION_POSTINITIALIZE:{
@@ -882,6 +844,7 @@ private:
     GDE_EXPORT
     void init(){
         singleton = this;
+
 
         godot::Ref<godot::Material> defaultMaterial;
         defaultMaterial.instantiate();
@@ -925,6 +888,9 @@ private:
             }
         }
         using namespace std::chrono_literals;
+        for(auto it : internalModels){
+            it.second->get_mesh().unref();
+        }
         freeTimeout = 0ms;
         clearInternalModels();
         std::this_thread::sleep_for(defaultFreeTimeout<1s?defaultFreeTimeout:1s);
@@ -1302,6 +1268,9 @@ public:
             return true;
         }
 
+
+        _init_hserver();
+
         HoudiniApi::ClearConnectionError();
         HAPI_ThriftServerOptions server_options = HoudiniApi::ThriftServerOptions_Create();
         server_options.autoClose = true;
@@ -1473,58 +1442,44 @@ public:
     }
     GDE_EXPORT
     std::vector<int> loadAssets(godot::Ref<HDAResource> hdaRes,Void){
-        std::cerr << __LINE__ << std::endl;
         if(!sessionOpened){
             printErr(__FILE__, " : ", __LINE__," - ", "Error load Asset with invalid session");
             return {};
         }
-        std::cerr << __LINE__ << std::endl;
         int assetId = -1;
-        std::cerr << __LINE__ << std::endl;
         try{
 
         if(auto a = HoudiniApi::LoadAssetLibraryFromFile(&session,hdaRes->path.c_str(),true,&assetId);a != HAPI_RESULT_SUCCESS){
-            std::cerr << __LINE__ << std::endl;
             printErr(__FILE__, " : ", __LINE__," - ", "Error load Asset from file: ");
             return {};
         }
 
         }catch(std::exception& e){
-            std::cerr << __LINE__ << '\t' << e.what() << std::endl;
         }
-        std::cerr << __LINE__ << std::endl;
         int asset_count = 0;
-        std::cerr << __LINE__ << std::endl;
         if(auto a = HoudiniApi::GetAvailableAssetCount(&session,assetId,&asset_count); a != HAPI_RESULT_SUCCESS){
             printErr(__FILE__, " : ", __LINE__," - ", "Error get available asset count: ",a);
             return {};
         }
-        std::cerr << __LINE__ << std::endl;
         std::vector<HAPI_StringHandle> assetSH;
-        std::cerr << __LINE__ << std::endl;
         assetSH.resize(asset_count);
         if(auto a = HoudiniApi::GetAvailableAssets(&session,assetId,assetSH.data(),asset_count);a != HAPI_RESULT_SUCCESS){
             printErr(__FILE__, " : ", __LINE__," - ", "Error get available assets: ",a);
             return {};
         }
-        std::cerr << __LINE__ << std::endl;
 
         std::string temp;
         int rootId = -1;
         std::vector<int> result;
-        std::cerr << __LINE__ << std::endl;
         result.reserve(asset_count);
-        std::cerr << __LINE__ << std::endl;
         for(int i = 0;i!=asset_count;++i){
             temp = HoudiniEngineUtility::getString(&session,assetSH[i]);
             int id = -1;
             createNode(temp,temp,id,rootId,assetId);
             result.push_back(id);
         }
-        std::cerr << __LINE__ << std::endl;
         hdaRes->assetId = assetId;
         assetIds.insert({assetId,hdaRes});
-        std::cerr << __LINE__ << std::endl;
         return result;
     }
     GDE_EXPORT
@@ -1575,7 +1530,6 @@ public:
     }
     GDE_EXPORT
     bool cookNode(int id){
-        std::cerr << "cookNode" << std::endl;
         if(!sessionOpened){
             printErr(__FILE__, " : ", __LINE__," - ", "Failed to cook node: The session is invalid.");
             return false;
@@ -1589,7 +1543,6 @@ public:
             return false;
         }
         waitForCook();
-        std::cerr << __LINE__ << std::endl;
         if(showModel && nowNode.is_valid() && id == nowNode->nodeId)
             updateInternalModel();
             
@@ -1656,14 +1609,13 @@ public:
     }
     GDE_EXPORT
     bool updateInternalModel(){
-        std::cerr << "updateInternalModel" << std::endl;
         if(nowNode.is_null())
             return false;
         int nodeId = nowNode->nodeId;
         getParameters(nodeId);
         getGeometry(nodeId);
         getMaterial(nodeId);
-        if(geometries[nodeId].empty()){
+        if(geometries.find(nodeId) == geometries.end()||geometries[nodeId].empty()){
             return false;
         }
          
@@ -1826,7 +1778,6 @@ public:
     }
     GDE_EXPORT
     void createMeshNode(){
-        std::cerr << __LINE__ << std::endl;
         if(!showModel)
             updateInternalModel();
         Contact::add_call([=,this]{
@@ -1859,65 +1810,50 @@ public:
                 internelModel->set_visible(showModel);
             }
         }else{
+            
             for(auto& a : instanceTransforms[internalNodeId]){
                 godot::Node3D* father = this;
-                if(a.second.size() == 0){
+                if(auto size = internalModels.size();size == 0){
                     break;
-                }else if(a.second.size() == 1){
+                }else if(size == 1){
                     ;
                 }else{
                     godot::Node3D* group = memnew(godot::Node3D());
-                    group->set_name("refGroup");
-                    add_child(group,true);
+                    group->set_name("Group");
+                    father->add_child(group);
                     group->set_owner(get_tree()->get_edited_scene_root());
                     group->set_visible(true);
                     createdGDNodes.insert(group);
                     father = group;
                 }
-                godot::Node3D* instanceGroup = nullptr;
-                if(internalModels.size() == 0){
-                    break;
-                }else if(internalModels.size() == 1){
-                    godot::Node3D* group = (godot::MeshInstance3D*)internalModels[0]->duplicate();
-                    group->set_owner(get_tree()->get_edited_scene_root());
-                    group->set_visible(true);
-                    createdGDNodes.insert(group);
-                    instanceGroup = group;
-                }else{
-                    godot::Node3D* group = memnew(godot::Node3D());
-                    group->set_name("group");
-                    group->set_owner(get_tree()->get_edited_scene_root());
-                    group->set_visible(true);
-                    createdGDNodes.insert(group);
-                    instanceGroup = group;
 
-                    for(auto a : internalModels){
-                        auto internelModel = a.second;
-
-                        godot::MeshInstance3D* instance = (godot::MeshInstance3D*)internelModel->duplicate();
-                        instanceGroup->add_child(instance,true);
-                        instance->set_owner(get_tree()->get_edited_scene_root());
-                        instance->set_visible(true);
-                        createdGDNodes.insert(instance);
-                        internelModel->set_visible(showModel);
-                    }
-                }
+                std::vector<godot::Transform3D> transforms;
+                godot::Node3D* transformer = memnew(godot::Node3D());
                 for(auto& b : a.second){
-                    godot::Node3D* node = (godot::Node3D*)instanceGroup->duplicate();
-                    node->set_position(godot::Vector3(b.position[0],b.position[1],b.position[2]));
-                    node->set_rotation(godot::Vector3(b.rotationQuaternion[0],b.rotationQuaternion[1],b.rotationQuaternion[2]));
-                    node->set_scale(godot::Vector3(b.scale[0],b.scale[1],b.scale[2]));
+                    transformer->set_position(godot::Vector3(b.position[0],b.position[1],b.position[2]));
+                    transformer->set_rotation(godot::Vector3(b.rotationQuaternion[0],b.rotationQuaternion[1],b.rotationQuaternion[2]));
+                    transformer->set_scale(godot::Vector3(b.scale[0],b.scale[1],b.scale[2]));
+                    transforms.push_back(transformer->get_transform());
+                }
+                godot::memdelete(transformer);
+                for(auto internalModel : internalModels){
+                    int size = transforms.size();
+                    godot::Ref<godot::MultiMesh> multiMesh;
+                    multiMesh.instantiate();
+                    multiMesh->set_use_colors(true);
+                    multiMesh->set_transform_format(godot::MultiMesh::TRANSFORM_3D);
+                    multiMesh->set_instance_count(size);
+                    multiMesh->set_mesh(internalModel.second->get_mesh());
+                    for(int i = 0;i!=size;++i)
+                        multiMesh->set_instance_transform(i,transforms[i]);
+
                     
-                    father->add_child(node,true);
+                    godot::MultiMeshInstance3D* node = memnew(godot::MultiMeshInstance3D());
+                    node->set_multimesh(multiMesh);
+                    father->add_child(node);
                     node->set_owner(get_tree()->get_edited_scene_root());
                     node->set_visible(true);
                     createdGDNodes.insert(node);
-                    auto instances = node->get_children();
-                    int instanceNum = instances.size();
-                    for(int i = 0;i!=instanceNum;++i){
-                        auto instance = (godot::Node*)(godot::Object*)instances[i];
-                        createdGDNodes.insert(instance);
-                    }
                 }
             }
         }
@@ -2092,7 +2028,6 @@ public:
     bool freeGDNode(godot::Node* node){
         if(createdGDNodes.find(node) != createdGDNodes.end()){
             freeGDNodeTasks[node] = std::make_shared<std::jthread>([this,node](std::stop_token st){
-                std::cerr << "freeGDNode" << std::endl;
                 std::shared_ptr<std::jthread> nowThread = freeGDNodeTasks[node];
                 std::this_thread::sleep_for(freeTimeout);
                 freeGDNodeTasks.erase(node);
@@ -2100,7 +2035,6 @@ public:
                     return;
                 Contact::add_call([=]{
                     node->queue_free();
-                    std::cerr << "queue_free" << std::endl;
                 });
             });
             freeGDNodeTasks[node]->detach();
@@ -2110,10 +2044,8 @@ public:
     }
     GDE_EXPORT
     bool stopFreeGDNode(godot::Node* node){
-        
         if(freeGDNodeTasks.find(node)!=freeGDNodeTasks.end()){
             freeGDNodeTasks[node]->request_stop();
-            std::cerr << "request_stop" << std::endl;
             return true;
         }
         return false;
@@ -2292,7 +2224,6 @@ public:
     }
     GDE_EXPORT
     void getParameters(int id){
-        std::cerr << "getParameters" << std::endl;
         if(!sessionOpened){
             printErr(__FILE__, " : ", __LINE__," - ", "Failed to get parameters: The session is invalid.");
             return;
@@ -2687,7 +2618,6 @@ public:
     }
     GDE_EXPORT
     void getMaterial(int id){
-        std::cerr << "getMaterial" << std::endl;
         HAPI_GeoInfo mesh_geo_info;
         if(HoudiniApi::GetDisplayGeoInfo(&session, id, &mesh_geo_info) != HAPI_RESULT_SUCCESS){
             printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());

@@ -5,12 +5,37 @@
 #include <stdexcept>
 #include <string>
 #include <array>
+
 #if defined (__linux__) || (defined (__APPLE__) && defined (__MACH__))
 GDE_EXPORT
-inline std::string exec_output(const char* cmd) {
+inline bool execute(std::string cmd){
+    if(std::system(cmd.c_str()) == -1){
+        return false;
+    }
+
+    return true;
+}
+#elif defined (_WIN32) || defined (WIN32)
+GDE_EXPORT
+
+inline bool execute(std::string cmd){
+    if(std::system(cmd.c_str()) == -1){
+        if(std::system(("./"+cmd).c_str()) == -1){
+            if(std::system(("./"+cmd+".exe").c_str()) == -1){
+                return false;
+            }
+        }
+    }
+    return true;
+}
+#endif
+
+#if defined (__linux__) || (defined (__APPLE__) && defined (__MACH__))
+GDE_EXPORT
+inline std::string exec_output(std::string cmd , std::string find = "") {
     std::array<char, 128> buffer;
     std::string result;
-    std::shared_ptr<FILE> pipe(popen(cmd, "r"), pclose);
+    std::shared_ptr<FILE> pipe(popen((cmd + (find.empty()?"":(" | grep " + find + " | grep -v grep"))).c_str(), "r"), pclose);
     if (!pipe) return "";
     while (!feof(pipe.get())) {
         if (fgets(buffer.data(), 128, pipe.get()) != nullptr)
@@ -20,10 +45,10 @@ inline std::string exec_output(const char* cmd) {
 }
 #elif defined (_WIN32) || defined (WIN32)
 GDE_EXPORT
-inline std::string exec_output(const char* cmd){
+inline std::string exec_output(std::string cmd){
     std::array<char, 128> buffer;
     std::string result;
-    std::shared_ptr<FILE> pipe(_popen(cmd, "r"), _pclose);
+    std::shared_ptr<FILE> pipe(_popen((cmd + (find.empty()?"":(" | findstr \"" + find + "\" | findstr /V findstr"))).c_str(), "r"), _pclose);
     if (!pipe) return "";
     while (!feof(pipe.get())) {
         if (fgets(buffer.data(), 128, pipe.get()) != nullptr)
@@ -33,6 +58,17 @@ inline std::string exec_output(const char* cmd){
 }
 #endif
 
+#if defined (__linux__) || (defined (__APPLE__) && defined (__MACH__))
+GDE_EXPORT
+inline bool findproc(std::string procName){
+    return !exec_output("ps -ef",procName).empty();
+}
+#elif defined (_WIN32) || defined (WIN32)
+GDE_EXPORT
+inline bool findproc(std::string procName){
+    return !exec_output("tasklist",procName).empty();
+}
+#endif
 
 #if defined (__linux__)
 GDE_EXPORT
