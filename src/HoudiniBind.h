@@ -148,6 +148,9 @@ class HDANode: public godot::Resource{
         godot::ClassDB::bind_method(godot::D_METHOD("get_nodeId"),&HDANode::get_nodeId);
         godot::ClassDB::bind_method(godot::D_METHOD("set_nodeId","id"),&HDANode::set_nodeId);
         godot::ClassDB::add_property("HDANode",godot::PropertyInfo(godot::Variant::INT,"nodeId"),"set_nodeId","get_nodeId");
+        godot::ClassDB::bind_method(godot::D_METHOD("get_name"),&HDANode::get_name);
+        godot::ClassDB::bind_method(godot::D_METHOD("set_name","name"),&HDANode::set_name);
+        godot::ClassDB::add_property("HDANode",godot::PropertyInfo(godot::Variant::STRING,"name"),"set_name","get_name");
         godot::ClassDB::bind_method(godot::D_METHOD("get_nodeInfo"),&HDANode::get_nodeInfo);
         godot::ClassDB::bind_method(godot::D_METHOD("set_nodeInfo","id"),&HDANode::set_nodeInfo);
         godot::ClassDB::add_property("HDANode",godot::PropertyInfo(godot::Variant::DICTIONARY,"nodeInfo"),"set_nodeInfo","get_nodeInfo");
@@ -156,10 +159,17 @@ class HDANode: public godot::Resource{
         return nodeId;
     }
     void set_nodeId(int id){}
+    godot::String get_name(){
+        if(name.is_empty())
+            name = get_nodeInfo()["name"];
+        return name;
+    }
+    void set_name(godot::String name){}
     godot::Dictionary get_nodeInfo();
     void set_nodeInfo(godot::Dictionary){}
 public:
     int nodeId;
+    godot::String name;
     godot::Dictionary nodeInfo;
 };
 class Action: public godot::Resource{
@@ -327,6 +337,7 @@ private:
         godot::ClassDB::bind_method(godot::D_METHOD("loadAssets","hdaRes"),static_cast<godot::PackedInt32Array(HoudiniEngineManager::*)(godot::Ref<HDAResource>)>(&HoudiniEngineManager::loadAssets));
         godot::ClassDB::bind_method(godot::D_METHOD("createNode","nodeLabel","operatorName","id","parentId","assetId"),static_cast<bool(HoudiniEngineManager::*)(godot::String,godot::String, godot::Ref<NodeId>, godot::Ref<NodeId>, int)>(&HoudiniEngineManager::createNode));
         godot::ClassDB::bind_method(godot::D_METHOD("connectNode","nodeId","inputIndex","node_to_connect","outputIndex"),static_cast<bool(HoudiniEngineManager::*)(godot::Ref<NodeId>, int, godot::Ref<NodeId>, int)>(&HoudiniEngineManager::connectNode));
+        godot::ClassDB::bind_method(godot::D_METHOD("disconnectNode","nodeId","inputIndex"),static_cast<bool(HoudiniEngineManager::*)(godot::Ref<NodeId>, int)>(&HoudiniEngineManager::disconnectNode));
         godot::ClassDB::bind_method(godot::D_METHOD("cookNode","nodeId"),static_cast<bool(HoudiniEngineManager::*)(godot::Ref<NodeId>)>(&HoudiniEngineManager::cookNode));
         godot::ClassDB::bind_method(godot::D_METHOD("deleteNode","nodeId"),static_cast<bool(HoudiniEngineManager::*)(godot::Ref<NodeId>)>(&HoudiniEngineManager::deleteNode));
         godot::ClassDB::bind_method(godot::D_METHOD("createMeshNode","nodeId"),static_cast<bool(HoudiniEngineManager::*)(godot::Ref<NodeId>)>(&HoudiniEngineManager::createMeshNode));
@@ -518,7 +529,7 @@ private:
             return true;
         }else if(propertyName == "AssetSettings_assets"){
             
-            return false;
+            return true;
         }else if(propertyName == "NodeSettings_showModel"){
             showModel = (bool)value;
             if(nowNode.is_valid()){
@@ -542,7 +553,7 @@ private:
             return true;
         }else if(propertyName == "NodeSettings_nodes"){
 
-            return false;
+            return true;
         }else if(propertyName == "autoCook"){
             autoCook = (bool)value;
             cookNode(nowNode);
@@ -1529,6 +1540,24 @@ public:
     GDE_EXPORT
     bool connectNode(godot::Ref<NodeId> nodeId,int inputIndex,godot::Ref<NodeId> node_to_connect,int outputIndex){
         return connectNode(*nodeId,inputIndex,*node_to_connect,outputIndex);
+    }
+    GDE_EXPORT
+    bool disconnectNode(int nodeId, int inputIndex){
+        if(!sessionOpened){
+            printErr(__FILE__, " : ", __LINE__," - ", "Failed to disconnect node: The session is invalid.");
+            return false;
+        }
+        if(HoudiniApi::DisconnectNodeInput(&session,nodeId,inputIndex) != HAPI_RESULT_SUCCESS){
+            printErr(__FILE__, " : ", __LINE__," - ", "Error disconnect node: ",HoudiniEngineUtility::getLastError().c_str());
+            return false;
+        }else{
+            printFile(__FILE__, " : ", __LINE__," - ", "Success dicconnect node ",nodeId,"'s port ",inputIndex);
+        }
+        return true;
+    }
+    GDE_EXPORT
+    bool disconnectNode(godot::Ref<NodeId> nodeId,int inputIndex){
+        return disconnectNode(*nodeId,inputIndex);
     }
     GDE_EXPORT
     bool cookNode(int id){
