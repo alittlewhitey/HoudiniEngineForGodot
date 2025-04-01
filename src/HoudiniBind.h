@@ -1199,6 +1199,9 @@ private:
                 return;
             }
         }
+        if(findenv("HFS"))
+            return;
+        // Add Environment
         std::string output = exec_output(hconfigPath.c_str());
         if(output.empty()){
             printError("Houdini environment is null");

@@ -76,7 +76,12 @@ inline bool findproc(std::string procName){
     return !exec_output("tasklist",procName).empty();
 }
 #endif
-
+GDE_EXPORT
+inline bool findenv(std::string key){
+    if(getenv(key.c_str()) == NULL)
+        return false;
+    return true;
+}
 #if defined (__linux__)
 GDE_EXPORT
 inline void addenv(std::string key,std::string value){
