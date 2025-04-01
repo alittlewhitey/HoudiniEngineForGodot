@@ -5,6 +5,13 @@
 #include <stdexcept>
 #include <string>
 #include <array>
+#include <set>
+
+static inline std::set<std::string> _houdini_endine_string_buffer;
+GDE_EXPORT
+inline const char* keep_alive_string(std::string s){
+    return _houdini_endine_string_buffer.insert(std::move(s)).first->c_str();
+}
 
 #if defined (__linux__) || (defined (__APPLE__) && defined (__MACH__))
 GDE_EXPORT

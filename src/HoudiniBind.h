@@ -12,14 +12,18 @@
 #include <thread>
 #include <map>
 #include <set>
+#include <any>
 #include <queue>
 #include <filesystem>
 #include <execution>
+#include <variant>
+#include <source_location>
 #include <godot_cpp/godot.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/classes/os.hpp>
-#include <godot_cpp/classes/material.hpp>
 #include <godot_cpp/classes/ref_counted.hpp>
+#include <godot_cpp/classes/material.hpp>
+#include <godot_cpp/classes/standard_material3d.hpp>
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/classes/node3d.hpp>
 #include <godot_cpp/classes/resource.hpp>
@@ -57,7 +61,11 @@ enum SessionType
     ExistingSharedMemory = 6
 };
 VARIANT_ENUM_CAST(SessionType)
-class Void{};
+class Void{
+public:
+    Void(std::any){}
+    Void(){}
+};
 class NodeId: public godot::RefCounted{
     GDCLASS(NodeId, godot::RefCounted)
     static void _bind_methods(){
@@ -172,6 +180,36 @@ public:
     godot::String name;
     godot::Dictionary nodeInfo;
 };
+class InputNode: public godot::Resource{
+    GDCLASS(InputNode,godot::Resource)
+    static void _bind_methods(){
+        godot::ClassDB::bind_method(godot::D_METHOD("get_nodeId"),&InputNode::get_nodeId);
+        godot::ClassDB::bind_method(godot::D_METHOD("set_nodeId","id"),&InputNode::set_nodeId);
+        godot::ClassDB::add_property("InputNode",godot::PropertyInfo(godot::Variant::INT,"nodeId"),"set_nodeId","get_nodeId");
+        godot::ClassDB::bind_method(godot::D_METHOD("get_name"),&InputNode::get_name);
+        godot::ClassDB::bind_method(godot::D_METHOD("set_name","name"),&InputNode::set_name);
+        godot::ClassDB::add_property("InputNode",godot::PropertyInfo(godot::Variant::STRING,"name"),"set_name","get_name");
+        godot::ClassDB::bind_method(godot::D_METHOD("get_nodeInfo"),&InputNode::get_nodeInfo);
+        godot::ClassDB::bind_method(godot::D_METHOD("set_nodeInfo","id"),&InputNode::set_nodeInfo);
+        godot::ClassDB::add_property("InputNode",godot::PropertyInfo(godot::Variant::DICTIONARY,"nodeInfo"),"set_nodeInfo","get_nodeInfo");
+    }
+    int get_nodeId(){
+        return nodeId;
+    }
+    void set_nodeId(int id){}
+    godot::String get_name(){
+        if(name.is_empty())
+            name = get_nodeInfo()["name"];
+        return name;
+    }
+    void set_name(godot::String name){}
+    godot::Dictionary get_nodeInfo();
+    void set_nodeInfo(godot::Dictionary){}
+public:
+    int nodeId;
+    godot::String name;
+    godot::Dictionary nodeInfo;
+};
 class Action: public godot::Resource{
     GDCLASS(Action,godot::Resource)
     static void _bind_methods(){}
@@ -214,6 +252,10 @@ class CookAssetAction: public AssetAction{
 };
 class LoadAssetAction: public AssetAction{
     GDCLASS(LoadAssetAction,AssetAction)
+    static void _bind_methods(){}
+};
+class LoadInputNodeAction: public NodeAction{
+    GDCLASS(LoadInputNodeAction,NodeAction)
     static void _bind_methods(){}
 };
 class CookNodeAction: public NodeAction{
@@ -340,7 +382,7 @@ private:
         godot::ClassDB::bind_method(godot::D_METHOD("disconnectNode","nodeId","inputIndex"),static_cast<bool(HoudiniEngineManager::*)(godot::Ref<NodeId>, int)>(&HoudiniEngineManager::disconnectNode));
         godot::ClassDB::bind_method(godot::D_METHOD("cookNode","nodeId"),static_cast<bool(HoudiniEngineManager::*)(godot::Ref<NodeId>)>(&HoudiniEngineManager::cookNode));
         godot::ClassDB::bind_method(godot::D_METHOD("deleteNode","nodeId"),static_cast<bool(HoudiniEngineManager::*)(godot::Ref<NodeId>)>(&HoudiniEngineManager::deleteNode));
-        godot::ClassDB::bind_method(godot::D_METHOD("createMeshNode","nodeId"),static_cast<bool(HoudiniEngineManager::*)(godot::Ref<NodeId>)>(&HoudiniEngineManager::createMeshNode));
+        godot::ClassDB::bind_method(godot::D_METHOD("createMeshInstance","nodeId"),static_cast<bool(HoudiniEngineManager::*)(godot::Ref<NodeId>)>(&HoudiniEngineManager::createMeshInstance));
         godot::ClassDB::bind_method(godot::D_METHOD("freeGDNode","node"),static_cast<bool(HoudiniEngineManager::*)(godot::Node*)>(&HoudiniEngineManager::freeGDNode));
         godot::ClassDB::bind_method(godot::D_METHOD("stopFreeGDNode","node"),static_cast<bool(HoudiniEngineManager::*)(godot::Node*)>(&HoudiniEngineManager::stopFreeGDNode));
         godot::ClassDB::bind_method(godot::D_METHOD("getNodeInfo","nodeId"),static_cast<godot::Dictionary(HoudiniEngineManager::*)(godot::Ref<NodeId>)>(&HoudiniEngineManager::getNodeInfo));
@@ -349,46 +391,44 @@ private:
         godot::ClassDB::bind_method(godot::D_METHOD("getGeoInfo","nodeId"),static_cast<godot::Dictionary(HoudiniEngineManager::*)(godot::Ref<NodeId>)>(&HoudiniEngineManager::getGeoInfo));
         godot::ClassDB::bind_method(godot::D_METHOD("getMaterialInfo","nodeId"),static_cast<godot::Dictionary(HoudiniEngineManager::*)(godot::Ref<NodeId>)>(&HoudiniEngineManager::getMaterialInfo));
         godot::ClassDB::bind_method(godot::D_METHOD("getParameters","nodeId"),static_cast<godot::Dictionary(HoudiniEngineManager::*)(godot::Ref<NodeId>)>(&HoudiniEngineManager::getParameters));
-        godot::ClassDB::bind_method(godot::D_METHOD("getAttributes","nodeId","partId"),static_cast<godot::Dictionary(HoudiniEngineManager::*)(godot::Ref<NodeId>,godot::Ref<PartId>)>(&HoudiniEngineManager::getAttributes));
+        //godot::ClassDB::bind_method(godot::D_METHOD("getAttributes","nodeId","partId"),static_cast<godot::Dictionary(HoudiniEngineManager::*)(godot::Ref<NodeId>,godot::Ref<PartId>)>(&HoudiniEngineManager::getAttributes));
 
         godot::ClassDB::add_signal("HoudiniEngineManager",godot::MethodInfo("materialChanged",godot::PropertyInfo(godot::Variant::OBJECT,"nodeId")));
         godot::ClassDB::add_signal("HoudiniEngineManager",godot::MethodInfo("geometryChanged",godot::PropertyInfo(godot::Variant::OBJECT,"nodeId")));
     }
+    enum class _godot_msg_type{
+        log,warning,error
+    };
     template <typename ...T>
-    void printFile(T... output){
+    void _output_log(T... output){
         if(!logFilePath.empty()){
-            logFile << std::chrono::system_clock::now() << " ### ";
-            int arr[] = {((logFile << output),0)...};
+            logFile << " ### " << std::chrono::system_clock::now() << " ### \n";
+            int _[] = {((logFile << output),0)...};
             logFile << std::endl;
         }
     }
     template <typename ...T>
-    void printLog(T... output){
-        printFile(output...);
-        godot::UtilityFunctions::push_warning(output...,'\n');
+    void _print_godot_msg(_godot_msg_type type, T... output){
+        switch (type)
+        {
+        case _godot_msg_type::log:
+            godot::UtilityFunctions::print(output...,'\n');
+            break;
+        case _godot_msg_type::warning:
+            godot::UtilityFunctions::push_warning(output...,'\n');
+            break;
+        case _godot_msg_type::error:
+            godot::UtilityFunctions::push_error(output...,'\n');
+            break;
+        default:
+            break;
+        }
     }
-    template <typename ...T>
-    bool printLog(HAPI_Result result,HAPI_Result target,T... output){
-        if(result != target)
-            return false;
-        printFile(output...);
-        godot::UtilityFunctions::push_warning(output...,'\n');
-        return true;
-    }
-    template <typename ...T>
-    void printErr(T... output){
-        printFile(output...);
-        godot::UtilityFunctions::push_error(output...,'\n');
-    }
-    template <typename ...T>
-    bool printErr(HAPI_Result result,HAPI_Result target,T... output){
-        if(result != target)
-            return false;
-        printFile(output...);
-        godot::UtilityFunctions::push_error(output...,'\n');
-        return true;
-    }
-
+    #define printFile(...) ;{std::source_location _houdini_engine_source_loc = std::source_location::current();_output_log("\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);};
+    #define printLog(...) ;{std::source_location _houdini_engine_source_loc = std::source_location::current();_output_log("\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);_print_godot_msg(_godot_msg_type::log,"\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);};
+    #define printWarning(...) ;{std::source_location _houdini_engine_source_loc = std::source_location::current();_output_log("\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);_print_godot_msg(_godot_msg_type::warning,"\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);};
+    #define printError(...) ;{std::source_location _houdini_engine_source_loc = std::source_location::current();_output_log("\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);_print_godot_msg(_godot_msg_type::error,"\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);};
+    
 
 
     void _get_property_list(godot::List<godot::PropertyInfo>* list){
@@ -406,6 +446,8 @@ private:
         list->push_back(godot::PropertyInfo(godot::Variant::BOOL,"NodeSettings_showModel"));
         list->push_back(godot::PropertyInfo(godot::Variant::OBJECT,"NodeSettings_nodeAction",godot::PROPERTY_HINT_RESOURCE_TYPE,"NodeAction"));
         list->push_back(godot::PropertyInfo(godot::Variant::OBJECT,"NodeSettings_nowNode",godot::PROPERTY_HINT_RESOURCE_TYPE,"HDANode"));
+        list->push_back(godot::PropertyInfo(godot::Variant::OBJECT,"NodeSettings_inputMesh",godot::PROPERTY_HINT_RESOURCE_TYPE,"Mesh"));
+        list->push_back(godot::PropertyInfo(godot::Variant::OBJECT,"NodeSettings_inputMeshTreeRoot",godot::PROPERTY_HINT_NODE_TYPE));
         list->push_back(godot::PropertyInfo(godot::Variant::ARRAY,"NodeSettings_nodes"));
         
 
@@ -461,6 +503,12 @@ private:
             return true;
         }else if(propertyName == "NodeSettings_nowNode"){
             ret = nowNode;
+            return true;
+        }else if(propertyName == "NodeSettings_inputMesh"){
+            ret = inputMesh;
+            return true;
+        }else if(propertyName == "NodeSettings_inputMeshTreeRoot"){
+            ret = inputMeshTreeRoot;
             return true;
         }else if(propertyName == "NodeSettings_nodes"){
             ret = get_nodes();
@@ -551,6 +599,18 @@ private:
                 updateInternalModel();
             }
             return true;
+        }else if(propertyName == "NodeSettings_inputMesh"){
+            auto a = (godot::Ref<godot::Mesh>)(value);
+            if(a.is_valid())
+                inputMeshTreeRoot = nullptr;
+            inputMesh = a;
+            return true;
+        }else if(propertyName == "NodeSettings_inputMeshTreeRoot"){
+            auto a = (godot::Node*)(godot::Object*)(value);
+            if(a != nullptr)
+                inputMesh.unref();
+            inputMeshTreeRoot = a;
+            return true;
         }else if(propertyName == "NodeSettings_nodes"){
 
             return true;
@@ -613,7 +673,7 @@ private:
                         HoudiniApi::SetParmStringValue(&session,id,((godot::String)value).utf8().get_data(),parmId,i);
                     }break;
                     default:{
-                        printErr("Not supported type!");
+                        printError("Not supported type!");
                     }break;
                     }
                 }
@@ -628,13 +688,13 @@ private:
     GDE_EXPORT 
     void _init_hserver(){
         if(!findproc("hserver")){
-            printErr("Can't find hserver. Try to restart it by hkey.");
-            printErr("Please restart the hserver to manually.");
-            printLog("Run ",(houdiniRootPath+"/bin/hkey").c_str()," to restart hserver");
+            printError("Can't find hserver. Try to restart it by hkey.");
+            printError("Please restart the hserver to manually.");
+            printWarning("Run ",(houdiniRootPath+"/bin/hkey").c_str()," to restart hserver");
             if(houdiniRootPath.empty()){
-                printLog("Run Houdini License Administrator (hkey) to restart hserver");
+                printWarning("Run Houdini License Administrator (hkey) to restart hserver");
             }else{
-                printLog("Run ",(houdiniRootPath+"/bin/hkey").c_str()," to restart hserver");
+                printWarning("Run ",(houdiniRootPath+"/bin/hkey").c_str()," to restart hserver");
             }
         }
     }
@@ -859,8 +919,9 @@ private:
 
         godot::OS::get_singleton()->set_low_processor_usage_mode(true);
 
-        godot::Ref<godot::Material> defaultMaterial;
+        godot::Ref<godot::StandardMaterial3D> defaultMaterial;
         defaultMaterial.instantiate();
+        defaultMaterial->set_flag(godot::BaseMaterial3D::Flags::FLAG_ALBEDO_FROM_VERTEX_COLOR,true);
         materialRes[""] = defaultMaterial;
 
         
@@ -897,7 +958,7 @@ private:
     void term(){
         if(sessionOpened){
             if(!stopSession()){
-                printErr(__FILE__, " : ", __LINE__," - ", "Failed to stop session.\n");
+                printError("Failed to stop session.\n");
             }
         }
         using namespace std::chrono_literals;
@@ -1018,10 +1079,51 @@ private:
     godot::Ref<NodeAction> nodeAction;
     GDE_EXPORT
     void set_nodeAction(godot::Ref<NodeAction> action){
-        if(action.is_null()||nowNode.is_null())
+        if(action.is_null())
             return;
         const auto& type = typeid(*(action.ptr()));
-        if(type == typeid(CookNodeAction)){
+        if(type == typeid(LoadInputNodeAction)){
+            if(inputMesh.is_null()&&inputMeshTreeRoot == nullptr)
+                return;
+            this->nodeAction = action;
+            std::jthread([this]{
+                int id = -1;
+                if(inputMesh.is_valid()){
+                    createInputNode("Input_Mesh",id,-1,inputMesh);
+                }else if(inputMeshTreeRoot != nullptr){
+                    std::function<void(godot::Node*)> func = [&,this](godot::Node* root){
+                        if(auto a = root;a->get_class() == godot::MeshInstance3D::get_class_static()){
+                            auto mesh = static_cast<godot::MeshInstance3D*>(a)->get_mesh();
+                            createInputNode(std::string("Input_")+a->get_name().c_escape().utf8().get_data(),id,-1,mesh);
+                        }else if(a->get_class() == godot::MultiMeshInstance3D::get_class_static()){
+                            auto mesh = static_cast<godot::MultiMeshInstance3D*>(a)->get_multimesh()->get_mesh();
+                            createInputNode(std::string("Input_")+a->get_name().c_escape().utf8().get_data(),id,-1,mesh);
+                        }
+
+                        godot::TypedArray<godot::Node> children;
+                        auto id = Contact::add_call([&,this]{
+                            children = root->get_children();
+                        });
+                        while(Contact::find_if(id)){
+                            using namespace std::chrono_literals;
+                            std::this_thread::sleep_for(1ms);
+                        }
+                        for(int i = 0,sz = children.size();i!=sz;++i){
+                            func(static_cast<godot::Node*>((godot::Object*)children[i]));
+                        }
+                    };
+                    func(inputMeshTreeRoot);
+                }
+
+                this->nodeAction.unref();
+                Contact::add_call([this]{
+                    notify_property_list_changed();
+                });
+            }).detach();
+        }
+        else if(type == typeid(CookNodeAction)){
+            if(nowNode.is_null())
+                return;
             this->nodeAction = action;
             std::jthread([this]{
                 if(nowNode.is_null())
@@ -1035,6 +1137,8 @@ private:
             }).detach();
         }
         else if(type == typeid(DeleteNodeAction)){
+            if(nowNode.is_null())
+                return;
             this->nodeAction = action;
             std::jthread([this]{
                 if(nowNode.is_null())
@@ -1048,11 +1152,13 @@ private:
             }).detach();
         }
         else if(type == typeid(CreateMeshAction)){
+            if(nowNode.is_null())
+                return;
             this->nodeAction = action;
             std::jthread([this]{
                 if(nowNode.is_null())
                     return;
-                createMeshNode();
+                    createMeshInstance();
                 this->nodeAction.unref();
                 Contact::add_call([this]{
                     notify_property_list_changed();
@@ -1063,6 +1169,8 @@ private:
 
     bool autoCook = 0;
     bool showModel = 0;
+    godot::Ref<godot::Mesh> inputMesh;
+    godot::Node* inputMeshTreeRoot = nullptr;
 
     bool useEnvLibPath = true;
 
@@ -1078,13 +1186,13 @@ private:
         if(!std::filesystem::exists(hconfigPath)){
             hconfigPath += ".exe";
             if(!std::filesystem::exists(hconfigPath)){
-                printErr("Invalid houdini root path. Make sure \"${HoudiniRootPath}/bin/hconfig\" is exist.");
+                printError("Invalid houdini root path. Make sure \"${HoudiniRootPath}/bin/hconfig\" is exist.");
                 return;
             }
         }
         std::string output = exec_output(hconfigPath.c_str());
         if(output.empty()){
-            printErr("Houdini environment is null");
+            printError("Houdini environment is null");
             return;
         }
         std::istringstream iss(output);
@@ -1115,17 +1223,16 @@ private:
         }
         std::string houdiniPath = path.utf8().get_data();
         if(!std::filesystem::exists(houdiniPath)){
-            printErr("Invalid houdini lib path. Make sure the dir exists.");
+            printError("Invalid houdini lib path. Make sure the dir exists.");
             return;
         }
         houdiniLibPath = houdiniPath;
-        std::cout << "lib path " << houdiniLibPath << std::endl;
         if(!useEnvLibPath)
             initHoudini();
     }
     void initHoudini(){
         if(putenv((char*)"HAPI_CLIENT_NAME=godot")){
-            printLog("Failed to change env \"HAPI_CLIENT_NAME\" to \"godot\".\n");
+            printWarning("Failed to change env \"HAPI_CLIENT_NAME\" to \"godot\".\n");
         }
         if(useEnvLibPath)
             libHAPIL = HoudiniEnginePlatform::LoadLibHAPIL();
@@ -1134,13 +1241,14 @@ private:
         if(libHAPIL != nullptr){
             HoudiniApi::InitializeHAPI(libHAPIL);
         }else{
-            printErr("Failed to initialize hapi");
+            printError("Failed to initialize hapi");
         }
         if(!HoudiniApi::IsHAPIInitialized()){
-            printErr(__FILE__, " : ", __LINE__," - ", "Failed to load and initialize the "
+            printError("Failed to load and initialize the "
                         "Houdini Engine API from libHAPIL.\n");
         }
     }
+
     std::string logFilePath = "";
     std::ofstream logFile;
     GDE_EXPORT
@@ -1235,7 +1343,11 @@ private:
         return get_cookOptions();
     }
     enum class AttribOwner{
-        Point,Vertex,Prim,Detail
+        Invalid = HAPI_ATTROWNER_INVALID,
+        Point = HAPI_ATTROWNER_POINT,
+        Vertex = HAPI_ATTROWNER_VERTEX,
+        Prim = HAPI_ATTROWNER_PRIM,
+        Detail = HAPI_ATTROWNER_DETAIL
     };
     enum class PartType{
         Invalid = HAPI_PARTTYPE_INVALID,
@@ -1246,7 +1358,6 @@ private:
         Box = HAPI_PARTTYPE_BOX,
         Sphere = HAPI_PARTTYPE_SPHERE,
     };
-
     //      NodeId,AssetId
     std::map<int,int> nodeIds;
     //      AssetId,Res
@@ -1277,7 +1388,7 @@ public:
     GDE_EXPORT
     bool startSession(SessionType type,bool use_cooking_thread){
         if(sessionOpened){
-            printFile(__FILE__, " : ", __LINE__," - ", "Now session is valid.\n");
+            printFile("Now session is valid.\n");
             return true;
         }
 
@@ -1299,9 +1410,9 @@ public:
                 &session,&sessionInfo
             );
             if(SessionResult == HAPI_RESULT_SUCCESS){
-                printFile(__FILE__, " : ", __LINE__," - ", "Successful create a HAPI in-process session\n");
+                printFile("Successful create a HAPI in-process session\n");
             }else{
-                printErr(__FILE__, " : ", __LINE__," - ", "Error create session: ",SessionResult);
+                printError("Error create session: ",SessionResult);
             }
         }break;
         case SessionType::NewNamedPipe:{
@@ -1314,9 +1425,9 @@ public:
                 &session,namedPipe.c_str(),&sessionInfo
             );
             if(SessionResult == HAPI_RESULT_SUCCESS){
-                printFile(__FILE__, " : ", __LINE__," - ", "Successful create a HAPI named-pipe session\n");
+                printFile("Successful create a HAPI named-pipe session\n");
             }else{
-                printErr(__FILE__, " : ", __LINE__," - ", "Error create session: ",SessionResult);
+                printError("Error create session: ",SessionResult);
             }
         }break;
         case SessionType::NewTCPSocket:{
@@ -1329,9 +1440,9 @@ public:
                 &session,hostName.c_str(), tcpPort, &sessionInfo
             );
             if(SessionResult == HAPI_RESULT_SUCCESS){
-                printFile(__FILE__, " : ", __LINE__," - ", "Successful create a HAPI TCP socket session\n");
+                printFile("Successful create a HAPI TCP socket session\n");
             }else{
-                printErr(__FILE__, " : ", __LINE__," - ", "Error create session: ",SessionResult);
+                printError("Error create session: ",SessionResult);
             }
         }break;
         case SessionType::ExistingNamedPipe:{
@@ -1340,9 +1451,9 @@ public:
                 &session,namedPipe.c_str(),&sessionInfo
             );
             if(SessionResult == HAPI_RESULT_SUCCESS){
-                printFile(__FILE__, " : ", __LINE__," - ", "Successful connect to an existint HAPI named-pipe session\n");
+                printFile("Successful connect to an existint HAPI named-pipe session\n");
             }else{
-                printErr(__FILE__, " : ", __LINE__," - ", "Error create session: ",SessionResult);
+                printError("Error create session: ",SessionResult);
             }
         }break;
         case SessionType::ExistingTCPSocket:{
@@ -1351,9 +1462,9 @@ public:
                 &session,hostName.c_str(), tcpPort, &sessionInfo
             );
             if(SessionResult == HAPI_RESULT_SUCCESS){
-                printFile(__FILE__, " : ", __LINE__," - ", "Successful connect to an existint HAPI TCP socket session\n");
+                printFile("Successful connect to an existint HAPI TCP socket session\n");
             }else{
-                printErr(__FILE__, " : ", __LINE__," - ", "Error create session: ",SessionResult);
+                printError("Error create session: ",SessionResult);
             }
         }break;
         case SessionType::ExistingSharedMemory:{
@@ -1362,13 +1473,13 @@ public:
                 &session,sharedMemoryName.c_str(), &sessionInfo
             );
             if(SessionResult == HAPI_RESULT_SUCCESS){
-                printFile(__FILE__, " : ", __LINE__," - ", "Successful connect to an existint HAPI shared memory session\n");
+                printFile("Successful connect to an existint HAPI shared memory session\n");
             }else{
-                printErr(__FILE__, " : ", __LINE__," - ", "Error create session: ",SessionResult);
+                printError("Error create session: ",SessionResult);
             }
         }break;
         default:{
-            printErr(__FILE__, " : ", __LINE__," - ", "Cannot connect to unknown session type (",sessionType,")");
+            printError("Cannot connect to unknown session type (",sessionType,")");
             return false;
         }break;
         }
@@ -1378,14 +1489,14 @@ public:
             {
                 std::string connectionError = HoudiniEngineUtility::getConnectionError();
                 if (!connectionError.empty())
-                    printErr(__FILE__, " : ", __LINE__," - ", "Houdini Engine Session failed to connect - ",connectionError.c_str());
+                    printError("Houdini Engine Session failed to connect - ",connectionError.c_str());
             }
-            printErr(__FILE__, " : ", __LINE__," - ", "Houdini Engine Session failed to start");
+            printError("Houdini Engine Session failed to start");
             return false;
         }
         sessionOpened = true;
         if(!initialize(use_cooking_thread)){
-            printErr(__FILE__, " : ", __LINE__," - ", "Failed to start the Houdini Engine session - Failed to initialize HAPI");
+            printError("Failed to start the Houdini Engine session - Failed to initialize HAPI");
             return false;
         }
 
@@ -1395,17 +1506,17 @@ public:
     bool stopSession(){
         if(sessionOpened){
             if(HoudiniApi::Cleanup(&session) != HAPI_RESULT_SUCCESS){
-                printErr(__FILE__, " : ", __LINE__," - ", "Failed to stop the Houdini Engine session - Clean up failed.");
+                printError("Failed to stop the Houdini Engine session - Clean up failed.");
                 sessionOpened = false;
                 return false;
             }
             if(HoudiniApi::CloseSession(&session) != HAPI_RESULT_SUCCESS){
-                printErr(__FILE__, " : ", __LINE__," - ", "Failed to stop the Houdini Engine session - Close session failed.");
+                printError("Failed to stop the Houdini Engine session - Close session failed.");
                 sessionOpened = false;
                 return false;
             }
         }else{
-            printErr(__FILE__, " : ", __LINE__," - ", "Failed to stop the Houdini Engine session - Session is invalid.");
+            printError("Failed to stop the Houdini Engine session - Session is invalid.");
             return false;
         }
         sessionOpened = false;
@@ -1432,7 +1543,7 @@ public:
     GDE_EXPORT
     bool initialize(bool use_cooking_thread){
         if(!sessionOpened){
-            printErr(__FILE__, " : ", __LINE__," - ", "Failed to initialize HAPI: The session is invalid.");
+            printError("Failed to initialize HAPI: The session is invalid.");
             return false;
         }
 
@@ -1443,11 +1554,11 @@ public:
             );
             _update_settings();
             if(Result == HAPI_RESULT_SUCCESS){
-                printFile(__FILE__, " : ", __LINE__," - ", "Successfully initialized Houdini Engine.");
+                printFile("Successfully initialized Houdini Engine.");
             }else if(Result == HAPI_RESULT_ALREADY_INITIALIZED){
-                printFile(__FILE__, " : ", __LINE__," - ", "Successfully initialized Houdini Engine - HAPI was already initialized.");
+                printFile("Successfully initialized Houdini Engine - HAPI was already initialized.");
             }else{
-                printErr(__FILE__, " : ", __LINE__," - ", "Houdini Engine API initialization failed: ",Result);
+                printError("Houdini Engine API initialization failed: ",Result);
                 return false;
             }
         }
@@ -1456,14 +1567,14 @@ public:
     GDE_EXPORT
     std::vector<int> loadAssets(godot::Ref<HDAResource> hdaRes,Void){
         if(!sessionOpened){
-            printErr(__FILE__, " : ", __LINE__," - ", "Error load Asset with invalid session");
+            printError("Error load Asset with invalid session");
             return {};
         }
         int assetId = -1;
         try{
 
         if(auto a = HoudiniApi::LoadAssetLibraryFromFile(&session,hdaRes->path.c_str(),true,&assetId);a != HAPI_RESULT_SUCCESS){
-            printErr(__FILE__, " : ", __LINE__," - ", "Error load Asset from file: ");
+            printError("Error load Asset from file: ");
             return {};
         }
 
@@ -1471,13 +1582,13 @@ public:
         }
         int asset_count = 0;
         if(auto a = HoudiniApi::GetAvailableAssetCount(&session,assetId,&asset_count); a != HAPI_RESULT_SUCCESS){
-            printErr(__FILE__, " : ", __LINE__," - ", "Error get available asset count: ",a);
+            printError("Error get available asset count: ",a);
             return {};
         }
         std::vector<HAPI_StringHandle> assetSH;
         assetSH.resize(asset_count);
         if(auto a = HoudiniApi::GetAvailableAssets(&session,assetId,assetSH.data(),asset_count);a != HAPI_RESULT_SUCCESS){
-            printErr(__FILE__, " : ", __LINE__," - ", "Error get available assets: ",a);
+            printError("Error get available assets: ",a);
             return {};
         }
 
@@ -1507,14 +1618,14 @@ public:
     GDE_EXPORT
     bool createNode(std::string nodeLabel, std::string operatorName, int& id, int parentId, int assetId){
         if(!sessionOpened){
-            printErr(__FILE__, " : ", __LINE__," - ", "Failed to create node: The session is invalid.");
+            printError("Failed to create node: The session is invalid.");
             return false;
         }
         if(HoudiniApi::CreateNode(&session,parentId,operatorName.c_str(),nodeLabel.c_str(),false,&id) != HAPI_RESULT_SUCCESS){
-            printErr(__FILE__, " : ", __LINE__," - ", "Error create node: ",HoudiniEngineUtility::getLastError().c_str());
+            printError("Error create node: ",HoudiniEngineUtility::getLastError().c_str());
             return false;
         }else{
-            printFile(__FILE__, " : ", __LINE__," - ", "Success create node, ID: ",id);
+            printFile("Success create node, ID: ",id);
         }
         nodeIds.insert({id,assetId});
         return true;
@@ -1526,14 +1637,14 @@ public:
     GDE_EXPORT
     bool connectNode(int nodeId, int inputIndex,int node_to_connect,int outputIndex){
         if(!sessionOpened){
-            printErr(__FILE__, " : ", __LINE__," - ", "Failed to connect node: The session is invalid.");
+            printError("Failed to connect node: The session is invalid.");
             return false;
         }
         if(HoudiniApi::ConnectNodeInput(&session,nodeId,inputIndex,node_to_connect,outputIndex) != HAPI_RESULT_SUCCESS){
-            printErr(__FILE__, " : ", __LINE__," - ", "Error connect node: ",HoudiniEngineUtility::getLastError().c_str());
+            printError("Error connect node: ",HoudiniEngineUtility::getLastError().c_str());
             return false;
         }else{
-            printFile(__FILE__, " : ", __LINE__," - ", "Success connect node ",nodeId," with ",node_to_connect);
+            printFile("Success connect node ",nodeId," with ",node_to_connect);
         }
         return true;
     }
@@ -1544,14 +1655,14 @@ public:
     GDE_EXPORT
     bool disconnectNode(int nodeId, int inputIndex){
         if(!sessionOpened){
-            printErr(__FILE__, " : ", __LINE__," - ", "Failed to disconnect node: The session is invalid.");
+            printError("Failed to disconnect node: The session is invalid.");
             return false;
         }
         if(HoudiniApi::DisconnectNodeInput(&session,nodeId,inputIndex) != HAPI_RESULT_SUCCESS){
-            printErr(__FILE__, " : ", __LINE__," - ", "Error disconnect node: ",HoudiniEngineUtility::getLastError().c_str());
+            printError("Error disconnect node: ",HoudiniEngineUtility::getLastError().c_str());
             return false;
         }else{
-            printFile(__FILE__, " : ", __LINE__," - ", "Success dicconnect node ",nodeId,"'s port ",inputIndex);
+            printFile("Success dicconnect node ",nodeId,"'s port ",inputIndex);
         }
         return true;
     }
@@ -1562,7 +1673,7 @@ public:
     GDE_EXPORT
     bool cookNode(int id){
         if(!sessionOpened){
-            printErr(__FILE__, " : ", __LINE__," - ", "Failed to cook node: The session is invalid.");
+            printError("Failed to cook node: The session is invalid.");
             return false;
         }
         if(id == -1)
@@ -1570,7 +1681,7 @@ public:
         if(nodeIds.find(id) == nodeIds.end())
             return false;
         if(HoudiniApi::CookNode(&session,id,&cookOptions) != HAPI_RESULT_SUCCESS){
-            printErr(__FILE__, " : ", __LINE__," - ", "Failed to cook node",HoudiniEngineUtility::getLastCookError().c_str());
+            printError("Failed to cook node",HoudiniEngineUtility::getLastCookError().c_str());
             return false;
         }
         waitForCook();
@@ -1589,11 +1700,11 @@ public:
     GDE_EXPORT
     bool deleteNode(int id){
         if(!sessionOpened){
-            printErr(__FILE__, " : ", __LINE__," - ", "Failed to cook node: The session is invalid.");
+            printError("Failed to cook node: The session is invalid.");
             return false;
         }
         if(auto a = HoudiniApi::DeleteNode(&session,id);a != HAPI_RESULT_SUCCESS){
-            printErr(__FILE__, " : ", __LINE__," - ", "Failed to delete node: ",a," - ",HoudiniEngineUtility::getLastError().c_str());
+            printError("Failed to delete node: ",a," - ",HoudiniEngineUtility::getLastError().c_str());
             return false;
         }
         Contact::add_call([=,this]{
@@ -1623,7 +1734,7 @@ public:
     GDE_EXPORT
     bool waitForCook(){
         if(!sessionOpened){
-            printErr(__FILE__, " : ", __LINE__," - ", "Failed to cook node: The session is invalid.");
+            printError("Failed to cook node: The session is invalid.");
             return false;
         }
         int status;
@@ -1633,7 +1744,7 @@ public:
             std::this_thread::sleep_for(std::chrono::microseconds(1));
         }while(status > HAPI_STATE_MAX_READY_STATE && result == HAPI_RESULT_SUCCESS);
         if(status != HAPI_STATE_READY || result != HAPI_RESULT_SUCCESS){
-            printErr(__FILE__, " : ", __LINE__," - ", "Cook failure: ",HoudiniEngineUtility::getLastCookError().c_str());
+            printError("Cook failure: ",HoudiniEngineUtility::getLastCookError().c_str());
             return false;
         }
         return true;
@@ -1662,7 +1773,7 @@ public:
             std::vector<float>& normals = normal_Attrib.second;
             std::vector<float>& uvs = uv_Attrib.second;
             std::vector<float>& uv2s = uv2_Attrib.second;
-            std::vector<std::string> voidMaterialPaths;
+            static std::vector<std::string> voidMaterialPaths;
             std::vector<std::string>& materialPaths = voidMaterialPaths;
             if(materials.find(nodeId)!=materials.end()&&materials[nodeId].find(part.first)!=materials[nodeId].end()){
                 materialPaths = materials[nodeId][part.first];
@@ -1793,6 +1904,7 @@ public:
             
             for(auto i = 0,count = arr_mesh->get_surface_count();i!=count;++i){
                 ref->add_surface_from_arrays(godot::Mesh::PRIMITIVE_TRIANGLES,arr_mesh->surface_get_arrays(i));
+                ref->surface_set_material(i,arr_mesh->surface_get_material(i));
             }
             Contact::add_call([=,this]{
                 if(internalModels.find(part.first)==internalModels.end()){
@@ -1808,7 +1920,7 @@ public:
         return true;
     }
     GDE_EXPORT
-    void createMeshNode(){
+    void createMeshInstance(){
         if(!showModel)
             updateInternalModel();
         Contact::add_call([=,this]{
@@ -1893,7 +2005,7 @@ public:
         });
     }
     GDE_EXPORT
-    bool createMeshNode(int nodeId){
+    bool createMeshInstance(int nodeId){
          
         
         getParameters(nodeId);
@@ -2052,8 +2164,8 @@ public:
         return true;
     }
     GDE_EXPORT
-    bool createMeshNode(godot::Ref<NodeId> id){
-        return createMeshNode(*id);
+    bool createMeshInstance(godot::Ref<NodeId> id){
+        return createMeshInstance(*id);
     }
     GDE_EXPORT
     bool freeGDNode(godot::Node* node){
@@ -2085,7 +2197,7 @@ public:
     HAPI_NodeInfo getNodeInfo(int id){
         HAPI_NodeInfo info;
         if(HoudiniApi::GetNodeInfo(&session,id,&info) != HAPI_RESULT_SUCCESS){
-            printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+            printError(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
         return info;
@@ -2095,7 +2207,7 @@ public:
         
         HAPI_NodeInfo info;
         if(HoudiniApi::GetNodeInfo(&session,**id,&info) != HAPI_RESULT_SUCCESS){
-            printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+            printError(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
         godot::Dictionary dic;
@@ -2123,7 +2235,7 @@ public:
     HAPI_AssetInfo getAssetInfo(int id){
         HAPI_AssetInfo info;
         if(HoudiniApi::GetAssetInfo(&session,id,&info) != HAPI_RESULT_SUCCESS){
-            printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+            printError(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
         return info;
@@ -2133,7 +2245,7 @@ public:
         
         HAPI_AssetInfo info;
         if(HoudiniApi::GetAssetInfo(&session,**id,&info) != HAPI_RESULT_SUCCESS){
-            printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+            printError(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
         godot::Dictionary dic;
@@ -2167,7 +2279,7 @@ public:
     HAPI_ObjectInfo getObjectInfo(int id){
         HAPI_ObjectInfo info;
         if(HoudiniApi::GetObjectInfo(&session,id,&info) != HAPI_RESULT_SUCCESS){
-            printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+            printError(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
         return info;
@@ -2177,7 +2289,7 @@ public:
         
         HAPI_ObjectInfo info;
         if(HoudiniApi::GetObjectInfo(&session,**id,&info) != HAPI_RESULT_SUCCESS){
-            printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+            printError(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
         godot::Dictionary dic;
@@ -2200,7 +2312,7 @@ public:
         
         HAPI_GeoInfo info;
         if(HoudiniApi::GetGeoInfo(&session,id,&info) != HAPI_RESULT_SUCCESS){
-            printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+            printError(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
         return info;
@@ -2210,7 +2322,7 @@ public:
         
         HAPI_GeoInfo info;
         if(HoudiniApi::GetGeoInfo(&session,**id,&info) != HAPI_RESULT_SUCCESS){
-            printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+            printError(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
         godot::Dictionary dic;
@@ -2234,7 +2346,7 @@ public:
         
         HAPI_MaterialInfo info;
         if(HoudiniApi::GetMaterialInfo(&session,id,&info) != HAPI_RESULT_SUCCESS){
-            printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+            printError(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
         return info;
@@ -2244,7 +2356,7 @@ public:
         
         HAPI_MaterialInfo info;
         if(HoudiniApi::GetMaterialInfo(&session,**id,&info) != HAPI_RESULT_SUCCESS){
-            printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+            printError(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
         godot::Dictionary dic;
@@ -2256,14 +2368,14 @@ public:
     GDE_EXPORT
     void getParameters(int id){
         if(!sessionOpened){
-            printErr(__FILE__, " : ", __LINE__," - ", "Failed to get parameters: The session is invalid.");
+            printError("Failed to get parameters: The session is invalid.");
             return;
         }
         HAPI_NodeInfo info = getNodeInfo(id);
         std::vector<HAPI_ParmInfo> parm_infos;
         parm_infos.resize(info.parmCount);
         if(auto a = HoudiniApi::GetParameters(&session,id,parm_infos.data(),0,info.parmCount);a != HAPI_RESULT_SUCCESS){
-            printFile(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str(), " No parm got.");
+            printFile(HoudiniEngineUtility::getLastError().c_str(), " No parm got.");
             return;
         }
         for(int i = 0;i!=info.parmCount;++i){
@@ -2275,7 +2387,7 @@ public:
                 parm_int_values.resize(parm_int_count);
 
                 if(auto a = HoudiniApi::GetParmIntValues(&session,id,parm_int_values.data(),parm_infos[i].intValuesIndex,parm_int_count);a != HAPI_RESULT_SUCCESS){
-                    printFile(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str()," ",a);
+                    printFile(HoudiniEngineUtility::getLastError().c_str()," ",a);
                     continue;
                 }
                 for(int v = 0;v != parm_int_count;++v){
@@ -2287,7 +2399,7 @@ public:
                 parm_float_values.resize(parm_float_count);
 
                 if(HoudiniApi::GetParmFloatValues(&session,id,parm_float_values.data(),parm_infos[i].floatValuesIndex,parm_float_count) != HAPI_RESULT_SUCCESS){
-                    printFile(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+                    printFile(HoudiniEngineUtility::getLastError().c_str());
                     continue;
                 }
                 for(int v = 0;v != parm_float_count;++v){
@@ -2297,7 +2409,7 @@ public:
                 int parm_string_count = HoudiniApi::ParmInfo_GetStringValueCount(&parm_infos[i]);
                 std::vector<HAPI_StringHandle> parmSH_values;
                 if(HoudiniApi::GetParmStringValues(&session,id,true,parmSH_values.data(),parm_infos[i].stringValuesIndex,parm_string_count)!=HAPI_RESULT_SUCCESS){
-                    printFile(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+                    printFile(HoudiniEngineUtility::getLastError().c_str());
                     continue;
                 }
                 for(int v = 0;v != parm_string_count;++v){
@@ -2330,13 +2442,13 @@ public:
     GDE_EXPORT
     godot::Dictionary getAttributes(godot::Ref<NodeId> nodeId,godot::Ref<PartId> partId){
         if(!sessionOpened){
-            printErr(__FILE__, " : ", __LINE__," - ", "Failed to get attributes: The session is invalid.");
+            printError("Failed to get attributes: The session is invalid.");
             return {};
         }
         HAPI_PartInfo part_info;
         HoudiniApi::PartInfo_Init(&part_info);
         if(HoudiniApi::GetPartInfo(&session,**nodeId, **partId, &part_info) != HAPI_RESULT_SUCCESS){
-            printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+            printError(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
         int point_attr_count = part_info.attributeCounts[HAPI_ATTROWNER_POINT];
@@ -2347,7 +2459,7 @@ public:
         std::vector<HAPI_StringHandle> attrNameSH;
         attrNameSH.resize(point_attr_count);
         if(HoudiniApi::GetAttributeNames(&session,**nodeId,**partId,HAPI_ATTROWNER_POINT,attrNameSH.data(),point_attr_count) != HAPI_RESULT_SUCCESS){
-            printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+            printError(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
 
@@ -2359,7 +2471,7 @@ public:
             HAPI_AttributeInfo attr_info;
             HoudiniApi::AttributeInfo_Init(&attr_info);
             if(HoudiniApi::GetAttributeInfo(&session,**nodeId,**partId,attr_name.c_str(),HAPI_ATTROWNER_POINT,&attr_info) != HAPI_RESULT_SUCCESS){
-                printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+                printError(HoudiniEngineUtility::getLastError().c_str());
                 continue;
             }
             if(!attr_info.exists)
@@ -2379,7 +2491,7 @@ public:
         attrNameSH.clear();
         attrNameSH.resize(vertex_attr_count);
         if(HoudiniApi::GetAttributeNames(&session,**nodeId,**partId,HAPI_ATTROWNER_VERTEX,attrNameSH.data(),vertex_attr_count) != HAPI_RESULT_SUCCESS){
-            printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+            printError(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
         
@@ -2390,7 +2502,7 @@ public:
             HAPI_AttributeInfo attr_info;
             HoudiniApi::AttributeInfo_Init(&attr_info);
             if(HoudiniApi::GetAttributeInfo(&session,**nodeId,**partId,attr_name.c_str(),HAPI_ATTROWNER_VERTEX,&attr_info) != HAPI_RESULT_SUCCESS){
-                printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+                printError(HoudiniEngineUtility::getLastError().c_str());
                 continue;
             }
             if(!attr_info.exists)
@@ -2410,7 +2522,7 @@ public:
         attrNameSH.clear();
         attrNameSH.resize(prim_attr_count);
         if(HoudiniApi::GetAttributeNames(&session,**nodeId,**partId,HAPI_ATTROWNER_PRIM,attrNameSH.data(),prim_attr_count) != HAPI_RESULT_SUCCESS){
-            printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+            printError(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
 
@@ -2421,7 +2533,7 @@ public:
             HAPI_AttributeInfo attr_info;
             HoudiniApi::AttributeInfo_Init(&attr_info);
             if(HoudiniApi::GetAttributeInfo(&session,**nodeId,**partId,attr_name.c_str(),HAPI_ATTROWNER_PRIM,&attr_info) != HAPI_RESULT_SUCCESS){
-                printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+                printError(HoudiniEngineUtility::getLastError().c_str());
                 continue;
             }
             if(!attr_info.exists)
@@ -2442,7 +2554,7 @@ public:
         attrNameSH.clear();
         attrNameSH.resize(detail_attr_count);
         if(HoudiniApi::GetAttributeNames(&session,**nodeId,**partId,HAPI_ATTROWNER_DETAIL,attrNameSH.data(),detail_attr_count) != HAPI_RESULT_SUCCESS){
-            printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+            printError(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
 
@@ -2453,7 +2565,7 @@ public:
             HAPI_AttributeInfo attr_info;
             HoudiniApi::AttributeInfo_Init(&attr_info);
             if(HoudiniApi::GetAttributeInfo(&session,**nodeId,**partId,attr_name.c_str(),HAPI_ATTROWNER_DETAIL,&attr_info) != HAPI_RESULT_SUCCESS){
-                printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+                printError(HoudiniEngineUtility::getLastError().c_str());
                 continue;
             }
             if(!attr_info.exists)
@@ -2476,7 +2588,7 @@ public:
     bool checkGeometryChange(int nodeId){
         HAPI_GeoInfo geoInfo;
         if(HoudiniApi::GetGeoInfo(&session,nodeId,&geoInfo) != HAPI_RESULT_SUCCESS){
-            printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+            printError(HoudiniEngineUtility::getLastError().c_str());
             return false;
         }
         return geoInfo.hasGeoChanged;
@@ -2486,14 +2598,14 @@ public:
 
         HAPI_GeoInfo mesh_geo_info;
         if(HoudiniApi::GetDisplayGeoInfo(&session, id, &mesh_geo_info) != HAPI_RESULT_SUCCESS){
-            printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+            printError(HoudiniEngineUtility::getLastError().c_str());
             return;
         }
         for(int partId = 0;partId!=mesh_geo_info.partCount;++partId){
             HAPI_PartInfo partInfo;
             HoudiniApi::PartInfo_Init(&partInfo);
             if(HoudiniApi::GetPartInfo(&session, mesh_geo_info.nodeId, partId, &partInfo) != HAPI_RESULT_SUCCESS){
-                printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+                printError(HoudiniEngineUtility::getLastError().c_str());
                 return;
             }
             auto type = partType[id][partId] = (PartType)partInfo.type;
@@ -2501,12 +2613,12 @@ public:
             case PartType::Mesh:{
                 std::vector<int> mesh_face_counts(partInfo.faceCount);
                 if(HoudiniApi::GetFaceCounts(&session,mesh_geo_info.nodeId,partInfo.id,mesh_face_counts.data(),0,partInfo.faceCount) != HAPI_RESULT_SUCCESS){
-                    printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+                    printError(HoudiniEngineUtility::getLastError().c_str());
                     return;
                 }
                 std::vector<int> mesh_vertex_list(partInfo.vertexCount);
                 if(HoudiniApi::GetVertexList(&session,mesh_geo_info.nodeId,partInfo.id,mesh_vertex_list.data(),0, partInfo.vertexCount) != HAPI_RESULT_SUCCESS){
-                    printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+                    printError(HoudiniEngineUtility::getLastError().c_str());
                     return;
                 }
                 
@@ -2516,7 +2628,7 @@ public:
                 auto fetchPointAttrib = [&](HAPI_AttributeOwner owner,const char* attrib_name,std::vector<float>& mesh_attrib_data)->bool{
                     HAPI_AttributeInfo mesh_attrib_info;
                     if(HoudiniApi::GetAttributeInfo(&session,mesh_geo_info.nodeId,partInfo.id,attrib_name, owner,&mesh_attrib_info) != HAPI_RESULT_SUCCESS){
-                        printFile(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+                        printFile(HoudiniEngineUtility::getLastError().c_str());
                         return false;
                     }
                     std::cerr << "mesh_attrib_info.exists: " << mesh_attrib_info.exists << std::endl;
@@ -2528,7 +2640,7 @@ public:
                     std::cerr << "mesh_attrib_info.count: " << mesh_attrib_info.count << std::endl;
                     mesh_attrib_data.resize(dataSize);
                     if(HoudiniApi::GetAttributeFloatData(&session,mesh_geo_info.nodeId,partInfo.id,attrib_name,&mesh_attrib_info,-1,mesh_attrib_data.data(),0,mesh_attrib_info.count) != HAPI_RESULT_SUCCESS){
-                        printFile(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str()," Attribute name : ",attrib_name);
+                        printFile(HoudiniEngineUtility::getLastError().c_str()," Attribute name : ",attrib_name);
                         return false;
                     }
                     return true;
@@ -2575,83 +2687,25 @@ public:
                 std::vector<HAPI_Transform> instancer_transforms(partInfo.instanceCount);
                 auto result = HoudiniApi::GetInstancerPartTransforms(&session,id,partId,HAPI_SRT,instancer_transforms.data(),0,partInfo.instanceCount);
                 if(result != HAPI_RESULT_SUCCESS){
-                    printFile(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+                    printFile(HoudiniEngineUtility::getLastError().c_str());
                     continue;
                 }
                 instanceTransforms[id][partId] = std::move(instancer_transforms);
             }break;
+            case PartType::Invalid:{
+                printError("This part is invalid.");
+            }break;
             default:{
-                printErr("Not yet supported.");
-            }
-            }
-        }
-    }
-    GDE_EXPORT
-    int setGeometry(int id){
-        auto geoInfo = getGeoInfo(id);
-        if(geoInfo.isTemplated)
-            return -1;
-        for(auto part : geometries[id]){
-            std::vector<int>& faces = std::get<0>(part.second);
-            std::vector<float>& positions = std::get<1>(part.second);
-            std::vector<int>& vertexs = std::get<2>(part.second);
-            std::pair<AttribOwner,std::vector<float>>& colors = std::get<3>(part.second);
-            std::pair<AttribOwner,std::vector<float>>& normals = std::get<4>(part.second);
-            std::pair<AttribOwner,std::vector<float>>& uvs = std::get<5>(part.second);
-
-            HAPI_AttributeInfo pointInfo = HoudiniApi::AttributeInfo_Create();
-            pointInfo.count = positions.size()/3;
-            pointInfo.tupleSize = 3;
-            pointInfo.exists = true;
-            pointInfo.storage = HAPI_STORAGETYPE_FLOAT;
-            pointInfo.owner = HAPI_ATTROWNER_POINT;
-            if(HoudiniApi::AddAttribute(&session,id,part.first,"P",&pointInfo) != HAPI_RESULT_SUCCESS){
-                printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
-                return -1;
-            }
-            if(HoudiniApi::SetAttributeFloatData(&session,id,part.first,"P",&pointInfo,positions.data(),0,positions.size()/3) != HAPI_RESULT_SUCCESS){
-                printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
-                return -1;
-            }
-            if(HoudiniApi::SetVertexList(&session,id,part.first,vertexs.data(),0,vertexs.size()) != HAPI_RESULT_SUCCESS){
-                printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
-                return -1;
-            }
-            if(HoudiniApi::SetFaceCounts(&session,id,part.first,faces.data(),0,faces.size()) != HAPI_RESULT_SUCCESS){
-                printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
-                return -1;
+                printError("Not yet supported.");
+            }break;
             }
         }
-        if(HoudiniApi::CommitGeo(&session,id) != HAPI_RESULT_SUCCESS){
-            printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
-            return -1;
-        }
-        HAPI_NodeInfo nodeInfo = getNodeInfo(id);
-        HAPI_NodeId parentId = nodeInfo.parentId;
-
-        HAPI_NodeId colorNode = -1;
-        createNode("Color","color",colorNode,parentId,assetIds[id]->assetId);
-        connectNode(colorNode,0,id,0);
-        HAPI_NodeId normalNode = -1;
-        createNode("Normal","normal",normalNode,id,assetIds[id]->assetId);
-        connectNode(normalNode,0,id,0);
-        HAPI_NodeId uvProjectNode = -1;
-        createNode("UV","uvproject",uvProjectNode,id,assetIds[id]->assetId);
-        connectNode(uvProjectNode,0,id,0);
-        HAPI_NodeId outputNode = -1;
-        createNode("Output","output",outputNode,id,assetIds[id]->assetId);
-        connectNode(outputNode,0,id,0);
-        if(HoudiniApi::SetNodeDisplay(&session,outputNode,1)!=HAPI_RESULT_SUCCESS){
-            printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
-            return -1;
-        }
-        return outputNode;
     }
     GDE_EXPORT
     void getMaterial(int id){
         HAPI_GeoInfo mesh_geo_info;
         if(HoudiniApi::GetDisplayGeoInfo(&session, id, &mesh_geo_info) != HAPI_RESULT_SUCCESS){
-            printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+            printError(HoudiniEngineUtility::getLastError().c_str());
             return;
         }
 
@@ -2659,13 +2713,13 @@ public:
             HAPI_PartInfo mesh_part_info;
             HoudiniApi::PartInfo_Init(&mesh_part_info);
             if(HoudiniApi::GetPartInfo(&session, mesh_geo_info.nodeId, partId, &mesh_part_info) != HAPI_RESULT_SUCCESS){
-                printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+                printError(HoudiniEngineUtility::getLastError().c_str());
                 continue;
             }
             bool all_the_same = false;
             std::vector<HAPI_NodeId> matIds(mesh_part_info.faceCount);
             if(HoudiniApi::GetMaterialNodeIdsOnFaces(&session,id,partId,&all_the_same,matIds.data(),0,mesh_part_info.faceCount)!=HAPI_RESULT_SUCCESS){
-                printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+                printError(HoudiniEngineUtility::getLastError().c_str());
                 continue;
             }
 
@@ -2675,14 +2729,14 @@ public:
         
 
         if(HoudiniApi::GetDisplayGeoInfo(&session, id, &mesh_geo_info) != HAPI_RESULT_SUCCESS){
-            printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+            printError(HoudiniEngineUtility::getLastError().c_str());
             return;
         }
         for(int partId = 0;partId!=mesh_geo_info.partCount;++partId){
             HAPI_PartInfo mesh_part_info;
             HoudiniApi::PartInfo_Init(&mesh_part_info);
             if(HoudiniApi::GetPartInfo(&session, mesh_geo_info.nodeId, partId, &mesh_part_info) != HAPI_RESULT_SUCCESS){
-                printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+                printError(HoudiniEngineUtility::getLastError().c_str());
                 continue;
             }
             std::vector<HAPI_StringHandle> materialPaths;
@@ -2690,14 +2744,14 @@ public:
             HAPI_AttributeInfo materialPathAttribInfo;
             
             if(HoudiniApi::GetAttributeInfo(&session,mesh_geo_info.nodeId,mesh_part_info.id,"gd_mat_path", HAPI_ATTROWNER_PRIM,&materialPathAttribInfo) != HAPI_RESULT_SUCCESS){
-                printFile(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+                printFile(HoudiniEngineUtility::getLastError().c_str());
                 continue;
             }
             if(!materialPathAttribInfo.exists)
                 continue;
             materialPaths.resize(materialPathAttribInfo.count * materialPathAttribInfo.tupleSize);
             if(HoudiniApi::GetAttributeStringData(&session,mesh_geo_info.nodeId,mesh_part_info.id,"gd_mat_path",&materialPathAttribInfo,materialPaths.data(),0,materialPathAttribInfo.count) != HAPI_RESULT_SUCCESS){
-                printFile(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str()," Attribute name : gd_mat_path");
+                printFile(HoudiniEngineUtility::getLastError().c_str()," Attribute name : gd_mat_path");
                 continue;
             }
             for(auto a : materialPaths){
@@ -2716,7 +2770,7 @@ public:
             if(a.second.first){
                 HAPI_MaterialInfo materialInfo;
                 if(HoudiniApi::GetMaterialInfo(&session,a.second.second[0],&materialInfo)!=HAPI_RESULT_SUCCESS){
-                    printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+                    printError(HoudiniEngineUtility::getLastError().c_str());
                 }else{
                     return materialInfo.hasChanged;
                 }
@@ -2724,7 +2778,7 @@ public:
             for(auto& b : a.second.second){
                 HAPI_MaterialInfo materialInfo;
                 if(HoudiniApi::GetMaterialInfo(&session,a.second.second[0],&materialInfo)!=HAPI_RESULT_SUCCESS){
-                    printErr(__FILE__, " : ", __LINE__," - ", HoudiniEngineUtility::getLastError().c_str());
+                    printError(HoudiniEngineUtility::getLastError().c_str());
                 }else{
                     if(materialInfo.hasChanged)
                         return true;
@@ -2732,6 +2786,381 @@ public:
             }
         }
         return false;
+    }
+    GDE_EXPORT
+    bool createInputNode(std::string nodeLabel, int& id, int parentId, godot::Ref<godot::Mesh> mesh){
+        if(!sessionOpened){
+            printError("Failed to create input node: The session is invalid.");
+            return false;
+        }
+        if(HoudiniApi::CreateInputNode(&session,parentId,&id,nodeLabel.c_str()) != HAPI_RESULT_SUCCESS){
+            printError("Error create input node: ",HoudiniEngineUtility::getLastError().c_str());
+            return false;
+        }else{
+            printFile("Success create node, ID: ",id);
+        }
+        if(initInputNode(id,mesh) != -1){
+            nodeIds.insert({id,-1});
+            cookNode(id);
+        }
+        else{
+            deleteNode(id);
+            printError("Failed to create input node.");
+        }
+        return true;
+    }
+    GDE_EXPORT
+    int initInputNode(int id,godot::Ref<godot::Mesh> mesh){
+        printLog(" ")
+        auto geoInfo = getGeoInfo(id);
+        if(geoInfo.isTemplated)
+            return -1;
+        std::vector<int> allFaces;
+        std::vector<float> allPositions;
+        std::vector<int> allVertexs;
+        std::vector<float> allColors;
+        std::vector<float> allNormals;
+        std::vector<float> allUVs;
+        std::vector<float> allUV2s;
+        std::vector<const char*> allMatPaths;
+        printLog(" ")
+        for(int i = 0,size = mesh->get_surface_count();i!=size;++i){
+            printLog(" ")
+            godot::Array rawData = mesh->surface_get_arrays(i);
+            printLog(" ")
+            godot::PackedVector3Array rawVertexs;
+            godot::PackedVector3Array rawNormals;
+            godot::PackedColorArray rawColors;
+            godot::PackedVector2Array rawUVs;
+            godot::PackedVector2Array rawUV2s;
+            godot::PackedInt32Array rawIndexs;
+            godot::String rawMatPath = "";
+            if(auto mat = mesh->surface_get_material(i);mat.is_valid()){
+                rawMatPath = mat->get_path();
+            }
+            if(rawData[godot::Mesh::ARRAY_VERTEX].get_type() == godot::Variant::Type::PACKED_VECTOR3_ARRAY)
+                rawVertexs = rawData[godot::Mesh::ARRAY_VERTEX];
+            if(rawData[godot::Mesh::ARRAY_NORMAL].get_type() == godot::Variant::Type::PACKED_VECTOR3_ARRAY)
+                rawNormals = rawData[godot::Mesh::ARRAY_NORMAL];
+            if(rawData[godot::Mesh::ARRAY_COLOR].get_type() == godot::Variant::Type::PACKED_COLOR_ARRAY)
+                rawColors = rawData[godot::Mesh::ARRAY_COLOR];
+            if(rawData[godot::Mesh::ARRAY_TEX_UV].get_type() == godot::Variant::Type::PACKED_VECTOR2_ARRAY)
+                rawUVs = rawData[godot::Mesh::ARRAY_TEX_UV];
+            if(rawData[godot::Mesh::ARRAY_TEX_UV2].get_type() == godot::Variant::Type::PACKED_VECTOR2_ARRAY)
+                rawUV2s = rawData[godot::Mesh::ARRAY_TEX_UV2];
+            if(rawData[godot::Mesh::ARRAY_INDEX].get_type() == godot::Variant::Type::PACKED_INT32_ARRAY)
+                rawIndexs = rawData[godot::Mesh::ARRAY_INDEX];
+            printLog(" ")
+            std::vector<int> faces;
+            std::vector<float> positions;
+            std::vector<int> vertexs;
+            std::vector<float> colors;
+            std::vector<float> normals;
+            std::vector<float> uvs;
+            std::vector<float> uv2s;
+            std::vector<const char*> matPaths;
+            printLog(" ")
+            if(rawIndexs.is_empty()){
+                std::vector<godot::Vector3> collectPos;
+                collectPos.reserve(rawVertexs.size()/3);
+                for(decltype(rawVertexs.size()) i = 0,size = rawVertexs.size();i!=size;++i){
+                    if(auto it = std::find(collectPos.begin(),collectPos.end(),rawVertexs[i]);it != collectPos.end()){
+                        vertexs.push_back(it-collectPos.begin());
+                    }else{
+                        vertexs.push_back(collectPos.size());
+                        collectPos.push_back(rawVertexs[i]);
+                    }
+                }
+                positions.reserve(collectPos.size()*3);
+                for(decltype(collectPos.size()) i = 0,sz = collectPos.size();i!=sz;++i){
+                    godot::Vector3 pos = collectPos[i];
+                    positions.push_back(pos.x);
+                    positions.push_back(pos.y);
+                    positions.push_back(pos.z);
+                }
+                colors.reserve(rawColors.size()*3);
+                for(decltype(rawColors.size()) i = 0,sz = rawColors.size();i!=sz;++i){
+                    godot::Color col = rawColors[i];
+                    colors.push_back(col.r);
+                    colors.push_back(col.g);
+                    colors.push_back(col.b);
+                }
+                normals.reserve(rawNormals.size()*3);
+                for(decltype(rawNormals.size()) i = 0,sz = rawNormals.size();i!=sz;++i){
+                    godot::Vector3 vec = rawNormals[i];
+                    normals.push_back(vec.x);
+                    normals.push_back(vec.y);
+                    normals.push_back(vec.z);
+                }
+                uvs.reserve(rawUVs.size()*3);
+                for(decltype(rawUVs.size()) i = 0,sz = rawUVs.size();i!=sz;++i){
+                    godot::Vector2 vec = rawUVs[i];
+                    uvs.push_back(vec.x);
+                    uvs.push_back(vec.y);
+                    uvs.push_back(0);
+                }
+                uv2s.reserve(rawUV2s.size()*3);
+                for(decltype(rawUV2s.size()) i = 0,sz = rawUV2s.size();i!=sz;++i){
+                    godot::Vector2 vec = rawUV2s[i];
+                    uv2s.push_back(vec.x);
+                    uv2s.push_back(vec.y);
+                    uv2s.push_back(0);
+                }
+            }else{//Index mode
+                printLog(" ")
+                positions.reserve(rawVertexs.size()*3);
+                for(decltype(rawVertexs.size()) i = 0,sz = rawVertexs.size();i!=sz;++i){
+                    godot::Vector3 pos = rawVertexs[i];
+                    positions.push_back(pos.x);
+                    positions.push_back(pos.y);
+                    positions.push_back(pos.z);
+                }
+                printLog(" ")
+                vertexs.reserve(rawIndexs.size());
+                for(decltype(rawIndexs.size()) i = 0,sz = rawIndexs.size();i!=sz;++i){
+                    vertexs.push_back(rawIndexs[i]);
+                }
+
+                printLog(" ")
+                size_t vertexSize = vertexs.size();
+                std::vector<godot::Color> collectColors;
+                std::vector<godot::Vector3> collectNormals;
+                std::vector<godot::Vector2> collectUVs;
+                std::vector<godot::Vector2> collectUV2s;
+        
+                printLog(" ")
+                size_t rawColorSize = rawColors.size();
+                if(rawColorSize != 0){
+                    collectColors.reserve(vertexSize);
+                    for(auto a : vertexs){
+                        if(a < rawColorSize)
+                            collectColors.emplace_back(rawColors[a]);
+                        else 
+                            collectColors.emplace_back(godot::Color());
+                    }
+                }
+                printLog(" ")
+                size_t rawNormalSize = rawNormals.size();
+                if(rawNormalSize != 0){
+                    collectNormals.reserve(vertexSize);
+                    for(auto a : vertexs){
+                        if(a < rawNormalSize)
+                            collectNormals.emplace_back(rawNormals[a]);
+                        else 
+                            collectNormals.emplace_back(godot::Vector3());
+                    }
+                }
+                printLog(" ")
+                size_t rawUVSize = rawUVs.size();
+                if(rawUVSize != 0){
+                    collectUVs.reserve(vertexSize);
+                    for(auto a : vertexs){
+                        if(a < rawUVSize)
+                            collectUVs.emplace_back(rawUVs[a]);
+                        else 
+                            collectUVs.emplace_back(godot::Vector2());
+                    }
+                }
+                printLog(" ")
+                size_t rawUV2Size = rawUV2s.size();
+                if(rawUV2Size != 0){
+                    collectUV2s.reserve(vertexSize);
+                    for(auto a : vertexs){
+                        if(a < rawUV2Size)
+                            collectUV2s.emplace_back(rawUV2s[a]);
+                        else 
+                            collectUV2s.emplace_back(godot::Vector2());
+                    }
+                }
+
+                printLog(" ")
+                colors.reserve(collectColors.size()*3);
+                for(decltype(collectColors.size()) i = 0,sz = collectColors.size();i!=sz;++i){
+                    godot::Color col = collectColors[i];
+                    colors.push_back(col.r);
+                    colors.push_back(col.g);
+                    colors.push_back(col.b);
+                }
+                printLog(" ")
+                normals.reserve(collectNormals.size()*3);
+                for(decltype(collectNormals.size()) i = 0,sz = collectNormals.size();i!=sz;++i){
+                    godot::Vector3 vec = collectNormals[i];
+                    normals.push_back(vec.x);
+                    normals.push_back(vec.y);
+                    normals.push_back(vec.z);
+                }
+                printLog(" ")
+                uvs.reserve(collectUVs.size()*3);
+                for(decltype(collectUVs.size()) i = 0,sz = collectUVs.size();i!=sz;++i){
+                    godot::Vector2 vec = collectUVs[i];
+                    uvs.push_back(vec.x);
+                    uvs.push_back(vec.y);
+                    uvs.push_back(0);
+                }
+                printLog(" ")
+                uv2s.reserve(collectUV2s.size()*3);
+                for(decltype(collectUV2s.size()) i = 0,sz = collectUV2s.size();i!=sz;++i){
+                    godot::Vector2 vec = collectUV2s[i];
+                    uv2s.push_back(vec.x);
+                    uv2s.push_back(vec.y);
+                    uv2s.push_back(0);
+                }
+                printLog(" ")
+            }
+            const char* matPath = keep_alive_string(rawMatPath.utf8().get_data());
+
+            size_t vertexSize = allVertexs.size();
+            if(!colors.empty()){
+                if(allColors.size()/3 < vertexSize){
+                    allColors.resize(vertexSize*3);
+                }
+                allColors.insert(allColors.end(),colors.begin(),colors.end());
+            }
+            if(!normals.empty()){
+                if(allNormals.size()/3 < vertexSize){
+                    allNormals.resize(vertexSize*3);
+                }
+                allNormals.insert(allNormals.end(),normals.begin(),normals.end());
+            }
+            if(!uvs.empty()){
+                if(allUVs.size()/3 < vertexSize){
+                    allUVs.resize(vertexSize*3);
+                }
+                allUVs.insert(allUVs.end(),uvs.begin(),uvs.end());
+            }
+            if(!uv2s.empty()){
+                if(allUV2s.size()/3 < vertexSize){
+                    allUV2s.resize(vertexSize*3);
+                }
+                allUV2s.insert(allUV2s.end(),uv2s.begin(),uv2s.end());
+            }
+            printLog(" ")
+            allPositions.insert(allPositions.end(),positions.begin(),positions.end());
+            allVertexs.insert(allVertexs.end(),vertexs.begin(),vertexs.end());
+            allMatPaths.insert(allMatPaths.end(),vertexs.size()/3,matPath);
+        }
+        allFaces = std::vector<int>(allVertexs.size()/3,3);
+
+        HAPI_PartInfo node_part = HoudiniApi::PartInfo_Create();
+        node_part.type = HAPI_PARTTYPE_MESH;
+        node_part.faceCount = allFaces.size();
+        node_part.vertexCount = allVertexs.size();
+        node_part.pointCount = allPositions.size()/3;
+        if(HoudiniApi::SetPartInfo(&session,id,0,&node_part) != HAPI_RESULT_SUCCESS){
+            printError("Error create input node: ",HoudiniEngineUtility::getLastError().c_str());
+            return -1;
+        }
+
+        HAPI_AttributeInfo pointInfo = HoudiniApi::AttributeInfo_Create();
+        pointInfo.count = allPositions.size()/3;
+        pointInfo.tupleSize = 3;
+        pointInfo.exists = true;
+        pointInfo.storage = HAPI_STORAGETYPE_FLOAT;
+        pointInfo.owner = HAPI_ATTROWNER_POINT;
+        if(HoudiniApi::AddAttribute(&session,id,0,"P",&pointInfo) != HAPI_RESULT_SUCCESS){
+            printError(HoudiniEngineUtility::getLastError().c_str());
+            return -1;
+        }
+        if(HoudiniApi::SetAttributeFloatData(&session,id,0,"P",&pointInfo,allPositions.data(),0,pointInfo.count) != HAPI_RESULT_SUCCESS){
+            printError(HoudiniEngineUtility::getLastError().c_str());
+            return -1;
+        }
+        if(HoudiniApi::SetVertexList(&session,id,0,allVertexs.data(),0,allVertexs.size()) != HAPI_RESULT_SUCCESS){
+            printError(HoudiniEngineUtility::getLastError().c_str());
+            return -1;
+        }
+        if(HoudiniApi::SetFaceCounts(&session,id,0,allFaces.data(),0,allFaces.size()) != HAPI_RESULT_SUCCESS){
+            printError(HoudiniEngineUtility::getLastError().c_str());
+            return -1;
+        }
+
+        printLog(" ")
+        if(!allColors.empty()){
+            HAPI_AttributeInfo colorInfo = HoudiniApi::AttributeInfo_Create();
+            colorInfo.count = allColors.size()/3;
+            colorInfo.tupleSize = 3;
+            colorInfo.exists = true;
+            colorInfo.storage = HAPI_STORAGETYPE_FLOAT;
+            colorInfo.owner = (HAPI_AttributeOwner)AttribOwner::Vertex;
+            if(HoudiniApi::AddAttribute(&session,id,0,"Cd",&colorInfo) != HAPI_RESULT_SUCCESS){
+                printError(HoudiniEngineUtility::getLastError().c_str());
+                return -1;
+            }
+            std::cerr << "count: " << colorInfo.count << "\tsize: " << allColors.size()/3 << std::endl;
+            if(HoudiniApi::SetAttributeFloatData(&session,id,0,"Cd",&colorInfo,allColors.data(),0,colorInfo.count) != HAPI_RESULT_SUCCESS){
+                printError(HoudiniEngineUtility::getLastError().c_str());
+                return -1;
+            }
+        }
+        if(!allNormals.empty()){
+            HAPI_AttributeInfo normalInfo = HoudiniApi::AttributeInfo_Create();
+            normalInfo.count = allNormals.size()/3;
+            normalInfo.tupleSize = 3;
+            normalInfo.exists = true;
+            normalInfo.storage = HAPI_STORAGETYPE_FLOAT;
+            normalInfo.owner = (HAPI_AttributeOwner)AttribOwner::Vertex;
+            if(HoudiniApi::AddAttribute(&session,id,0,"N",&normalInfo) != HAPI_RESULT_SUCCESS){
+                printError(HoudiniEngineUtility::getLastError().c_str());
+                return -1;
+            }
+            if(HoudiniApi::SetAttributeFloatData(&session,id,0,"N",&normalInfo,allNormals.data(),0,normalInfo.count) != HAPI_RESULT_SUCCESS){
+                printError(HoudiniEngineUtility::getLastError().c_str());
+                return -1;
+            }
+        }
+        if(!allUVs.empty()){
+            HAPI_AttributeInfo uvInfo = HoudiniApi::AttributeInfo_Create();
+            uvInfo.count = allUVs.size()/3;
+            uvInfo.tupleSize = 3;
+            uvInfo.exists = true;
+            uvInfo.storage = HAPI_STORAGETYPE_FLOAT;
+            uvInfo.owner = (HAPI_AttributeOwner)AttribOwner::Vertex;
+            if(HoudiniApi::AddAttribute(&session,id,0,"uv",&uvInfo) != HAPI_RESULT_SUCCESS){
+                printError(HoudiniEngineUtility::getLastError().c_str());
+                return -1;
+            }
+            if(HoudiniApi::SetAttributeFloatData(&session,id,0,"uv",&uvInfo,allUVs.data(),0,uvInfo.count) != HAPI_RESULT_SUCCESS){
+                printError(HoudiniEngineUtility::getLastError().c_str());
+                return -1;
+            }
+        }
+        if(!allUV2s.empty()){
+            HAPI_AttributeInfo uv2Info = HoudiniApi::AttributeInfo_Create();
+            uv2Info.count = allUV2s.size()/3;
+            uv2Info.tupleSize = 3;
+            uv2Info.exists = true;
+            uv2Info.storage = HAPI_STORAGETYPE_FLOAT;
+            uv2Info.owner = (HAPI_AttributeOwner)AttribOwner::Vertex;
+            if(HoudiniApi::AddAttribute(&session,id,0,"uv2",&uv2Info) != HAPI_RESULT_SUCCESS){
+                printError(HoudiniEngineUtility::getLastError().c_str());
+                return -1;
+            }
+            if(HoudiniApi::SetAttributeFloatData(&session,id,0,"uv2",&uv2Info,allUV2s.data(),0,uv2Info.count) != HAPI_RESULT_SUCCESS){
+                printError(HoudiniEngineUtility::getLastError().c_str());
+                return -1;
+            }
+        }
+        if(!allMatPaths.empty()){
+            HAPI_AttributeInfo matInfo = HoudiniApi::AttributeInfo_Create();
+            matInfo.count = allMatPaths.size();
+            matInfo.tupleSize = 1;
+            matInfo.exists = true;
+            matInfo.storage = HAPI_STORAGETYPE_STRING;
+            matInfo.owner = HAPI_ATTROWNER_PRIM;
+            if(HoudiniApi::AddAttribute(&session,id,0,"gd_mat_path",&matInfo) != HAPI_RESULT_SUCCESS){
+                printError(HoudiniEngineUtility::getLastError().c_str());
+                return -1;
+            }
+            if(HoudiniApi::SetAttributeStringData(&session,id,0,"gd_mat_path",&matInfo,allMatPaths.data(),0,matInfo.count) != HAPI_RESULT_SUCCESS){
+                printError(HoudiniEngineUtility::getLastError().c_str());
+                return -1;
+            }
+        }
+        if(HoudiniApi::CommitGeo(&session,id) != HAPI_RESULT_SUCCESS){
+            printError(HoudiniEngineUtility::getLastError().c_str());
+            return -1;
+        }
+        return id;
     }
 };
 

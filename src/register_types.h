@@ -3,7 +3,7 @@
 #define REGISTER_PARTITION_H
 
 
-#define HOT_RELOAD_ENABLED
+//#define HOT_RELOAD_ENABLED
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/classes/node.hpp>
 

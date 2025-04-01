@@ -11,11 +11,16 @@
 #include <thread>
 #include <chrono>
 class Contact{
-    static std::atomic<bool> is_changing;
-    static std::list<std::function<void()>> call_pool;
 public:
-    static void add_call(std::function<void()> func);
+    typedef uint32_t TaskID;
+private:
+    static std::atomic<bool> is_changing;
+    static std::list<std::pair<TaskID,std::function<void()>>> call_pool;
+    static TaskID counter;
+public:
+    static TaskID add_call(std::function<void()> func);
     static void process_call();
+    static bool find_if(TaskID id);
 };
 
 

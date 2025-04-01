@@ -40,6 +40,7 @@ void initialize_module(ModuleInitializationLevel p_level){
     GDREGISTER_CLASS(StopSessionAction)
     GDREGISTER_CLASS(CookAssetAction)
     GDREGISTER_CLASS(LoadAssetAction)
+    GDREGISTER_CLASS(LoadInputNodeAction)
     GDREGISTER_CLASS(CookNodeAction)
     GDREGISTER_CLASS(DeleteNodeAction)
     GDREGISTER_CLASS(CreateMeshAction)

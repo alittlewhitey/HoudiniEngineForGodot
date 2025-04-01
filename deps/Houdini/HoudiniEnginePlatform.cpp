@@ -72,7 +72,6 @@ HoudiniEnginePlatform::LoadLibHAPIL(std::string libDir)
     // Location of libHAPIL on Mac & Linux added to the application's RPATH
     libHAPIL = dlopen(((libDir.empty()?"":libDir+'/')+HAPI_LIB_OBJECT_LINUX).c_str(), RTLD_LAZY); 
 #else
-    std::cout << (libDir.empty()?"":libDir+'/')+HAPI_LIB_OBJECT_MAC << std::endl;
     libHAPIL = dlopen(((libDir.empty()?"":libDir+'/')+HAPI_LIB_OBJECT_MAC).c_str(), RTLD_LAZY); 
 #endif
 
