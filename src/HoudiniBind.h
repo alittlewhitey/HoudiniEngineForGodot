@@ -595,8 +595,8 @@ private:
                 return false;
             clearInternalModels();
             if(showModel){
-                cookNode(nowNode);
                 updateInternalModel();
+                cookNode(nowNode);
             }
             return true;
         }else if(propertyName == "NodeSettings_inputMesh"){
@@ -891,8 +891,11 @@ private:
             Contact::process_call();
             process();
         }break;
-        case NOTIFICATION_PREDELETE:{
+        case NOTIFICATION_EXIT_TREE:{
             term();
+        }
+        case NOTIFICATION_PREDELETE:{
+            predel();
         }break;
         }
     }
@@ -956,6 +959,12 @@ private:
     }
     GDE_EXPORT
     void term(){
+        get_tree()->disconnect("node_removed",godot::Callable(this,"freeGDNode"));
+        get_tree()->disconnect("node_added",godot::Callable(this,"stopFreeGDNode"));
+        godot::ProjectSettings::get_singleton()->disconnect("settings_changed",godot::Callable(this,"_settings_changed"));
+    }
+    GDE_EXPORT
+    void predel(){
         if(sessionOpened){
             if(!stopSession()){
                 printError("Failed to stop session.\n");
