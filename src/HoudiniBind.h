@@ -1089,15 +1089,15 @@ private:
             std::jthread([this]{
                 int id = -1;
                 if(inputMesh.is_valid()){
-                    createInputNode("Input_Mesh",id,-1,inputMesh);
+                    createInputNode("Mesh",id,-1,inputMesh);
                 }else if(inputMeshTreeRoot != nullptr){
                     std::function<void(godot::Node*)> func = [&,this](godot::Node* root){
                         if(auto a = root;a->get_class() == godot::MeshInstance3D::get_class_static()){
                             auto mesh = static_cast<godot::MeshInstance3D*>(a)->get_mesh();
-                            createInputNode(std::string("Input_")+a->get_name().c_escape().utf8().get_data(),id,-1,mesh);
+                            createInputNode(a->get_name().c_escape().utf8().get_data(),id,-1,mesh);
                         }else if(a->get_class() == godot::MultiMeshInstance3D::get_class_static()){
                             auto mesh = static_cast<godot::MultiMeshInstance3D*>(a)->get_multimesh()->get_mesh();
-                            createInputNode(std::string("Input_")+a->get_name().c_escape().utf8().get_data(),id,-1,mesh);
+                            createInputNode(a->get_name().c_escape().utf8().get_data(),id,-1,mesh);
                         }
 
                         godot::TypedArray<godot::Node> children;
@@ -2811,7 +2811,6 @@ public:
     }
     GDE_EXPORT
     int initInputNode(int id,godot::Ref<godot::Mesh> mesh){
-        printLog(" ")
         auto geoInfo = getGeoInfo(id);
         if(geoInfo.isTemplated)
             return -1;
@@ -2823,11 +2822,8 @@ public:
         std::vector<float> allUVs;
         std::vector<float> allUV2s;
         std::vector<const char*> allMatPaths;
-        printLog(" ")
         for(int i = 0,size = mesh->get_surface_count();i!=size;++i){
-            printLog(" ")
             godot::Array rawData = mesh->surface_get_arrays(i);
-            printLog(" ")
             godot::PackedVector3Array rawVertexs;
             godot::PackedVector3Array rawNormals;
             godot::PackedColorArray rawColors;
@@ -2850,7 +2846,6 @@ public:
                 rawUV2s = rawData[godot::Mesh::ARRAY_TEX_UV2];
             if(rawData[godot::Mesh::ARRAY_INDEX].get_type() == godot::Variant::Type::PACKED_INT32_ARRAY)
                 rawIndexs = rawData[godot::Mesh::ARRAY_INDEX];
-            printLog(" ")
             std::vector<int> faces;
             std::vector<float> positions;
             std::vector<int> vertexs;
@@ -2859,7 +2854,6 @@ public:
             std::vector<float> uvs;
             std::vector<float> uv2s;
             std::vector<const char*> matPaths;
-            printLog(" ")
             if(rawIndexs.is_empty()){
                 std::vector<godot::Vector3> collectPos;
                 collectPos.reserve(rawVertexs.size()/3);
@@ -2907,7 +2901,6 @@ public:
                     uv2s.push_back(0);
                 }
             }else{//Index mode
-                printLog(" ")
                 positions.reserve(rawVertexs.size()*3);
                 for(decltype(rawVertexs.size()) i = 0,sz = rawVertexs.size();i!=sz;++i){
                     godot::Vector3 pos = rawVertexs[i];
@@ -2915,20 +2908,15 @@ public:
                     positions.push_back(pos.y);
                     positions.push_back(pos.z);
                 }
-                printLog(" ")
                 vertexs.reserve(rawIndexs.size());
                 for(decltype(rawIndexs.size()) i = 0,sz = rawIndexs.size();i!=sz;++i){
                     vertexs.push_back(rawIndexs[i]);
                 }
-
-                printLog(" ")
                 size_t vertexSize = vertexs.size();
                 std::vector<godot::Color> collectColors;
                 std::vector<godot::Vector3> collectNormals;
                 std::vector<godot::Vector2> collectUVs;
                 std::vector<godot::Vector2> collectUV2s;
-        
-                printLog(" ")
                 size_t rawColorSize = rawColors.size();
                 if(rawColorSize != 0){
                     collectColors.reserve(vertexSize);
@@ -2939,7 +2927,6 @@ public:
                             collectColors.emplace_back(godot::Color());
                     }
                 }
-                printLog(" ")
                 size_t rawNormalSize = rawNormals.size();
                 if(rawNormalSize != 0){
                     collectNormals.reserve(vertexSize);
@@ -2950,7 +2937,6 @@ public:
                             collectNormals.emplace_back(godot::Vector3());
                     }
                 }
-                printLog(" ")
                 size_t rawUVSize = rawUVs.size();
                 if(rawUVSize != 0){
                     collectUVs.reserve(vertexSize);
@@ -2961,7 +2947,6 @@ public:
                             collectUVs.emplace_back(godot::Vector2());
                     }
                 }
-                printLog(" ")
                 size_t rawUV2Size = rawUV2s.size();
                 if(rawUV2Size != 0){
                     collectUV2s.reserve(vertexSize);
@@ -2972,8 +2957,6 @@ public:
                             collectUV2s.emplace_back(godot::Vector2());
                     }
                 }
-
-                printLog(" ")
                 colors.reserve(collectColors.size()*3);
                 for(decltype(collectColors.size()) i = 0,sz = collectColors.size();i!=sz;++i){
                     godot::Color col = collectColors[i];
@@ -2981,7 +2964,6 @@ public:
                     colors.push_back(col.g);
                     colors.push_back(col.b);
                 }
-                printLog(" ")
                 normals.reserve(collectNormals.size()*3);
                 for(decltype(collectNormals.size()) i = 0,sz = collectNormals.size();i!=sz;++i){
                     godot::Vector3 vec = collectNormals[i];
@@ -2989,7 +2971,6 @@ public:
                     normals.push_back(vec.y);
                     normals.push_back(vec.z);
                 }
-                printLog(" ")
                 uvs.reserve(collectUVs.size()*3);
                 for(decltype(collectUVs.size()) i = 0,sz = collectUVs.size();i!=sz;++i){
                     godot::Vector2 vec = collectUVs[i];
@@ -2997,7 +2978,6 @@ public:
                     uvs.push_back(vec.y);
                     uvs.push_back(0);
                 }
-                printLog(" ")
                 uv2s.reserve(collectUV2s.size()*3);
                 for(decltype(collectUV2s.size()) i = 0,sz = collectUV2s.size();i!=sz;++i){
                     godot::Vector2 vec = collectUV2s[i];
@@ -3005,7 +2985,6 @@ public:
                     uv2s.push_back(vec.y);
                     uv2s.push_back(0);
                 }
-                printLog(" ")
             }
             const char* matPath = keep_alive_string(rawMatPath.utf8().get_data());
 
@@ -3034,7 +3013,6 @@ public:
                 }
                 allUV2s.insert(allUV2s.end(),uv2s.begin(),uv2s.end());
             }
-            printLog(" ")
             allPositions.insert(allPositions.end(),positions.begin(),positions.end());
             allVertexs.insert(allVertexs.end(),vertexs.begin(),vertexs.end());
             allMatPaths.insert(allMatPaths.end(),vertexs.size()/3,matPath);
@@ -3073,8 +3051,6 @@ public:
             printError(HoudiniEngineUtility::getLastError().c_str());
             return -1;
         }
-
-        printLog(" ")
         if(!allColors.empty()){
             HAPI_AttributeInfo colorInfo = HoudiniApi::AttributeInfo_Create();
             colorInfo.count = allColors.size()/3;
