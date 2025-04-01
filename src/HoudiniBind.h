@@ -893,7 +893,7 @@ private:
         }break;
         case NOTIFICATION_EXIT_TREE:{
             term();
-        }
+        }break;
         case NOTIFICATION_PREDELETE:{
             predel();
         }break;
