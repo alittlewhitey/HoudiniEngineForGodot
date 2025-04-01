@@ -78,9 +78,7 @@ inline bool findproc(std::string procName){
 #endif
 GDE_EXPORT
 inline bool findenv(std::string key){
-    if(getenv(key.c_str()) == NULL)
-        return false;
-    return true;
+    return getenv(key.c_str()) != NULL;
 }
 #if defined (__linux__)
 GDE_EXPORT
