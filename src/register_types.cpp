@@ -25,12 +25,11 @@ void initialize_module(ModuleInitializationLevel p_level){
     if (p_level != MODULE_INITIALIZATION_LEVEL_EDITOR) {
         return;
     }
-    // GDREGISTER_CLASS(EditorPlugin)
-    // GDREGISTER_CLASS(EditorImportPlugin)
-
+    GDREGISTER_CLASS(Int);
+    GDREGISTER_CLASS(RefDictionary);
     GDREGISTER_CLASS(NodeId)
     GDREGISTER_CLASS(PartId)
-
+    GDREGISTER_CLASS(HoudiniEngine)
     GDREGISTER_ABSTRACT_CLASS(Action)
     GDREGISTER_ABSTRACT_CLASS(SessionAction)
     GDREGISTER_ABSTRACT_CLASS(AssetAction)

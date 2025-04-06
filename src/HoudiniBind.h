@@ -50,7 +50,7 @@ VARIANT_ENUM_CAST(HAPI_AttributeTypeInfo)
 VARIANT_ENUM_CAST(HAPI_AttributeOwner)
 VARIANT_ENUM_CAST(HAPI_NodeType)
 VARIANT_ENUM_CAST(HAPI_GeoType)
-
+VARIANT_ENUM_CAST(HAPI_Result)
 enum SessionType
 {
     InProcess = 1,
@@ -63,8 +63,50 @@ enum SessionType
 VARIANT_ENUM_CAST(SessionType)
 class Void{
 public:
+    Void(godot::Variant){}
     Void(std::any){}
     Void(){}
+};
+class Int: public godot::RefCounted{
+GDCLASS(Int, godot::RefCounted)
+    void set_value(int64_t value){
+        this->value = value;
+    }
+    int64_t get_value(){
+        return value;
+    }
+    static void _bind_methods(){
+        godot::ClassDB::bind_method(godot::D_METHOD("set_value","value"),&Int::set_value);
+        godot::ClassDB::bind_method(godot::D_METHOD("get_value"),&Int::get_value);
+        godot::ClassDB::add_property("Int",godot::PropertyInfo(godot::Variant::INT,"value"),"set_value","get_value");
+    }
+public:
+    intmax_t value;
+    Int(){}
+    template<typename T> requires std::integral<T>
+    Int(T value){
+        this->value = value;
+    }
+};
+class RefDictionary: public godot::RefCounted{
+    GDCLASS(RefDictionary,RefCounted)
+    static void _bind_methods(){
+        godot::ClassDB::bind_method(godot::D_METHOD("set_value","value"),&RefDictionary::set_value);
+        godot::ClassDB::bind_method(godot::D_METHOD("get_value"),&RefDictionary::get_value);
+        godot::ClassDB::add_property("RefDictionary",godot::PropertyInfo(godot::Variant::DICTIONARY,"value"),"set_value","get_value");
+    }
+    void set_value(godot::Dictionary value){
+        this->value = value;
+    }
+    godot::Dictionary get_value(){
+        return value;
+    }
+public:
+    godot::Dictionary value;
+    template<typename ...T>
+    RefDictionary(T&&... v){
+        value = godot::Dictionary(std::forward<decltype(v)>(v)...);
+    }
 };
 class NodeId: public godot::RefCounted{
     GDCLASS(NodeId, godot::RefCounted)
@@ -150,6 +192,75 @@ public:
     }
     std::shared_ptr<int> id = std::make_shared<int>(0);
 };
+class HoudiniEngineManager;
+class HoudiniEngine: public godot::Object{
+    GDCLASS(HoudiniEngine,godot::Object)
+    static void _bind_methods(){
+        BIND_ENUM_CONSTANT(HAPI_RESULT_SUCCESS);
+        BIND_ENUM_CONSTANT(HAPI_RESULT_FAILURE);
+        BIND_ENUM_CONSTANT(HAPI_RESULT_ALREADY_INITIALIZED);
+        BIND_ENUM_CONSTANT(HAPI_RESULT_NOT_INITIALIZED);
+        BIND_ENUM_CONSTANT(HAPI_RESULT_CANT_LOADFILE);
+        BIND_ENUM_CONSTANT(HAPI_RESULT_PARM_SET_FAILED);
+        BIND_ENUM_CONSTANT(HAPI_RESULT_INVALID_ARGUMENT);
+        BIND_ENUM_CONSTANT(HAPI_RESULT_CANT_LOAD_GEO);
+        BIND_ENUM_CONSTANT(HAPI_RESULT_CANT_GENERATE_PRESET);
+        BIND_ENUM_CONSTANT(HAPI_RESULT_CANT_LOAD_PRESET);
+        BIND_ENUM_CONSTANT(HAPI_RESULT_ASSET_DEF_ALREADY_LOADED);
+        BIND_ENUM_CONSTANT(HAPI_RESULT_NO_LICENSE_FOUND);
+        BIND_ENUM_CONSTANT(HAPI_RESULT_DISALLOWED_NC_LICENSE_FOUND);
+        BIND_ENUM_CONSTANT(HAPI_RESULT_DISALLOWED_NC_ASSET_WITH_C_LICENSE);
+        BIND_ENUM_CONSTANT(HAPI_RESULT_DISALLOWED_NC_ASSET_WITH_LC_LICENSE);
+        BIND_ENUM_CONSTANT(HAPI_RESULT_DISALLOWED_LC_ASSET_WITH_C_LICENSE);
+        BIND_ENUM_CONSTANT(HAPI_RESULT_DISALLOWED_HENGINEINDIE_W_3PARTY_PLUGIN);
+        BIND_ENUM_CONSTANT(HAPI_RESULT_ASSET_INVALID);
+        BIND_ENUM_CONSTANT(HAPI_RESULT_NODE_INVALID);
+        BIND_ENUM_CONSTANT(HAPI_RESULT_USER_INTERRUPTED);
+        BIND_ENUM_CONSTANT(HAPI_RESULT_INVALID_SESSION);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetObjectInfo","session","nodeId"),&HoudiniEngine::GetObjectInfo);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetAssetInfo","session","nodeId"),&HoudiniEngine::GetAssetInfo);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetNodeInfo","session","nodeId"),&HoudiniEngine::GetNodeInfo);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetGeoInfo","session","nodeId"),&HoudiniEngine::GetGeoInfo);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetMaterialInfo","session","nodeId"),&HoudiniEngine::GetMaterialInfo);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetAttrInfo","session","nodeId","partId","name","owner"),&HoudiniEngine::GetAttrInfo);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("AddAttribute","session","nodeId","partId","name","attrInfo"),&HoudiniEngine::AddAttribute);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("SetCustomString","session","string_value","handle_value"),&HoudiniEngine::SetCustomString);
+
+    }
+public:
+    GDE_EXPORT static HAPI_ObjectInfo  DictToObjectInfo(HoudiniEngineManager* session, godot::Dictionary objectInfo);
+    GDE_EXPORT static godot::Dictionary ObjectInfoToDict(HoudiniEngineManager* session, HAPI_ObjectInfo info);
+    GDE_EXPORT static HAPI_AssetInfo DictToAssetInfo(HoudiniEngineManager* session, godot::Dictionary assetInfo);
+    GDE_EXPORT static godot::Dictionary AssetInfoToDict(HoudiniEngineManager* session, HAPI_AssetInfo info);
+    GDE_EXPORT static HAPI_NodeInfo DictToNodeInfo(HoudiniEngineManager* session, godot::Dictionary nodeInfo);
+    GDE_EXPORT static godot::Dictionary NodeInfoToDict(HoudiniEngineManager* session, HAPI_NodeInfo info);
+    GDE_EXPORT static HAPI_GeoInfo DictToGeoInfo(HoudiniEngineManager* session, godot::Dictionary geoInfo);
+    GDE_EXPORT static godot::Dictionary GeoInfoToDict(HoudiniEngineManager* session, HAPI_GeoInfo info);
+    GDE_EXPORT static HAPI_MaterialInfo DictToMaterialInfo(HoudiniEngineManager* session, godot::Dictionary matInfo);
+    GDE_EXPORT static godot::Dictionary MaterialInfoToDict(HoudiniEngineManager* session, HAPI_MaterialInfo info);
+    GDE_EXPORT static HAPI_AttributeInfo DictToAttrInfo(HoudiniEngineManager* session, godot::Dictionary attrInfo);
+    GDE_EXPORT static godot::Dictionary AttrInfoToDict(HoudiniEngineManager* session, HAPI_AttributeInfo info);
+    GDE_EXPORT static HAPI_CookOptions DictToCookOptions(godot::Dictionary cookOptions);
+    GDE_EXPORT static godot::Dictionary CookOptionsToDict(HAPI_CookOptions options);
+
+
+    GDE_EXPORT static godot::Dictionary GetObjectInfo(HoudiniEngineManager* session,int nodeId);
+    GDE_EXPORT static godot::Dictionary GetAssetInfo(HoudiniEngineManager* session, int nodeId);
+    GDE_EXPORT static godot::Dictionary GetNodeInfo(HoudiniEngineManager* session, int nodeId);
+    GDE_EXPORT static godot::Dictionary GetGeoInfo(HoudiniEngineManager* session, int nodeId);
+    GDE_EXPORT static godot::Dictionary GetMaterialInfo(HoudiniEngineManager* session, int nodeId);
+    GDE_EXPORT static godot::Dictionary GetAttrInfo(HoudiniEngineManager* session,int nodeId,int partId,godot::String name,HAPI_AttributeOwner owner);
+    GDE_EXPORT static HAPI_Result AddAttribute(HoudiniEngineManager* session,int nodeId,int partId,godot::String name,godot::Ref<RefDictionary> attrInfo);
+    GDE_EXPORT static HAPI_Result Cleanup(HoudiniEngineManager* session);
+    GDE_EXPORT static HAPI_Result ClearConnectionError();
+    GDE_EXPORT static HAPI_Result CloseSession(HoudiniEngineManager* session);
+    GDE_EXPORT static HAPI_Result CommitGeo(HoudiniEngineManager* session,int nodeId);
+    GDE_EXPORT static HAPI_Result ConnectNodeInput(HoudiniEngineManager* session, int nodeId, int inputIndex, int nodeId_toConnect, int outputIndex);
+    GDE_EXPORT static HAPI_Result CookNode(HoudiniEngineManager* session, int nodeId, godot::Ref<RefDictionary> cookOptions);
+    GDE_EXPORT static godot::Dictionary CookOptions_Create();
+    GDE_EXPORT static HAPI_Result SetCustomString(HoudiniEngineManager* session, godot::String string_value, godot::Ref<Int> handle_value);
+};
+
 class HDANode: public godot::Resource{
     GDCLASS(HDANode,godot::Resource)
     static void _bind_methods(){
@@ -163,6 +274,7 @@ class HDANode: public godot::Resource{
         godot::ClassDB::bind_method(godot::D_METHOD("set_nodeInfo","id"),&HDANode::set_nodeInfo);
         godot::ClassDB::add_property("HDANode",godot::PropertyInfo(godot::Variant::DICTIONARY,"nodeInfo"),"set_nodeInfo","get_nodeInfo");
     }
+    friend class HoudiniEngineManager;
     int get_nodeId(){
         return nodeId;
     }
@@ -173,43 +285,51 @@ class HDANode: public godot::Resource{
         return name;
     }
     void set_name(godot::String name){}
-    godot::Dictionary get_nodeInfo();
+    godot::Dictionary get_nodeInfo(){
+        if(nodeInfo.is_empty()){
+            if(session == nullptr)
+                return {};
+            nodeInfo = HoudiniEngine::GetNodeInfo(session,nodeId);
+        }
+        return nodeInfo;
+    }
     void set_nodeInfo(godot::Dictionary){}
+    HoudiniEngineManager* session = nullptr;
 public:
     int nodeId;
     godot::String name;
     godot::Dictionary nodeInfo;
 };
-class InputNode: public godot::Resource{
-    GDCLASS(InputNode,godot::Resource)
-    static void _bind_methods(){
-        godot::ClassDB::bind_method(godot::D_METHOD("get_nodeId"),&InputNode::get_nodeId);
-        godot::ClassDB::bind_method(godot::D_METHOD("set_nodeId","id"),&InputNode::set_nodeId);
-        godot::ClassDB::add_property("InputNode",godot::PropertyInfo(godot::Variant::INT,"nodeId"),"set_nodeId","get_nodeId");
-        godot::ClassDB::bind_method(godot::D_METHOD("get_name"),&InputNode::get_name);
-        godot::ClassDB::bind_method(godot::D_METHOD("set_name","name"),&InputNode::set_name);
-        godot::ClassDB::add_property("InputNode",godot::PropertyInfo(godot::Variant::STRING,"name"),"set_name","get_name");
-        godot::ClassDB::bind_method(godot::D_METHOD("get_nodeInfo"),&InputNode::get_nodeInfo);
-        godot::ClassDB::bind_method(godot::D_METHOD("set_nodeInfo","id"),&InputNode::set_nodeInfo);
-        godot::ClassDB::add_property("InputNode",godot::PropertyInfo(godot::Variant::DICTIONARY,"nodeInfo"),"set_nodeInfo","get_nodeInfo");
-    }
-    int get_nodeId(){
-        return nodeId;
-    }
-    void set_nodeId(int id){}
-    godot::String get_name(){
-        if(name.is_empty())
-            name = get_nodeInfo()["name"];
-        return name;
-    }
-    void set_name(godot::String name){}
-    godot::Dictionary get_nodeInfo();
-    void set_nodeInfo(godot::Dictionary){}
-public:
-    int nodeId;
-    godot::String name;
-    godot::Dictionary nodeInfo;
-};
+// class InputNode: public godot::Resource{
+//     GDCLASS(InputNode,godot::Resource)
+//     static void _bind_methods(){
+//         godot::ClassDB::bind_method(godot::D_METHOD("get_nodeId"),&InputNode::get_nodeId);
+//         godot::ClassDB::bind_method(godot::D_METHOD("set_nodeId","id"),&InputNode::set_nodeId);
+//         godot::ClassDB::add_property("InputNode",godot::PropertyInfo(godot::Variant::INT,"nodeId"),"set_nodeId","get_nodeId");
+//         godot::ClassDB::bind_method(godot::D_METHOD("get_name"),&InputNode::get_name);
+//         godot::ClassDB::bind_method(godot::D_METHOD("set_name","name"),&InputNode::set_name);
+//         godot::ClassDB::add_property("InputNode",godot::PropertyInfo(godot::Variant::STRING,"name"),"set_name","get_name");
+//         godot::ClassDB::bind_method(godot::D_METHOD("get_nodeInfo"),&InputNode::get_nodeInfo);
+//         godot::ClassDB::bind_method(godot::D_METHOD("set_nodeInfo","id"),&InputNode::set_nodeInfo);
+//         godot::ClassDB::add_property("InputNode",godot::PropertyInfo(godot::Variant::DICTIONARY,"nodeInfo"),"set_nodeInfo","get_nodeInfo");
+//     }
+//     int get_nodeId(){
+//         return nodeId;
+//     }
+//     void set_nodeId(int id){}
+//     godot::String get_name(){
+//         if(name.is_empty())
+//             name = get_nodeInfo()["name"];
+//         return name;
+//     }
+//     void set_name(godot::String name){}
+//     godot::Dictionary get_nodeInfo();
+//     void set_nodeInfo(godot::Dictionary){}
+// public:
+//     int nodeId;
+//     godot::String name;
+//     godot::Dictionary nodeInfo;
+// };
 class Action: public godot::Resource{
     GDCLASS(Action,godot::Resource)
     static void _bind_methods(){}
@@ -270,19 +390,14 @@ class CreateMeshAction: public NodeAction{
     GDCLASS(CreateMeshAction,NodeAction)
     static void _bind_methods(){}
 };
-
 constexpr const char* DefaultNamedPipe = "hapi";
 constexpr const char* DefaultSharedMemoryName = "hapi";
 constexpr const char* DefaultHostName = "127.0.0.1";
 constexpr int DefaultTcpPort = 9090;
 class HoudiniEngineManager: public godot::Node3D{
     GDCLASS(HoudiniEngineManager,godot::Node3D)
-public:
-    static HoudiniEngineManager* get_singleton(){
-        return singleton;
-    }
+    friend class HoudiniEngine;
 private:
-    static HoudiniEngineManager* singleton;
     static void _bind_methods(){
         BIND_ENUM_CONSTANT(HAPI_PACKEDPRIM_INSTANCING_MODE_INVALID)
         BIND_ENUM_CONSTANT(HAPI_PACKEDPRIM_INSTANCING_MODE_DISABLED)
@@ -385,50 +500,12 @@ private:
         godot::ClassDB::bind_method(godot::D_METHOD("createMeshInstance","nodeId"),static_cast<bool(HoudiniEngineManager::*)(godot::Ref<NodeId>)>(&HoudiniEngineManager::createMeshInstance));
         godot::ClassDB::bind_method(godot::D_METHOD("freeGDNode","node"),static_cast<bool(HoudiniEngineManager::*)(godot::Node*)>(&HoudiniEngineManager::freeGDNode));
         godot::ClassDB::bind_method(godot::D_METHOD("stopFreeGDNode","node"),static_cast<bool(HoudiniEngineManager::*)(godot::Node*)>(&HoudiniEngineManager::stopFreeGDNode));
-        godot::ClassDB::bind_method(godot::D_METHOD("getNodeInfo","nodeId"),static_cast<godot::Dictionary(HoudiniEngineManager::*)(godot::Ref<NodeId>)>(&HoudiniEngineManager::getNodeInfo));
-        godot::ClassDB::bind_method(godot::D_METHOD("getAssetInfo","nodeId"),static_cast<godot::Dictionary(HoudiniEngineManager::*)(godot::Ref<NodeId>)>(&HoudiniEngineManager::getAssetInfo));
-        godot::ClassDB::bind_method(godot::D_METHOD("getObjectInfo","nodeId"),static_cast<godot::Dictionary(HoudiniEngineManager::*)(godot::Ref<NodeId>)>(&HoudiniEngineManager::getObjectInfo));
-        godot::ClassDB::bind_method(godot::D_METHOD("getGeoInfo","nodeId"),static_cast<godot::Dictionary(HoudiniEngineManager::*)(godot::Ref<NodeId>)>(&HoudiniEngineManager::getGeoInfo));
-        godot::ClassDB::bind_method(godot::D_METHOD("getMaterialInfo","nodeId"),static_cast<godot::Dictionary(HoudiniEngineManager::*)(godot::Ref<NodeId>)>(&HoudiniEngineManager::getMaterialInfo));
         godot::ClassDB::bind_method(godot::D_METHOD("getParameters","nodeId"),static_cast<godot::Dictionary(HoudiniEngineManager::*)(godot::Ref<NodeId>)>(&HoudiniEngineManager::getParameters));
         //godot::ClassDB::bind_method(godot::D_METHOD("getAttributes","nodeId","partId"),static_cast<godot::Dictionary(HoudiniEngineManager::*)(godot::Ref<NodeId>,godot::Ref<PartId>)>(&HoudiniEngineManager::getAttributes));
 
-        godot::ClassDB::add_signal("HoudiniEngineManager",godot::MethodInfo("materialChanged",godot::PropertyInfo(godot::Variant::OBJECT,"nodeId")));
-        godot::ClassDB::add_signal("HoudiniEngineManager",godot::MethodInfo("geometryChanged",godot::PropertyInfo(godot::Variant::OBJECT,"nodeId")));
+        godot::ClassDB::add_signal("HoudiniEngineManager",godot::MethodInfo("materialChanged",godot::PropertyInfo(godot::Variant::INT,"nodeId")));
+        godot::ClassDB::add_signal("HoudiniEngineManager",godot::MethodInfo("geometryChanged",godot::PropertyInfo(godot::Variant::INT,"nodeId")));
     }
-    enum class _godot_msg_type{
-        log,warning,error
-    };
-    template <typename ...T>
-    void _output_log(T... output){
-        if(!logFilePath.empty()){
-            logFile << " ### " << std::chrono::system_clock::now() << " ### \n";
-            int _[] = {((logFile << output),0)...};
-            logFile << std::endl;
-        }
-    }
-    template <typename ...T>
-    void _print_godot_msg(_godot_msg_type type, T... output){
-        switch (type)
-        {
-        case _godot_msg_type::log:
-            godot::UtilityFunctions::print(output...,'\n');
-            break;
-        case _godot_msg_type::warning:
-            godot::UtilityFunctions::push_warning(output...,'\n');
-            break;
-        case _godot_msg_type::error:
-            godot::UtilityFunctions::push_error(output...,'\n');
-            break;
-        default:
-            break;
-        }
-    }
-    #define printFile(...) ;{std::source_location _houdini_engine_source_loc = std::source_location::current();_output_log("\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);};
-    #define printLog(...) ;{std::source_location _houdini_engine_source_loc = std::source_location::current();_output_log("\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);_print_godot_msg(_godot_msg_type::log,"\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);};
-    #define printWarning(...) ;{std::source_location _houdini_engine_source_loc = std::source_location::current();_output_log("\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);_print_godot_msg(_godot_msg_type::warning,"\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);};
-    #define printError(...) ;{std::source_location _houdini_engine_source_loc = std::source_location::current();_output_log("\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);_print_godot_msg(_godot_msg_type::error,"\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);};
-    
 
 
     void _get_property_list(godot::List<godot::PropertyInfo>* list){
@@ -462,7 +539,7 @@ private:
             int id = a.first;
 
             auto nodeInfo = getNodeInfo(a.first);
-            std::string name = HoudiniEngineUtility::getString(&session,nodeInfo.nameSH);
+            std::string name = HoudiniEngineUtility::getString(get_session(),nodeInfo.nameSH);
             list->push_back(godot::PropertyInfo(godot::Variant::NIL,(name+' '+std::to_string(id)+" Parameters").c_str(),godot::PROPERTY_HINT_NONE,("Parameters_"+std::to_string(id)+"_Parameters_").c_str(),godot::PROPERTY_USAGE_SUBGROUP));
             list->push_back(godot::PropertyInfo(godot::Variant::INT,("Parameters_"+std::to_string(id)+"_Parameters_id").c_str()));
             list->push_back(godot::PropertyInfo(godot::Variant::INT,("Parameters_"+std::to_string(id)+"_Parameters_assetId").c_str()));
@@ -643,15 +720,15 @@ private:
             if(res.size() == 1){
                 if(std::holds_alternative<int64_t>(res[0])){
                     res[0] = (int64_t)value;
-                    HoudiniApi::SetParmIntValue(&session,id,argName.c_str(),0,(int)value);
+                    HoudiniApi::SetParmIntValue(get_session(),id,argName.c_str(),0,(int)value);
                 }else if(std::holds_alternative<double>(res[0])){
                     res[0] = (double)value;
-                    HoudiniApi::SetParmFloatValue(&session,id,argName.c_str(),0,(float)value);
+                    HoudiniApi::SetParmFloatValue(get_session(),id,argName.c_str(),0,(float)value);
                 }else if(std::holds_alternative<std::string>(res[0])){
                     res[0] = (std::string)((godot::String)value).utf8().get_data();
                     HAPI_ParmId parmId;
-                    HoudiniApi::GetParmIdFromName(&session,id,argName.c_str(),&parmId);
-                    HoudiniApi::SetParmStringValue(&session,id,((godot::String)value).utf8().get_data(),parmId,0);
+                    HoudiniApi::GetParmIdFromName(get_session(),id,argName.c_str(),&parmId);
+                    HoudiniApi::SetParmStringValue(get_session(),id,((godot::String)value).utf8().get_data(),parmId,0);
                 }
             }else{
                 res.clear();
@@ -660,17 +737,17 @@ private:
                     switch(((godot::Array)value)[i].get_type()){
                     case godot::Variant::INT:{
                         res.push_back((int64_t)((godot::Array)value)[i]);
-                        HoudiniApi::SetParmIntValue(&session,id,argName.c_str(),i,(int)value);
+                        HoudiniApi::SetParmIntValue(get_session(),id,argName.c_str(),i,(int)value);
                     }break;
                     case godot::Variant::FLOAT:{
                         res.push_back((double)((godot::Array)value)[i]);
-                        HoudiniApi::SetParmFloatValue(&session,id,argName.c_str(),i,(float)value);
+                        HoudiniApi::SetParmFloatValue(get_session(),id,argName.c_str(),i,(float)value);
                     }break;
                     case godot::Variant::STRING:{
                         res.push_back(((godot::String)((godot::Array)value)[i]).utf8().get_data());
                         HAPI_ParmId parmId;
-                        HoudiniApi::GetParmIdFromName(&session,id,argName.c_str(),&parmId);
-                        HoudiniApi::SetParmStringValue(&session,id,((godot::String)value).utf8().get_data(),parmId,i);
+                        HoudiniApi::GetParmIdFromName(get_session(),id,argName.c_str(),&parmId);
+                        HoudiniApi::SetParmStringValue(get_session(),id,((godot::String)value).utf8().get_data(),parmId,i);
                     }break;
                     default:{
                         printError("Not supported type!");
@@ -746,6 +823,7 @@ private:
     }
     GDE_EXPORT 
     void _update_settings(){
+        using namespace _houdini_engine_log;
         godot::Variant value;
         godot::String tempStr;
 
@@ -813,6 +891,7 @@ private:
     }
     GDE_EXPORT 
     void _settings_changed(){
+        using namespace _houdini_engine_log;
         godot::Variant value;
         std::string tempStr;
 
@@ -918,8 +997,6 @@ private:
     constexpr static std::chrono::milliseconds defaultFreeTimeout = std::chrono::milliseconds(100);
     GDE_EXPORT
     void init(){
-        singleton = this;
-
         godot::OS::get_singleton()->set_low_processor_usage_mode(true);
 
         godot::Ref<godot::StandardMaterial3D> defaultMaterial;
@@ -941,21 +1018,15 @@ private:
     }
     GDE_EXPORT
     void process(){
-        // if(!sessionOpened)
-        //     for(auto a : nodeIds){
-        //         if(checkMaterialChange(a.first)){
-        //             godot::Ref<NodeId> id;
-        //             id.instantiate();
-        //             id->set_id(a.first);
-        //             emit_signal("materialChanged",id);
-        //         }
-        //         if(checkGeometryChange(a.first)){
-        //             godot::Ref<NodeId> id;
-        //             id.instantiate();
-        //             id->set_id(a.first);
-        //             emit_signal("geometryChanged",id);
-        //         }
-        //     }
+        if(!sessionOpened)
+            for(auto a : nodeIds){
+                // if(checkMaterialChange(a.first)){
+                //     emit_signal("materialChanged",a.first);
+                // }
+                if(checkGeometryChange(a.first)){
+                    emit_signal("geometryChanged",a.first);
+                }
+            }
     }
     GDE_EXPORT
     void term(){
@@ -999,6 +1070,7 @@ private:
             godot::Ref<HDANode> node;
             node.instantiate();
             node->nodeId = a.first;
+            node->session = this;
             arr.push_back(node);
         }
         return arr;
@@ -1075,9 +1147,12 @@ private:
             std::jthread([this]{
                 if(nowAsset.is_null())
                     return;
+                printLog(" ");
                 loadAssets(nowAsset,Void{});
+                printLog(" ");
                 this->assetAction.unref();
                 Contact::add_call([this]{
+                    printLog(" ");
                     notify_property_list_changed();
                 });
             }).detach();
@@ -1261,10 +1336,9 @@ private:
         }
     }
 
-    std::string logFilePath = "";
-    std::ofstream logFile;
     GDE_EXPORT
     void set_logFilePath(godot::String path){
+        using namespace _houdini_engine_log;
         path = godot::ProjectSettings::get_singleton()->globalize_path(path);
         if(path.is_absolute_path()){
             if(!logFilePath.empty()){
@@ -1397,8 +1471,12 @@ private:
 
 
 public:
+    HAPI_Session* get_session(){
+        return get_session();
+    }
     GDE_EXPORT
     bool startSession(SessionType type,bool use_cooking_thread){
+        using namespace _houdini_engine_log;
         if(sessionOpened){
             printFile("Now session is valid.\n");
             return true;
@@ -1419,7 +1497,7 @@ public:
         case SessionType::InProcess:{
             HAPI_SessionInfo sessionInfo = HoudiniApi::SessionInfo_Create();
             SessionResult = HoudiniApi::CreateInProcessSession(
-                &session,&sessionInfo
+                get_session(),&sessionInfo
             );
             if(SessionResult == HAPI_RESULT_SUCCESS){
                 printFile("Successful create a HAPI in-process session\n");
@@ -1434,7 +1512,7 @@ public:
             ));
             HAPI_SessionInfo sessionInfo = HoudiniApi::SessionInfo_Create();
             SessionResult = HoudiniApi::CreateThriftNamedPipeSession(
-                &session,namedPipe.c_str(),&sessionInfo
+                get_session(),namedPipe.c_str(),&sessionInfo
             );
             if(SessionResult == HAPI_RESULT_SUCCESS){
                 printFile("Successful create a HAPI named-pipe session\n");
@@ -1449,7 +1527,7 @@ public:
             ));
             HAPI_SessionInfo sessionInfo = HoudiniApi::SessionInfo_Create();
             SessionResult = HoudiniApi::CreateThriftSocketSession(
-                &session,hostName.c_str(), tcpPort, &sessionInfo
+                get_session(),hostName.c_str(), tcpPort, &sessionInfo
             );
             if(SessionResult == HAPI_RESULT_SUCCESS){
                 printFile("Successful create a HAPI TCP socket session\n");
@@ -1460,7 +1538,7 @@ public:
         case SessionType::ExistingNamedPipe:{
             HAPI_SessionInfo sessionInfo = HoudiniApi::SessionInfo_Create();
             SessionResult = HoudiniApi::CreateThriftNamedPipeSession(
-                &session,namedPipe.c_str(),&sessionInfo
+                get_session(),namedPipe.c_str(),&sessionInfo
             );
             if(SessionResult == HAPI_RESULT_SUCCESS){
                 printFile("Successful connect to an existint HAPI named-pipe session\n");
@@ -1471,7 +1549,7 @@ public:
         case SessionType::ExistingTCPSocket:{
             HAPI_SessionInfo sessionInfo = HoudiniApi::SessionInfo_Create();
             SessionResult = HoudiniApi::CreateThriftSocketSession(
-                &session,hostName.c_str(), tcpPort, &sessionInfo
+                get_session(),hostName.c_str(), tcpPort, &sessionInfo
             );
             if(SessionResult == HAPI_RESULT_SUCCESS){
                 printFile("Successful connect to an existint HAPI TCP socket session\n");
@@ -1482,7 +1560,7 @@ public:
         case SessionType::ExistingSharedMemory:{
             HAPI_SessionInfo sessionInfo = HoudiniApi::SessionInfo_Create();
             SessionResult = HoudiniApi::CreateThriftSharedMemorySession(
-                &session,sharedMemoryName.c_str(), &sessionInfo
+                get_session(),sharedMemoryName.c_str(), &sessionInfo
             );
             if(SessionResult == HAPI_RESULT_SUCCESS){
                 printFile("Successful connect to an existint HAPI shared memory session\n");
@@ -1517,12 +1595,12 @@ public:
     GDE_EXPORT
     bool stopSession(){
         if(sessionOpened){
-            if(HoudiniApi::Cleanup(&session) != HAPI_RESULT_SUCCESS){
+            if(HoudiniApi::Cleanup(get_session()) != HAPI_RESULT_SUCCESS){
                 printError("Failed to stop the Houdini Engine session - Clean up failed.");
                 sessionOpened = false;
                 return false;
             }
-            if(HoudiniApi::CloseSession(&session) != HAPI_RESULT_SUCCESS){
+            if(HoudiniApi::CloseSession(get_session()) != HAPI_RESULT_SUCCESS){
                 printError("Failed to stop the Houdini Engine session - Close session failed.");
                 sessionOpened = false;
                 return false;
@@ -1559,10 +1637,10 @@ public:
             return false;
         }
 
-        if(HoudiniApi::IsInitialized(&session) == HAPI_RESULT_NOT_INITIALIZED){
+        if(HoudiniApi::IsInitialized(get_session()) == HAPI_RESULT_NOT_INITIALIZED){
 
             HAPI_Result Result = HoudiniApi::Initialize(
-                &session,&cookOptions,use_cooking_thread,-1,"",nullptr,nullptr,nullptr,nullptr
+                get_session(),&cookOptions,use_cooking_thread,-1,"",nullptr,nullptr,nullptr,nullptr
             );
             _update_settings();
             if(Result == HAPI_RESULT_SUCCESS){
@@ -1578,14 +1656,16 @@ public:
     }
     GDE_EXPORT
     std::vector<int> loadAssets(godot::Ref<HDAResource> hdaRes,Void){
+        printLog(" ");
         if(!sessionOpened){
             printError("Error load Asset with invalid session");
             return {};
         }
+        printLog(" ");
         int assetId = -1;
         try{
 
-        if(auto a = HoudiniApi::LoadAssetLibraryFromFile(&session,hdaRes->path.c_str(),true,&assetId);a != HAPI_RESULT_SUCCESS){
+        if(auto a = HoudiniApi::LoadAssetLibraryFromFile(get_session(),hdaRes->path.c_str(),true,&assetId);a != HAPI_RESULT_SUCCESS){
             printError("Error load Asset from file: ");
             return {};
         }
@@ -1593,29 +1673,31 @@ public:
         }catch(std::exception& e){
         }
         int asset_count = 0;
-        if(auto a = HoudiniApi::GetAvailableAssetCount(&session,assetId,&asset_count); a != HAPI_RESULT_SUCCESS){
+        if(auto a = HoudiniApi::GetAvailableAssetCount(get_session(),assetId,&asset_count); a != HAPI_RESULT_SUCCESS){
             printError("Error get available asset count: ",a);
             return {};
         }
         std::vector<HAPI_StringHandle> assetSH;
         assetSH.resize(asset_count);
-        if(auto a = HoudiniApi::GetAvailableAssets(&session,assetId,assetSH.data(),asset_count);a != HAPI_RESULT_SUCCESS){
+        if(auto a = HoudiniApi::GetAvailableAssets(get_session(),assetId,assetSH.data(),asset_count);a != HAPI_RESULT_SUCCESS){
             printError("Error get available assets: ",a);
             return {};
         }
 
+        printLog(" ");
         std::string temp;
         int rootId = -1;
         std::vector<int> result;
         result.reserve(asset_count);
         for(int i = 0;i!=asset_count;++i){
-            temp = HoudiniEngineUtility::getString(&session,assetSH[i]);
+            temp = HoudiniEngineUtility::getString(get_session(),assetSH[i]);
             int id = -1;
             createNode(temp,temp,id,rootId,assetId);
             result.push_back(id);
         }
         hdaRes->assetId = assetId;
         assetIds.insert({assetId,hdaRes});
+        printLog(" ");
         return result;
     }
     GDE_EXPORT
@@ -1633,7 +1715,7 @@ public:
             printError("Failed to create node: The session is invalid.");
             return false;
         }
-        if(HoudiniApi::CreateNode(&session,parentId,operatorName.c_str(),nodeLabel.c_str(),false,&id) != HAPI_RESULT_SUCCESS){
+        if(HoudiniApi::CreateNode(get_session(),parentId,operatorName.c_str(),nodeLabel.c_str(),false,&id) != HAPI_RESULT_SUCCESS){
             printError("Error create node: ",HoudiniEngineUtility::getLastError().c_str());
             return false;
         }else{
@@ -1652,7 +1734,7 @@ public:
             printError("Failed to connect node: The session is invalid.");
             return false;
         }
-        if(HoudiniApi::ConnectNodeInput(&session,nodeId,inputIndex,node_to_connect,outputIndex) != HAPI_RESULT_SUCCESS){
+        if(HoudiniApi::ConnectNodeInput(get_session(),nodeId,inputIndex,node_to_connect,outputIndex) != HAPI_RESULT_SUCCESS){
             printError("Error connect node: ",HoudiniEngineUtility::getLastError().c_str());
             return false;
         }else{
@@ -1670,7 +1752,7 @@ public:
             printError("Failed to disconnect node: The session is invalid.");
             return false;
         }
-        if(HoudiniApi::DisconnectNodeInput(&session,nodeId,inputIndex) != HAPI_RESULT_SUCCESS){
+        if(HoudiniApi::DisconnectNodeInput(get_session(),nodeId,inputIndex) != HAPI_RESULT_SUCCESS){
             printError("Error disconnect node: ",HoudiniEngineUtility::getLastError().c_str());
             return false;
         }else{
@@ -1692,7 +1774,7 @@ public:
             return false;
         if(nodeIds.find(id) == nodeIds.end())
             return false;
-        if(HoudiniApi::CookNode(&session,id,&cookOptions) != HAPI_RESULT_SUCCESS){
+        if(HoudiniApi::CookNode(get_session(),id,&cookOptions) != HAPI_RESULT_SUCCESS){
             printError("Failed to cook node",HoudiniEngineUtility::getLastCookError().c_str());
             return false;
         }
@@ -1715,7 +1797,7 @@ public:
             printError("Failed to cook node: The session is invalid.");
             return false;
         }
-        if(auto a = HoudiniApi::DeleteNode(&session,id);a != HAPI_RESULT_SUCCESS){
+        if(auto a = HoudiniApi::DeleteNode(get_session(),id);a != HAPI_RESULT_SUCCESS){
             printError("Failed to delete node: ",a," - ",HoudiniEngineUtility::getLastError().c_str());
             return false;
         }
@@ -1752,7 +1834,7 @@ public:
         int status;
         HAPI_Result result;
         do{
-            result = HoudiniApi::GetStatus(&session,HAPI_STATUS_COOK_STATE,&status);
+            result = HoudiniApi::GetStatus(get_session(),HAPI_STATUS_COOK_STATE,&status);
             std::this_thread::sleep_for(std::chrono::microseconds(1));
         }while(status > HAPI_STATE_MAX_READY_STATE && result == HAPI_RESULT_SUCCESS);
         if(status != HAPI_STATE_READY || result != HAPI_RESULT_SUCCESS){
@@ -2208,174 +2290,31 @@ public:
     GDE_EXPORT
     HAPI_NodeInfo getNodeInfo(int id){
         HAPI_NodeInfo info;
-        if(HoudiniApi::GetNodeInfo(&session,id,&info) != HAPI_RESULT_SUCCESS){
+        if(HoudiniApi::GetNodeInfo(get_session(),id,&info) != HAPI_RESULT_SUCCESS){
             printError(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
         return info;
-    }
-    GDE_EXPORT
-    godot::Dictionary getNodeInfo(godot::Ref<NodeId> id){
-        
-        HAPI_NodeInfo info;
-        if(HoudiniApi::GetNodeInfo(&session,**id,&info) != HAPI_RESULT_SUCCESS){
-            printError(HoudiniEngineUtility::getLastError().c_str());
-            return {};
-        }
-        godot::Dictionary dic;
-        dic["id"] = info.id;
-        dic["parentId"] = info.parentId;
-        auto name = HoudiniEngineUtility::getString(&session, info.nameSH);
-        dic["name"] = godot::String::utf8(name.c_str());
-        dic["type"] = info.type;
-        dic["isValid"] = info.isValid;
-        dic["totalCookCount"] = info.totalCookCount;
-        dic["uniqueHoudiniNodeId"] = info.uniqueHoudiniNodeId;
-        dic["parmCount"] = info.parmCount;
-        dic["parmChoiceCount"] = info.parmChoiceCount;
-        dic["childNodeCount"] = info.childNodeCount;
-        dic["inputCount"] = info.inputCount;
-        dic["outputCount"] = info.outputCount;
-        dic["createdPostAssetLoad"] = info.createdPostAssetLoad;
-        dic["isTimeDependent"] = info.isTimeDependent;
-        dic["parmIntValueCount"] = info.parmIntValueCount;
-        dic["parmFloatValueCount"] = info.parmFloatValueCount;
-        dic["parmStringValueCount"] = info.parmStringValueCount;
-        return dic;
-    }
-    GDE_EXPORT
-    HAPI_AssetInfo getAssetInfo(int id){
-        HAPI_AssetInfo info;
-        if(HoudiniApi::GetAssetInfo(&session,id,&info) != HAPI_RESULT_SUCCESS){
-            printError(HoudiniEngineUtility::getLastError().c_str());
-            return {};
-        }
-        return info;
-    }
-    GDE_EXPORT
-    godot::Dictionary getAssetInfo(godot::Ref<NodeId> id){
-        
-        HAPI_AssetInfo info;
-        if(HoudiniApi::GetAssetInfo(&session,**id,&info) != HAPI_RESULT_SUCCESS){
-            printError(HoudiniEngineUtility::getLastError().c_str());
-            return {};
-        }
-        godot::Dictionary dic;
-        dic["nodeId"] = info.nodeId;
-        dic["objectNodeId"] = info.objectNodeId;
-        dic["hasEverCooked"] = info.hasEverCooked;
-        auto name = HoudiniEngineUtility::getString(&session, info.nameSH);
-        dic["name"] = godot::String::utf8(name.c_str());
-        auto label = HoudiniEngineUtility::getString(&session, info.labelSH);
-        dic["label"] = godot::String::utf8(label.c_str());
-        auto filePath = HoudiniEngineUtility::getString(&session, info.filePathSH);
-        dic["filePath"] = godot::String::utf8(filePath.c_str());
-        auto version = HoudiniEngineUtility::getString(&session, info.versionSH);
-        dic["version"] = godot::String::utf8(version.c_str());
-        auto fullOpName = HoudiniEngineUtility::getString(&session, info.fullOpNameSH);
-        dic["fullOpName"] = godot::String::utf8(fullOpName.c_str());
-        auto helpText = HoudiniEngineUtility::getString(&session, info.helpTextSH);
-        dic["helpText"] = godot::String::utf8(helpText.c_str());
-        auto helpURL = HoudiniEngineUtility::getString(&session, info.helpURLSH);
-        dic["helpURL"] = godot::String::utf8(helpURL.c_str());
-        dic["objectCount"] = info.objectCount;
-        dic["handleCount"] = info.handleCount;
-        dic["transformInputCount"] = info.transformInputCount;
-        dic["geoInputCount"] = info.geoInputCount;
-        dic["geoOutputCount"] = info.geoOutputCount;
-        dic["haveObjectsChanged"] = info.haveObjectsChanged;
-        dic["haveMaterialsChanged"] = info.haveMaterialsChanged;
-        return dic;
-    }
-    GDE_EXPORT
-    HAPI_ObjectInfo getObjectInfo(int id){
-        HAPI_ObjectInfo info;
-        if(HoudiniApi::GetObjectInfo(&session,id,&info) != HAPI_RESULT_SUCCESS){
-            printError(HoudiniEngineUtility::getLastError().c_str());
-            return {};
-        }
-        return info;
-    }
-    GDE_EXPORT
-    godot::Dictionary getObjectInfo(godot::Ref<NodeId> id){
-        
-        HAPI_ObjectInfo info;
-        if(HoudiniApi::GetObjectInfo(&session,**id,&info) != HAPI_RESULT_SUCCESS){
-            printError(HoudiniEngineUtility::getLastError().c_str());
-            return {};
-        }
-        godot::Dictionary dic;
-        auto name = HoudiniEngineUtility::getString(&session, info.nameSH);
-        dic["name"] = godot::String::utf8(name.c_str());
-        auto objectInstancePath = HoudiniEngineUtility::getString(&session, info.objectInstancePathSH);
-        dic["objectInstancePath"] = godot::String::utf8(objectInstancePath.c_str());
-        dic["hasTransformChanged"] = info.hasTransformChanged;
-        dic["haveGeosChanged"] = info.haveGeosChanged;
-        dic["isVisible"] = info.isVisible;
-        dic["isInstancer"] = info.isInstancer;
-        dic["isInstanced"] = info.isInstanced;
-        dic["geoCount"] = info.geoCount;
-        dic["nodeId"] = info.nodeId;
-        dic["objectToInstanceId"] = info.objectToInstanceId;
-        return dic;
     }
     GDE_EXPORT
     HAPI_GeoInfo getGeoInfo(int id){
         
         HAPI_GeoInfo info;
-        if(HoudiniApi::GetGeoInfo(&session,id,&info) != HAPI_RESULT_SUCCESS){
+        if(HoudiniApi::GetGeoInfo(get_session(),id,&info) != HAPI_RESULT_SUCCESS){
             printError(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
         return info;
-    }
-    GDE_EXPORT
-    godot::Dictionary getGeoInfo(godot::Ref<NodeId> id){
-        
-        HAPI_GeoInfo info;
-        if(HoudiniApi::GetGeoInfo(&session,**id,&info) != HAPI_RESULT_SUCCESS){
-            printError(HoudiniEngineUtility::getLastError().c_str());
-            return {};
-        }
-        godot::Dictionary dic;
-        dic["type"] = info.type;
-        auto name = HoudiniEngineUtility::getString(&session, info.nameSH);
-        dic["name"] = godot::String::utf8(name.c_str());
-        dic["nodeId"] = info.nodeId;
-        dic["isEditable"] = info.isEditable;
-        dic["isTemplated"] = info.isTemplated;
-        dic["isDisplayGeo"] = info.isDisplayGeo;
-        dic["hasGeoChanged"] = info.hasGeoChanged;
-        dic["hasMaterialChanged"] = info.hasMaterialChanged;
-        dic["pointGroupCount"] = info.pointGroupCount;
-        dic["primitiveGroupCount"] = info.primitiveGroupCount;
-        dic["edgeGroupCount"] = info.edgeGroupCount;
-        dic["partCount"] = info.partCount;
-        return dic;
     }
     GDE_EXPORT
     HAPI_MaterialInfo getMaterialInfo(int id){
         
         HAPI_MaterialInfo info;
-        if(HoudiniApi::GetMaterialInfo(&session,id,&info) != HAPI_RESULT_SUCCESS){
+        if(HoudiniApi::GetMaterialInfo(get_session(),id,&info) != HAPI_RESULT_SUCCESS){
             printError(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
         return info;
-    }
-    GDE_EXPORT
-    godot::Dictionary getMaterialInfo(godot::Ref<NodeId> id){
-        
-        HAPI_MaterialInfo info;
-        if(HoudiniApi::GetMaterialInfo(&session,**id,&info) != HAPI_RESULT_SUCCESS){
-            printError(HoudiniEngineUtility::getLastError().c_str());
-            return {};
-        }
-        godot::Dictionary dic;
-        dic["nodeId"] = info.nodeId;
-        dic["exists"] = info.exists;
-        dic["hasChanged"] = info.hasChanged;
-        return dic;
     }
     GDE_EXPORT
     void getParameters(int id){
@@ -2386,19 +2325,19 @@ public:
         HAPI_NodeInfo info = getNodeInfo(id);
         std::vector<HAPI_ParmInfo> parm_infos;
         parm_infos.resize(info.parmCount);
-        if(auto a = HoudiniApi::GetParameters(&session,id,parm_infos.data(),0,info.parmCount);a != HAPI_RESULT_SUCCESS){
+        if(auto a = HoudiniApi::GetParameters(get_session(),id,parm_infos.data(),0,info.parmCount);a != HAPI_RESULT_SUCCESS){
             printFile(HoudiniEngineUtility::getLastError().c_str(), " No parm got.");
             return;
         }
         for(int i = 0;i!=info.parmCount;++i){
-            auto name = HoudiniEngineUtility::getString(&session, parm_infos[i].nameSH);
+            auto name = HoudiniEngineUtility::getString(get_session(), parm_infos[i].nameSH);
             std::vector<std::variant<int64_t,double,std::string>> arr;
             if(HoudiniApi::ParmInfo_IsInt(&parm_infos[i])){
                 int parm_int_count = HoudiniApi::ParmInfo_GetIntValueCount(&parm_infos[i]);
                 std::vector<int> parm_int_values;
                 parm_int_values.resize(parm_int_count);
 
-                if(auto a = HoudiniApi::GetParmIntValues(&session,id,parm_int_values.data(),parm_infos[i].intValuesIndex,parm_int_count);a != HAPI_RESULT_SUCCESS){
+                if(auto a = HoudiniApi::GetParmIntValues(get_session(),id,parm_int_values.data(),parm_infos[i].intValuesIndex,parm_int_count);a != HAPI_RESULT_SUCCESS){
                     printFile(HoudiniEngineUtility::getLastError().c_str()," ",a);
                     continue;
                 }
@@ -2410,7 +2349,7 @@ public:
                 std::vector<float> parm_float_values;
                 parm_float_values.resize(parm_float_count);
 
-                if(HoudiniApi::GetParmFloatValues(&session,id,parm_float_values.data(),parm_infos[i].floatValuesIndex,parm_float_count) != HAPI_RESULT_SUCCESS){
+                if(HoudiniApi::GetParmFloatValues(get_session(),id,parm_float_values.data(),parm_infos[i].floatValuesIndex,parm_float_count) != HAPI_RESULT_SUCCESS){
                     printFile(HoudiniEngineUtility::getLastError().c_str());
                     continue;
                 }
@@ -2420,12 +2359,12 @@ public:
             }else if(HoudiniApi::ParmInfo_IsString(&parm_infos[i])){
                 int parm_string_count = HoudiniApi::ParmInfo_GetStringValueCount(&parm_infos[i]);
                 std::vector<HAPI_StringHandle> parmSH_values;
-                if(HoudiniApi::GetParmStringValues(&session,id,true,parmSH_values.data(),parm_infos[i].stringValuesIndex,parm_string_count)!=HAPI_RESULT_SUCCESS){
+                if(HoudiniApi::GetParmStringValues(get_session(),id,true,parmSH_values.data(),parm_infos[i].stringValuesIndex,parm_string_count)!=HAPI_RESULT_SUCCESS){
                     printFile(HoudiniEngineUtility::getLastError().c_str());
                     continue;
                 }
                 for(int v = 0;v != parm_string_count;++v){
-                    arr.push_back(HoudiniEngineUtility::getString(&session,parmSH_values[v]));
+                    arr.push_back(HoudiniEngineUtility::getString(get_session(),parmSH_values[v]));
                 }
             }
             parameters[id][name] = arr;
@@ -2459,7 +2398,7 @@ public:
         }
         HAPI_PartInfo part_info;
         HoudiniApi::PartInfo_Init(&part_info);
-        if(HoudiniApi::GetPartInfo(&session,**nodeId, **partId, &part_info) != HAPI_RESULT_SUCCESS){
+        if(HoudiniApi::GetPartInfo(get_session(),**nodeId, **partId, &part_info) != HAPI_RESULT_SUCCESS){
             printError(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
@@ -2470,7 +2409,7 @@ public:
 
         std::vector<HAPI_StringHandle> attrNameSH;
         attrNameSH.resize(point_attr_count);
-        if(HoudiniApi::GetAttributeNames(&session,**nodeId,**partId,HAPI_ATTROWNER_POINT,attrNameSH.data(),point_attr_count) != HAPI_RESULT_SUCCESS){
+        if(HoudiniApi::GetAttributeNames(get_session(),**nodeId,**partId,HAPI_ATTROWNER_POINT,attrNameSH.data(),point_attr_count) != HAPI_RESULT_SUCCESS){
             printError(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
@@ -2479,10 +2418,10 @@ public:
         godot::Array point_attrs;
         godot::Dictionary point_attr;
         for(int i = 0;i!=point_attr_count;++i){
-            std::string attr_name = HoudiniEngineUtility::getString(&session, attrNameSH[i]);
+            std::string attr_name = HoudiniEngineUtility::getString(get_session(), attrNameSH[i]);
             HAPI_AttributeInfo attr_info;
             HoudiniApi::AttributeInfo_Init(&attr_info);
-            if(HoudiniApi::GetAttributeInfo(&session,**nodeId,**partId,attr_name.c_str(),HAPI_ATTROWNER_POINT,&attr_info) != HAPI_RESULT_SUCCESS){
+            if(HoudiniApi::GetAttributeInfo(get_session(),**nodeId,**partId,attr_name.c_str(),HAPI_ATTROWNER_POINT,&attr_info) != HAPI_RESULT_SUCCESS){
                 printError(HoudiniEngineUtility::getLastError().c_str());
                 continue;
             }
@@ -2502,7 +2441,7 @@ public:
         
         attrNameSH.clear();
         attrNameSH.resize(vertex_attr_count);
-        if(HoudiniApi::GetAttributeNames(&session,**nodeId,**partId,HAPI_ATTROWNER_VERTEX,attrNameSH.data(),vertex_attr_count) != HAPI_RESULT_SUCCESS){
+        if(HoudiniApi::GetAttributeNames(get_session(),**nodeId,**partId,HAPI_ATTROWNER_VERTEX,attrNameSH.data(),vertex_attr_count) != HAPI_RESULT_SUCCESS){
             printError(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
@@ -2510,10 +2449,10 @@ public:
         godot::Array vertex_attrs;
         godot::Dictionary vertex_attr;
         for(int i = 0;i!=point_attr_count;++i){
-            std::string attr_name = HoudiniEngineUtility::getString(&session, attrNameSH[i]);
+            std::string attr_name = HoudiniEngineUtility::getString(get_session(), attrNameSH[i]);
             HAPI_AttributeInfo attr_info;
             HoudiniApi::AttributeInfo_Init(&attr_info);
-            if(HoudiniApi::GetAttributeInfo(&session,**nodeId,**partId,attr_name.c_str(),HAPI_ATTROWNER_VERTEX,&attr_info) != HAPI_RESULT_SUCCESS){
+            if(HoudiniApi::GetAttributeInfo(get_session(),**nodeId,**partId,attr_name.c_str(),HAPI_ATTROWNER_VERTEX,&attr_info) != HAPI_RESULT_SUCCESS){
                 printError(HoudiniEngineUtility::getLastError().c_str());
                 continue;
             }
@@ -2533,7 +2472,7 @@ public:
 
         attrNameSH.clear();
         attrNameSH.resize(prim_attr_count);
-        if(HoudiniApi::GetAttributeNames(&session,**nodeId,**partId,HAPI_ATTROWNER_PRIM,attrNameSH.data(),prim_attr_count) != HAPI_RESULT_SUCCESS){
+        if(HoudiniApi::GetAttributeNames(get_session(),**nodeId,**partId,HAPI_ATTROWNER_PRIM,attrNameSH.data(),prim_attr_count) != HAPI_RESULT_SUCCESS){
             printError(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
@@ -2541,10 +2480,10 @@ public:
         godot::Array prim_attrs;
         godot::Dictionary prim_attr;
         for(int i = 0;i!=point_attr_count;++i){
-            std::string attr_name = HoudiniEngineUtility::getString(&session, attrNameSH[i]);
+            std::string attr_name = HoudiniEngineUtility::getString(get_session(), attrNameSH[i]);
             HAPI_AttributeInfo attr_info;
             HoudiniApi::AttributeInfo_Init(&attr_info);
-            if(HoudiniApi::GetAttributeInfo(&session,**nodeId,**partId,attr_name.c_str(),HAPI_ATTROWNER_PRIM,&attr_info) != HAPI_RESULT_SUCCESS){
+            if(HoudiniApi::GetAttributeInfo(get_session(),**nodeId,**partId,attr_name.c_str(),HAPI_ATTROWNER_PRIM,&attr_info) != HAPI_RESULT_SUCCESS){
                 printError(HoudiniEngineUtility::getLastError().c_str());
                 continue;
             }
@@ -2565,7 +2504,7 @@ public:
         
         attrNameSH.clear();
         attrNameSH.resize(detail_attr_count);
-        if(HoudiniApi::GetAttributeNames(&session,**nodeId,**partId,HAPI_ATTROWNER_DETAIL,attrNameSH.data(),detail_attr_count) != HAPI_RESULT_SUCCESS){
+        if(HoudiniApi::GetAttributeNames(get_session(),**nodeId,**partId,HAPI_ATTROWNER_DETAIL,attrNameSH.data(),detail_attr_count) != HAPI_RESULT_SUCCESS){
             printError(HoudiniEngineUtility::getLastError().c_str());
             return {};
         }
@@ -2573,10 +2512,10 @@ public:
         godot::Array detail_attrs;
         godot::Dictionary detail_attr;
         for(int i = 0;i!=point_attr_count;++i){
-            std::string attr_name = HoudiniEngineUtility::getString(&session, attrNameSH[i]);
+            std::string attr_name = HoudiniEngineUtility::getString(get_session(), attrNameSH[i]);
             HAPI_AttributeInfo attr_info;
             HoudiniApi::AttributeInfo_Init(&attr_info);
-            if(HoudiniApi::GetAttributeInfo(&session,**nodeId,**partId,attr_name.c_str(),HAPI_ATTROWNER_DETAIL,&attr_info) != HAPI_RESULT_SUCCESS){
+            if(HoudiniApi::GetAttributeInfo(get_session(),**nodeId,**partId,attr_name.c_str(),HAPI_ATTROWNER_DETAIL,&attr_info) != HAPI_RESULT_SUCCESS){
                 printError(HoudiniEngineUtility::getLastError().c_str());
                 continue;
             }
@@ -2599,7 +2538,7 @@ public:
     GDE_EXPORT
     bool checkGeometryChange(int nodeId){
         HAPI_GeoInfo geoInfo;
-        if(HoudiniApi::GetGeoInfo(&session,nodeId,&geoInfo) != HAPI_RESULT_SUCCESS){
+        if(HoudiniApi::GetGeoInfo(get_session(),nodeId,&geoInfo) != HAPI_RESULT_SUCCESS){
             printError(HoudiniEngineUtility::getLastError().c_str());
             return false;
         }
@@ -2609,14 +2548,14 @@ public:
     void getGeometry(int id){
 
         HAPI_GeoInfo mesh_geo_info;
-        if(HoudiniApi::GetDisplayGeoInfo(&session, id, &mesh_geo_info) != HAPI_RESULT_SUCCESS){
+        if(HoudiniApi::GetDisplayGeoInfo(get_session(), id, &mesh_geo_info) != HAPI_RESULT_SUCCESS){
             printError(HoudiniEngineUtility::getLastError().c_str());
             return;
         }
         for(int partId = 0;partId!=mesh_geo_info.partCount;++partId){
             HAPI_PartInfo partInfo;
             HoudiniApi::PartInfo_Init(&partInfo);
-            if(HoudiniApi::GetPartInfo(&session, mesh_geo_info.nodeId, partId, &partInfo) != HAPI_RESULT_SUCCESS){
+            if(HoudiniApi::GetPartInfo(get_session(), mesh_geo_info.nodeId, partId, &partInfo) != HAPI_RESULT_SUCCESS){
                 printError(HoudiniEngineUtility::getLastError().c_str());
                 return;
             }
@@ -2624,12 +2563,12 @@ public:
             switch(type){
             case PartType::Mesh:{
                 std::vector<int> mesh_face_counts(partInfo.faceCount);
-                if(HoudiniApi::GetFaceCounts(&session,mesh_geo_info.nodeId,partInfo.id,mesh_face_counts.data(),0,partInfo.faceCount) != HAPI_RESULT_SUCCESS){
+                if(HoudiniApi::GetFaceCounts(get_session(),mesh_geo_info.nodeId,partInfo.id,mesh_face_counts.data(),0,partInfo.faceCount) != HAPI_RESULT_SUCCESS){
                     printError(HoudiniEngineUtility::getLastError().c_str());
                     return;
                 }
                 std::vector<int> mesh_vertex_list(partInfo.vertexCount);
-                if(HoudiniApi::GetVertexList(&session,mesh_geo_info.nodeId,partInfo.id,mesh_vertex_list.data(),0, partInfo.vertexCount) != HAPI_RESULT_SUCCESS){
+                if(HoudiniApi::GetVertexList(get_session(),mesh_geo_info.nodeId,partInfo.id,mesh_vertex_list.data(),0, partInfo.vertexCount) != HAPI_RESULT_SUCCESS){
                     printError(HoudiniEngineUtility::getLastError().c_str());
                     return;
                 }
@@ -2639,7 +2578,7 @@ public:
                 // });
                 auto fetchPointAttrib = [&](HAPI_AttributeOwner owner,const char* attrib_name,std::vector<float>& mesh_attrib_data)->bool{
                     HAPI_AttributeInfo mesh_attrib_info;
-                    if(HoudiniApi::GetAttributeInfo(&session,mesh_geo_info.nodeId,partInfo.id,attrib_name, owner,&mesh_attrib_info) != HAPI_RESULT_SUCCESS){
+                    if(HoudiniApi::GetAttributeInfo(get_session(),mesh_geo_info.nodeId,partInfo.id,attrib_name, owner,&mesh_attrib_info) != HAPI_RESULT_SUCCESS){
                         printFile(HoudiniEngineUtility::getLastError().c_str());
                         return false;
                     }
@@ -2651,7 +2590,7 @@ public:
 
                     std::cerr << "mesh_attrib_info.count: " << mesh_attrib_info.count << std::endl;
                     mesh_attrib_data.resize(dataSize);
-                    if(HoudiniApi::GetAttributeFloatData(&session,mesh_geo_info.nodeId,partInfo.id,attrib_name,&mesh_attrib_info,-1,mesh_attrib_data.data(),0,mesh_attrib_info.count) != HAPI_RESULT_SUCCESS){
+                    if(HoudiniApi::GetAttributeFloatData(get_session(),mesh_geo_info.nodeId,partInfo.id,attrib_name,&mesh_attrib_info,-1,mesh_attrib_data.data(),0,mesh_attrib_info.count) != HAPI_RESULT_SUCCESS){
                         printFile(HoudiniEngineUtility::getLastError().c_str()," Attribute name : ",attrib_name);
                         return false;
                     }
@@ -2697,7 +2636,7 @@ public:
             }break;
             case PartType::Instancer:{
                 std::vector<HAPI_Transform> instancer_transforms(partInfo.instanceCount);
-                auto result = HoudiniApi::GetInstancerPartTransforms(&session,id,partId,HAPI_SRT,instancer_transforms.data(),0,partInfo.instanceCount);
+                auto result = HoudiniApi::GetInstancerPartTransforms(get_session(),id,partId,HAPI_SRT,instancer_transforms.data(),0,partInfo.instanceCount);
                 if(result != HAPI_RESULT_SUCCESS){
                     printFile(HoudiniEngineUtility::getLastError().c_str());
                     continue;
@@ -2716,7 +2655,7 @@ public:
     GDE_EXPORT
     void getMaterial(int id){
         HAPI_GeoInfo mesh_geo_info;
-        if(HoudiniApi::GetDisplayGeoInfo(&session, id, &mesh_geo_info) != HAPI_RESULT_SUCCESS){
+        if(HoudiniApi::GetDisplayGeoInfo(get_session(), id, &mesh_geo_info) != HAPI_RESULT_SUCCESS){
             printError(HoudiniEngineUtility::getLastError().c_str());
             return;
         }
@@ -2724,13 +2663,13 @@ public:
         for(int partId = 0;partId!=mesh_geo_info.partCount;++partId){
             HAPI_PartInfo mesh_part_info;
             HoudiniApi::PartInfo_Init(&mesh_part_info);
-            if(HoudiniApi::GetPartInfo(&session, mesh_geo_info.nodeId, partId, &mesh_part_info) != HAPI_RESULT_SUCCESS){
+            if(HoudiniApi::GetPartInfo(get_session(), mesh_geo_info.nodeId, partId, &mesh_part_info) != HAPI_RESULT_SUCCESS){
                 printError(HoudiniEngineUtility::getLastError().c_str());
                 continue;
             }
             bool all_the_same = false;
             std::vector<HAPI_NodeId> matIds(mesh_part_info.faceCount);
-            if(HoudiniApi::GetMaterialNodeIdsOnFaces(&session,id,partId,&all_the_same,matIds.data(),0,mesh_part_info.faceCount)!=HAPI_RESULT_SUCCESS){
+            if(HoudiniApi::GetMaterialNodeIdsOnFaces(get_session(),id,partId,&all_the_same,matIds.data(),0,mesh_part_info.faceCount)!=HAPI_RESULT_SUCCESS){
                 printError(HoudiniEngineUtility::getLastError().c_str());
                 continue;
             }
@@ -2740,14 +2679,14 @@ public:
         }
         
 
-        if(HoudiniApi::GetDisplayGeoInfo(&session, id, &mesh_geo_info) != HAPI_RESULT_SUCCESS){
+        if(HoudiniApi::GetDisplayGeoInfo(get_session(), id, &mesh_geo_info) != HAPI_RESULT_SUCCESS){
             printError(HoudiniEngineUtility::getLastError().c_str());
             return;
         }
         for(int partId = 0;partId!=mesh_geo_info.partCount;++partId){
             HAPI_PartInfo mesh_part_info;
             HoudiniApi::PartInfo_Init(&mesh_part_info);
-            if(HoudiniApi::GetPartInfo(&session, mesh_geo_info.nodeId, partId, &mesh_part_info) != HAPI_RESULT_SUCCESS){
+            if(HoudiniApi::GetPartInfo(get_session(), mesh_geo_info.nodeId, partId, &mesh_part_info) != HAPI_RESULT_SUCCESS){
                 printError(HoudiniEngineUtility::getLastError().c_str());
                 continue;
             }
@@ -2755,19 +2694,19 @@ public:
             std::vector<std::string> resTypePaths;
             HAPI_AttributeInfo materialPathAttribInfo;
             
-            if(HoudiniApi::GetAttributeInfo(&session,mesh_geo_info.nodeId,mesh_part_info.id,"gd_mat_path", HAPI_ATTROWNER_PRIM,&materialPathAttribInfo) != HAPI_RESULT_SUCCESS){
+            if(HoudiniApi::GetAttributeInfo(get_session(),mesh_geo_info.nodeId,mesh_part_info.id,"gd_mat_path", HAPI_ATTROWNER_PRIM,&materialPathAttribInfo) != HAPI_RESULT_SUCCESS){
                 printFile(HoudiniEngineUtility::getLastError().c_str());
                 continue;
             }
             if(!materialPathAttribInfo.exists)
                 continue;
             materialPaths.resize(materialPathAttribInfo.count * materialPathAttribInfo.tupleSize);
-            if(HoudiniApi::GetAttributeStringData(&session,mesh_geo_info.nodeId,mesh_part_info.id,"gd_mat_path",&materialPathAttribInfo,materialPaths.data(),0,materialPathAttribInfo.count) != HAPI_RESULT_SUCCESS){
+            if(HoudiniApi::GetAttributeStringData(get_session(),mesh_geo_info.nodeId,mesh_part_info.id,"gd_mat_path",&materialPathAttribInfo,materialPaths.data(),0,materialPathAttribInfo.count) != HAPI_RESULT_SUCCESS){
                 printFile(HoudiniEngineUtility::getLastError().c_str()," Attribute name : gd_mat_path");
                 continue;
             }
             for(auto a : materialPaths){
-                std::string path = HoudiniEngineUtility::getString(&session,a);
+                std::string path = HoudiniEngineUtility::getString(get_session(),a);
                 if(materialRes.find(path) == materialRes.end()){
                     materialRes[path] = godot::ResourceLoader::get_singleton()->load(godot::String::utf8(path.c_str()));
                 }
@@ -2781,7 +2720,7 @@ public:
         for(auto& a : materialIds[nodeId]){
             if(a.second.first){
                 HAPI_MaterialInfo materialInfo;
-                if(HoudiniApi::GetMaterialInfo(&session,a.second.second[0],&materialInfo)!=HAPI_RESULT_SUCCESS){
+                if(HoudiniApi::GetMaterialInfo(get_session(),a.second.second[0],&materialInfo)!=HAPI_RESULT_SUCCESS){
                     printError(HoudiniEngineUtility::getLastError().c_str());
                 }else{
                     return materialInfo.hasChanged;
@@ -2789,7 +2728,7 @@ public:
             }
             for(auto& b : a.second.second){
                 HAPI_MaterialInfo materialInfo;
-                if(HoudiniApi::GetMaterialInfo(&session,a.second.second[0],&materialInfo)!=HAPI_RESULT_SUCCESS){
+                if(HoudiniApi::GetMaterialInfo(get_session(),a.second.second[0],&materialInfo)!=HAPI_RESULT_SUCCESS){
                     printError(HoudiniEngineUtility::getLastError().c_str());
                 }else{
                     if(materialInfo.hasChanged)
@@ -2805,7 +2744,7 @@ public:
             printError("Failed to create input node: The session is invalid.");
             return false;
         }
-        if(HoudiniApi::CreateInputNode(&session,parentId,&id,nodeLabel.c_str()) != HAPI_RESULT_SUCCESS){
+        if(HoudiniApi::CreateInputNode(get_session(),parentId,&id,nodeLabel.c_str()) != HAPI_RESULT_SUCCESS){
             printError("Error create input node: ",HoudiniEngineUtility::getLastError().c_str());
             return false;
         }else{
@@ -3036,7 +2975,7 @@ public:
         node_part.faceCount = allFaces.size();
         node_part.vertexCount = allVertexs.size();
         node_part.pointCount = allPositions.size()/3;
-        if(HoudiniApi::SetPartInfo(&session,id,0,&node_part) != HAPI_RESULT_SUCCESS){
+        if(HoudiniApi::SetPartInfo(get_session(),id,0,&node_part) != HAPI_RESULT_SUCCESS){
             printError("Error create input node: ",HoudiniEngineUtility::getLastError().c_str());
             return -1;
         }
@@ -3047,19 +2986,19 @@ public:
         pointInfo.exists = true;
         pointInfo.storage = HAPI_STORAGETYPE_FLOAT;
         pointInfo.owner = HAPI_ATTROWNER_POINT;
-        if(HoudiniApi::AddAttribute(&session,id,0,"P",&pointInfo) != HAPI_RESULT_SUCCESS){
+        if(HoudiniApi::AddAttribute(get_session(),id,0,"P",&pointInfo) != HAPI_RESULT_SUCCESS){
             printError(HoudiniEngineUtility::getLastError().c_str());
             return -1;
         }
-        if(HoudiniApi::SetAttributeFloatData(&session,id,0,"P",&pointInfo,allPositions.data(),0,pointInfo.count) != HAPI_RESULT_SUCCESS){
+        if(HoudiniApi::SetAttributeFloatData(get_session(),id,0,"P",&pointInfo,allPositions.data(),0,pointInfo.count) != HAPI_RESULT_SUCCESS){
             printError(HoudiniEngineUtility::getLastError().c_str());
             return -1;
         }
-        if(HoudiniApi::SetVertexList(&session,id,0,allVertexs.data(),0,allVertexs.size()) != HAPI_RESULT_SUCCESS){
+        if(HoudiniApi::SetVertexList(get_session(),id,0,allVertexs.data(),0,allVertexs.size()) != HAPI_RESULT_SUCCESS){
             printError(HoudiniEngineUtility::getLastError().c_str());
             return -1;
         }
-        if(HoudiniApi::SetFaceCounts(&session,id,0,allFaces.data(),0,allFaces.size()) != HAPI_RESULT_SUCCESS){
+        if(HoudiniApi::SetFaceCounts(get_session(),id,0,allFaces.data(),0,allFaces.size()) != HAPI_RESULT_SUCCESS){
             printError(HoudiniEngineUtility::getLastError().c_str());
             return -1;
         }
@@ -3070,12 +3009,12 @@ public:
             colorInfo.exists = true;
             colorInfo.storage = HAPI_STORAGETYPE_FLOAT;
             colorInfo.owner = (HAPI_AttributeOwner)AttribOwner::Vertex;
-            if(HoudiniApi::AddAttribute(&session,id,0,"Cd",&colorInfo) != HAPI_RESULT_SUCCESS){
+            if(HoudiniApi::AddAttribute(get_session(),id,0,"Cd",&colorInfo) != HAPI_RESULT_SUCCESS){
                 printError(HoudiniEngineUtility::getLastError().c_str());
                 return -1;
             }
             std::cerr << "count: " << colorInfo.count << "\tsize: " << allColors.size()/3 << std::endl;
-            if(HoudiniApi::SetAttributeFloatData(&session,id,0,"Cd",&colorInfo,allColors.data(),0,colorInfo.count) != HAPI_RESULT_SUCCESS){
+            if(HoudiniApi::SetAttributeFloatData(get_session(),id,0,"Cd",&colorInfo,allColors.data(),0,colorInfo.count) != HAPI_RESULT_SUCCESS){
                 printError(HoudiniEngineUtility::getLastError().c_str());
                 return -1;
             }
@@ -3087,11 +3026,11 @@ public:
             normalInfo.exists = true;
             normalInfo.storage = HAPI_STORAGETYPE_FLOAT;
             normalInfo.owner = (HAPI_AttributeOwner)AttribOwner::Vertex;
-            if(HoudiniApi::AddAttribute(&session,id,0,"N",&normalInfo) != HAPI_RESULT_SUCCESS){
+            if(HoudiniApi::AddAttribute(get_session(),id,0,"N",&normalInfo) != HAPI_RESULT_SUCCESS){
                 printError(HoudiniEngineUtility::getLastError().c_str());
                 return -1;
             }
-            if(HoudiniApi::SetAttributeFloatData(&session,id,0,"N",&normalInfo,allNormals.data(),0,normalInfo.count) != HAPI_RESULT_SUCCESS){
+            if(HoudiniApi::SetAttributeFloatData(get_session(),id,0,"N",&normalInfo,allNormals.data(),0,normalInfo.count) != HAPI_RESULT_SUCCESS){
                 printError(HoudiniEngineUtility::getLastError().c_str());
                 return -1;
             }
@@ -3103,11 +3042,11 @@ public:
             uvInfo.exists = true;
             uvInfo.storage = HAPI_STORAGETYPE_FLOAT;
             uvInfo.owner = (HAPI_AttributeOwner)AttribOwner::Vertex;
-            if(HoudiniApi::AddAttribute(&session,id,0,"uv",&uvInfo) != HAPI_RESULT_SUCCESS){
+            if(HoudiniApi::AddAttribute(get_session(),id,0,"uv",&uvInfo) != HAPI_RESULT_SUCCESS){
                 printError(HoudiniEngineUtility::getLastError().c_str());
                 return -1;
             }
-            if(HoudiniApi::SetAttributeFloatData(&session,id,0,"uv",&uvInfo,allUVs.data(),0,uvInfo.count) != HAPI_RESULT_SUCCESS){
+            if(HoudiniApi::SetAttributeFloatData(get_session(),id,0,"uv",&uvInfo,allUVs.data(),0,uvInfo.count) != HAPI_RESULT_SUCCESS){
                 printError(HoudiniEngineUtility::getLastError().c_str());
                 return -1;
             }
@@ -3119,11 +3058,11 @@ public:
             uv2Info.exists = true;
             uv2Info.storage = HAPI_STORAGETYPE_FLOAT;
             uv2Info.owner = (HAPI_AttributeOwner)AttribOwner::Vertex;
-            if(HoudiniApi::AddAttribute(&session,id,0,"uv2",&uv2Info) != HAPI_RESULT_SUCCESS){
+            if(HoudiniApi::AddAttribute(get_session(),id,0,"uv2",&uv2Info) != HAPI_RESULT_SUCCESS){
                 printError(HoudiniEngineUtility::getLastError().c_str());
                 return -1;
             }
-            if(HoudiniApi::SetAttributeFloatData(&session,id,0,"uv2",&uv2Info,allUV2s.data(),0,uv2Info.count) != HAPI_RESULT_SUCCESS){
+            if(HoudiniApi::SetAttributeFloatData(get_session(),id,0,"uv2",&uv2Info,allUV2s.data(),0,uv2Info.count) != HAPI_RESULT_SUCCESS){
                 printError(HoudiniEngineUtility::getLastError().c_str());
                 return -1;
             }
@@ -3135,16 +3074,16 @@ public:
             matInfo.exists = true;
             matInfo.storage = HAPI_STORAGETYPE_STRING;
             matInfo.owner = HAPI_ATTROWNER_PRIM;
-            if(HoudiniApi::AddAttribute(&session,id,0,"gd_mat_path",&matInfo) != HAPI_RESULT_SUCCESS){
+            if(HoudiniApi::AddAttribute(get_session(),id,0,"gd_mat_path",&matInfo) != HAPI_RESULT_SUCCESS){
                 printError(HoudiniEngineUtility::getLastError().c_str());
                 return -1;
             }
-            if(HoudiniApi::SetAttributeStringData(&session,id,0,"gd_mat_path",&matInfo,allMatPaths.data(),0,matInfo.count) != HAPI_RESULT_SUCCESS){
+            if(HoudiniApi::SetAttributeStringData(get_session(),id,0,"gd_mat_path",&matInfo,allMatPaths.data(),0,matInfo.count) != HAPI_RESULT_SUCCESS){
                 printError(HoudiniEngineUtility::getLastError().c_str());
                 return -1;
             }
         }
-        if(HoudiniApi::CommitGeo(&session,id) != HAPI_RESULT_SUCCESS){
+        if(HoudiniApi::CommitGeo(get_session(),id) != HAPI_RESULT_SUCCESS){
             printError(HoudiniEngineUtility::getLastError().c_str());
             return -1;
         }

@@ -6,6 +6,47 @@
 #include <string>
 #include <array>
 #include <set>
+#include <source_location>
+#include <godot_cpp/variant/utility_functions.hpp>
+namespace _houdini_engine_log{
+    inline std::string logFilePath = "";
+    inline std::ofstream logFile;
+}
+enum class _godot_msg_type{
+    log,warning,error
+};
+template <typename ...T>
+GDE_EXPORT
+void _output_log(T... output){
+    using namespace _houdini_engine_log;
+    if(!logFilePath.empty()){
+        logFile << " ### " << std::chrono::system_clock::now() << " ### \n";
+        int _[] = {((logFile << output),0)...};
+        logFile << std::endl;
+    }
+}
+template <typename ...T>
+GDE_EXPORT
+void _print_godot_msg(_godot_msg_type type, T... output){
+    switch (type)
+    {
+    case _godot_msg_type::log:
+        godot::UtilityFunctions::print(output...,'\n');
+        break;
+    case _godot_msg_type::warning:
+        godot::UtilityFunctions::push_warning(output...,'\n');
+        break;
+    case _godot_msg_type::error:
+        godot::UtilityFunctions::push_error(output...,'\n');
+        break;
+    default:
+        break;
+    }
+}
+#define printFile(...) ;{std::source_location _houdini_engine_source_loc = std::source_location::current();_output_log("\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);};
+#define printLog(...) ;{std::source_location _houdini_engine_source_loc = std::source_location::current();_output_log("\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);_print_godot_msg(_godot_msg_type::log,"\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);};
+#define printWarning(...) ;{std::source_location _houdini_engine_source_loc = std::source_location::current();_output_log("\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);_print_godot_msg(_godot_msg_type::warning,"\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);};
+#define printError(...) ;{std::source_location _houdini_engine_source_loc = std::source_location::current();_output_log("\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);_print_godot_msg(_godot_msg_type::error,"\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);};
 
 static inline std::set<std::string> _houdini_endine_string_buffer;
 GDE_EXPORT
