@@ -137,3 +137,12 @@ inline void addenv(std::string key,std::string value){
     setenv(key.c_str(),value.c_str(),1);
 }
 #endif
+
+GDE_EXPORT 
+inline godot::String string_cast(std::string s){
+    return godot::String::utf8(s.c_str());
+}
+GDE_EXPORT 
+inline std::string string_cast(godot::String s){
+    return s.utf8().get_data();
+}

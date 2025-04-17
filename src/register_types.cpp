@@ -15,6 +15,7 @@
 #include <godot_cpp/core/defs.hpp>
 #include <godot_cpp/godot.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/editor_plugin.hpp>
 #include <godot_cpp/classes/project_settings.hpp>
 
@@ -25,11 +26,13 @@ void initialize_module(ModuleInitializationLevel p_level){
     if (p_level != MODULE_INITIALIZATION_LEVEL_EDITOR) {
         return;
     }
+    GDREGISTER_CLASS(Bool);
     GDREGISTER_CLASS(Int);
+    GDREGISTER_CLASS(Float);
+    GDREGISTER_CLASS(RefArray);
     GDREGISTER_CLASS(RefDictionary);
     GDREGISTER_CLASS(NodeId)
     GDREGISTER_CLASS(PartId)
-    GDREGISTER_CLASS(HoudiniEngine)
     GDREGISTER_ABSTRACT_CLASS(Action)
     GDREGISTER_ABSTRACT_CLASS(SessionAction)
     GDREGISTER_ABSTRACT_CLASS(AssetAction)
@@ -44,6 +47,8 @@ void initialize_module(ModuleInitializationLevel p_level){
     GDREGISTER_CLASS(DeleteNodeAction)
     GDREGISTER_CLASS(CreateMeshAction)
 
+    GDREGISTER_CLASS(HoudiniEngine)
+    GDREGISTER_CLASS(HoudiniSettings)
     GDREGISTER_CLASS(HoudiniEngineManager)
 
     GDREGISTER_CLASS(HDANode)
@@ -53,12 +58,13 @@ void initialize_module(ModuleInitializationLevel p_level){
     GDREGISTER_CLASS(HDAImportPlugin)
 
     EditorPlugins::add_by_type<HDAImportPlugin>();
+    godot::Engine::get_singleton()->register_singleton("HoudiniSettings",HoudiniSettings::get_singleton());
 }
 void uninitialize_module(ModuleInitializationLevel p_level){
     if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
         return;
     }
-
+    godot::Engine::get_singleton()->unregister_singleton("HoudiniSettings");
 }
 extern "C" {
 // Initialization.

@@ -44,13 +44,26 @@
 #include "Contact.h"
 #include "HDAImporter.h"
 
-VARIANT_ENUM_CAST(HAPI_PackedPrimInstancingMode)
-VARIANT_ENUM_CAST(HAPI_StorageType)
 VARIANT_ENUM_CAST(HAPI_AttributeTypeInfo)
 VARIANT_ENUM_CAST(HAPI_AttributeOwner)
 VARIANT_ENUM_CAST(HAPI_NodeType)
 VARIANT_ENUM_CAST(HAPI_GeoType)
+VARIANT_ENUM_CAST(HAPI_PartType)
+VARIANT_ENUM_CAST(HAPI_ParmType)
+VARIANT_ENUM_CAST(HAPI_InputType)
 VARIANT_ENUM_CAST(HAPI_Result)
+VARIANT_ENUM_CAST(HAPI_NodeFlags)
+VARIANT_ENUM_CAST(HAPI_StorageType)
+VARIANT_ENUM_CAST(HAPI_PrmScriptType)
+VARIANT_ENUM_CAST(HAPI_StatusVerbosity)
+VARIANT_ENUM_CAST(HAPI_StatusType)
+VARIANT_ENUM_CAST(HAPI_RampType)
+VARIANT_ENUM_CAST(HAPI_RSTOrder)
+VARIANT_ENUM_CAST(HAPI_TCP_PortType)
+VARIANT_ENUM_CAST(HAPI_ThriftSharedMemoryBufferType)
+VARIANT_ENUM_CAST(HAPI_Permissions)
+VARIANT_ENUM_CAST(HAPI_ChoiceListType)
+VARIANT_ENUM_CAST(HAPI_PackedPrimInstancingMode)
 enum SessionType
 {
     InProcess = 1,
@@ -66,6 +79,26 @@ public:
     Void(godot::Variant){}
     Void(std::any){}
     Void(){}
+};
+class Bool: public godot::RefCounted{
+GDCLASS(Bool, godot::RefCounted)
+    void set_value(bool value){
+        this->value = value;
+    }
+    bool get_value(){
+        return value;
+    }
+    static void _bind_methods(){
+        godot::ClassDB::bind_method(godot::D_METHOD("set_value","value"),&Bool::set_value);
+        godot::ClassDB::bind_method(godot::D_METHOD("get_value"),&Bool::get_value);
+        godot::ClassDB::add_property("Bool",godot::PropertyInfo(godot::Variant::BOOL,"value"),"set_value","get_value");
+    }
+public:
+    bool value;
+    Bool(){}
+    Bool(bool value){
+        this->value = value;
+    }
 };
 class Int: public godot::RefCounted{
 GDCLASS(Int, godot::RefCounted)
@@ -86,6 +119,47 @@ public:
     template<typename T> requires std::integral<T>
     Int(T value){
         this->value = value;
+    }
+};
+class Float: public godot::RefCounted{
+GDCLASS(Float, godot::RefCounted)
+    void set_value(double value){
+        this->value = value;
+    }
+    double get_value(){
+        return value;
+    }
+    static void _bind_methods(){
+        godot::ClassDB::bind_method(godot::D_METHOD("set_value","value"),&Float::set_value);
+        godot::ClassDB::bind_method(godot::D_METHOD("get_value"),&Float::get_value);
+        godot::ClassDB::add_property("Float",godot::PropertyInfo(godot::Variant::FLOAT,"value"),"set_value","get_value");
+    }
+public:
+    float value;
+    Float(){}
+    template<typename T> requires std::floating_point<T>
+    Float(T value){
+        this->value = value;
+    }
+};
+class RefArray: public godot::RefCounted{
+    GDCLASS(RefArray,RefCounted)
+    static void _bind_methods(){
+        godot::ClassDB::bind_method(godot::D_METHOD("set_value","value"),&RefArray::set_value);
+        godot::ClassDB::bind_method(godot::D_METHOD("get_value"),&RefArray::get_value);
+        godot::ClassDB::add_property("RefArray",godot::PropertyInfo(godot::Variant::DICTIONARY,"value"),"set_value","get_value");
+    }
+    void set_value(godot::Array value){
+        this->value = value;
+    }
+    godot::Array get_value(){
+        return value;
+    }
+public:
+    godot::Array value;
+    template<typename ...T>
+    RefArray(T&&... v){
+        value = godot::Array(std::forward<decltype(v)>(v)...);
     }
 };
 class RefDictionary: public godot::RefCounted{
@@ -217,31 +291,329 @@ class HoudiniEngine: public godot::Object{
         BIND_ENUM_CONSTANT(HAPI_RESULT_NODE_INVALID);
         BIND_ENUM_CONSTANT(HAPI_RESULT_USER_INTERRUPTED);
         BIND_ENUM_CONSTANT(HAPI_RESULT_INVALID_SESSION);
+
+        BIND_ENUM_CONSTANT(HAPI_STATUSVERBOSITY_0);
+        BIND_ENUM_CONSTANT(HAPI_STATUSVERBOSITY_1);
+        BIND_ENUM_CONSTANT(HAPI_STATUSVERBOSITY_2);
+        BIND_ENUM_CONSTANT(HAPI_STATUSVERBOSITY_ALL);
+        BIND_ENUM_CONSTANT(HAPI_STATUSVERBOSITY_ERRORS);
+        BIND_ENUM_CONSTANT(HAPI_STATUSVERBOSITY_WARNINGS);
+        BIND_ENUM_CONSTANT(HAPI_STATUSVERBOSITY_MESSAGES);
+
+        BIND_ENUM_CONSTANT(HAPI_TRS);
+        BIND_ENUM_CONSTANT(HAPI_TSR);
+        BIND_ENUM_CONSTANT(HAPI_RTS);
+        BIND_ENUM_CONSTANT(HAPI_RST);
+        BIND_ENUM_CONSTANT(HAPI_STR);
+        BIND_ENUM_CONSTANT(HAPI_SRT);
+        BIND_ENUM_CONSTANT(HAPI_RSTORDER_DEFAULT);
+
+        BIND_ENUM_CONSTANT(HAPI_STATUS_CALL_RESULT);
+        BIND_ENUM_CONSTANT(HAPI_STATUS_COOK_RESULT);
+        BIND_ENUM_CONSTANT(HAPI_STATUS_COOK_STATE);
+        BIND_ENUM_CONSTANT(HAPI_STATUS_MAX);
+
+        BIND_ENUM_CONSTANT(HAPI_TCP_PORT_ANY);
+        BIND_ENUM_CONSTANT(HAPI_TCP_PORT_RANGE);
+        BIND_ENUM_CONSTANT(HAPI_TCP_PORT_LIST);
+
+        BIND_ENUM_CONSTANT(HAPI_THRIFT_SHARED_MEMORY_FIXED_LENGTH_BUFFER);
+        BIND_ENUM_CONSTANT(HAPI_THRIFT_SHARED_MEMORY_RING_BUFFER);
+
+        BIND_ENUM_CONSTANT(HAPI_PACKEDPRIM_INSTANCING_MODE_INVALID)
+        BIND_ENUM_CONSTANT(HAPI_PACKEDPRIM_INSTANCING_MODE_DISABLED)
+        BIND_ENUM_CONSTANT(HAPI_PACKEDPRIM_INSTANCING_MODE_HIERARCHY)
+        BIND_ENUM_CONSTANT(HAPI_PACKEDPRIM_INSTANCING_MODE_FLAT)
+        BIND_ENUM_CONSTANT(HAPI_PACKEDPRIM_INSTANCING_MODE_MAX)
+
+        BIND_ENUM_CONSTANT(InProcess)
+        BIND_ENUM_CONSTANT(NewNamedPipe)
+        BIND_ENUM_CONSTANT(NewTCPSocket)
+        BIND_ENUM_CONSTANT(ExistingNamedPipe)
+        BIND_ENUM_CONSTANT(ExistingTCPSocket)
+        BIND_ENUM_CONSTANT(ExistingSharedMemory)
+
+        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_INVALID)
+        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_INT)
+        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_INT64)
+        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_FLOAT)
+        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_FLOAT64)
+        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_STRING)
+        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_UINT8)
+        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_INT8)
+        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_INT16)
+        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_DICTIONARY)
+        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_INT_ARRAY)
+        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_INT64_ARRAY)
+        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_FLOAT_ARRAY)
+        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_FLOAT64_ARRAY)
+        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_STRING_ARRAY)
+        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_UINT8_ARRAY)
+        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_INT8_ARRAY)
+        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_INT16_ARRAY)
+        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_DICTIONARY_ARRAY)
+
+        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_INVALID)
+        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_NONE)
+        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_POINT)
+        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_HPOINT)
+        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_VECTOR)
+        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_NORMAL)
+        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_COLOR)
+        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_QUATERNION)
+        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_MATRIX3)
+        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_MATRIX)
+        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_ST)
+        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_HIDDEN)
+        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_BOX2)
+        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_BOX)
+        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_TEXTURE)
+        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_MAX)
+
+        BIND_ENUM_CONSTANT(HAPI_ATTROWNER_INVALID)
+        BIND_ENUM_CONSTANT(HAPI_ATTROWNER_VERTEX)
+        BIND_ENUM_CONSTANT(HAPI_ATTROWNER_POINT)
+        BIND_ENUM_CONSTANT(HAPI_ATTROWNER_PRIM)
+        BIND_ENUM_CONSTANT(HAPI_ATTROWNER_DETAIL)
+        BIND_ENUM_CONSTANT(HAPI_ATTROWNER_MAX)
+
+        BIND_ENUM_CONSTANT(HAPI_NODETYPE_ANY)
+        BIND_ENUM_CONSTANT(HAPI_NODETYPE_NONE)
+        BIND_ENUM_CONSTANT(HAPI_NODETYPE_OBJ)
+        BIND_ENUM_CONSTANT(HAPI_NODETYPE_SOP)
+        BIND_ENUM_CONSTANT(HAPI_NODETYPE_CHOP)
+        BIND_ENUM_CONSTANT(HAPI_NODETYPE_ROP)
+        BIND_ENUM_CONSTANT(HAPI_NODETYPE_SHOP)
+        BIND_ENUM_CONSTANT(HAPI_NODETYPE_COP)
+        BIND_ENUM_CONSTANT(HAPI_NODETYPE_VOP)
+        BIND_ENUM_CONSTANT(HAPI_NODETYPE_DOP)
+        BIND_ENUM_CONSTANT(HAPI_NODETYPE_TOP)
+
+        BIND_ENUM_CONSTANT(HAPI_GEOTYPE_INVALID)
+        BIND_ENUM_CONSTANT(HAPI_GEOTYPE_DEFAULT)
+        BIND_ENUM_CONSTANT(HAPI_GEOTYPE_INTERMEDIATE)
+        BIND_ENUM_CONSTANT(HAPI_GEOTYPE_INPUT)
+        BIND_ENUM_CONSTANT(HAPI_GEOTYPE_CURVE)
+        BIND_ENUM_CONSTANT(HAPI_GEOTYPE_MAX)
+        
+        BIND_ENUM_CONSTANT(HAPI_PARTTYPE_INVALID);
+        BIND_ENUM_CONSTANT(HAPI_PARTTYPE_MESH);
+        BIND_ENUM_CONSTANT(HAPI_PARTTYPE_CURVE);
+        BIND_ENUM_CONSTANT(HAPI_PARTTYPE_VOLUME);
+        BIND_ENUM_CONSTANT(HAPI_PARTTYPE_INSTANCER);
+        BIND_ENUM_CONSTANT(HAPI_PARTTYPE_BOX);
+        BIND_ENUM_CONSTANT(HAPI_PARTTYPE_SPHERE);
+        BIND_ENUM_CONSTANT(HAPI_PARTTYPE_MAX);
+
+        BIND_ENUM_CONSTANT(HAPI_INPUT_INVALID);
+        BIND_ENUM_CONSTANT(HAPI_INPUT_TRANSFORM);
+        BIND_ENUM_CONSTANT(HAPI_INPUT_GEOMETRY);
+        BIND_ENUM_CONSTANT(HAPI_INPUT_MAX);
+
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_INT);
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_MULTIPARMLIST);
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_TOGGLE);
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_BUTTON);
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_FLOAT);
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_COLOR);
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_STRING);
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_PATH_FILE);
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_PATH_FILE_GEO);
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_PATH_FILE_IMAGE);
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_NODE);
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_FOLDERLIST);
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_FOLDERLIST_RADIO);
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_FOLDER);
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_LABEL);
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_SEPARATOR);
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_PATH_FILE_DIR);
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_MAX);
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_INT_START);
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_INT_END);
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_FLOAT_START);
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_FLOAT_END);
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_STRING_START);
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_STRING_END);
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_PATH_START);
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_PATH_END);
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_NODE_START);
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_NODE_END);
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_CONTAINER_START);
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_CONTAINER_END);
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_NONVALUE_START);
+        BIND_ENUM_CONSTANT(HAPI_PARMTYPE_NONVALUE_END);
+
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_INT);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_FLOAT);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_ANGLE);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_STRING);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_FILE);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_DIRECTORY);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_IMAGE);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_GEOMETRY);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_TOGGLE);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_BUTTON);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_VECTOR2);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_VECTOR3);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_VECTOR4);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_INTVECTOR2);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_INTVECTOR3);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_INTVECTOR4);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_UV);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_UVW);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_DIR);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_COLOR);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_COLOR4);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_HUECIRCLE);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_OPPATH);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_OPLIST);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_OBJECT);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_OBJECTLIST);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_RENDER);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_SEPARATOR);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_GEOMETRY_DATA);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_KEY_VALUE_DICT);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_LABEL);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_RGBAMASK);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_ORDINAL);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_RAMP_FLT);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_RAMP_RGB);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_FLOAT_LOG);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_INT_LOG);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_DATA);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_FLOAT_MINMAX);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_INT_MINMAX);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_INT_STARTEND);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_BUTTONSTRIP);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_ICONSTRIP);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_GROUPRADIO);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_GROUPCOLLAPSIBLE);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_GROUPSIMPLE);
+        BIND_ENUM_CONSTANT(HAPI_PRM_SCRIPT_TYPE_GROUP);
+
+        BIND_ENUM_CONSTANT(HAPI_PERMISSIONS_NON_APPLICABLE);
+        BIND_ENUM_CONSTANT(HAPI_PERMISSIONS_READ_WRITE);
+        BIND_ENUM_CONSTANT(HAPI_PERMISSIONS_READ_ONLY);
+        BIND_ENUM_CONSTANT(HAPI_PERMISSIONS_WRITE_ONLY);
+        BIND_ENUM_CONSTANT(HAPI_PERMISSIONS_MAX);
+
+        BIND_ENUM_CONSTANT(HAPI_CHOICELISTTYPE_NONE);
+        BIND_ENUM_CONSTANT(HAPI_CHOICELISTTYPE_NORMAL);
+        BIND_ENUM_CONSTANT(HAPI_CHOICELISTTYPE_MINI);
+        BIND_ENUM_CONSTANT(HAPI_CHOICELISTTYPE_REPLACE);
+        BIND_ENUM_CONSTANT(HAPI_CHOICELISTTYPE_TOGGLE);
+
+        BIND_ENUM_CONSTANT(HAPI_NODEFLAGS_ANY);
+        BIND_ENUM_CONSTANT(HAPI_NODEFLAGS_NONE);
+        BIND_ENUM_CONSTANT(HAPI_NODEFLAGS_DISPLAY);
+        BIND_ENUM_CONSTANT(HAPI_NODEFLAGS_RENDER);
+        BIND_ENUM_CONSTANT(HAPI_NODEFLAGS_TEMPLATED);
+        BIND_ENUM_CONSTANT(HAPI_NODEFLAGS_LOCKED);
+        BIND_ENUM_CONSTANT(HAPI_NODEFLAGS_EDITABLE);
+        BIND_ENUM_CONSTANT(HAPI_NODEFLAGS_BYPASS);
+        BIND_ENUM_CONSTANT(HAPI_NODEFLAGS_NETWORK);
+        BIND_ENUM_CONSTANT(HAPI_NODEFLAGS_OBJ_GEOMETRY);
+        BIND_ENUM_CONSTANT(HAPI_NODEFLAGS_OBJ_CAMERA);
+        BIND_ENUM_CONSTANT(HAPI_NODEFLAGS_OBJ_LIGHT);
+        BIND_ENUM_CONSTANT(HAPI_NODEFLAGS_OBJ_SUBNET);
+        BIND_ENUM_CONSTANT(HAPI_NODEFLAGS_SOP_CURVE);
+        BIND_ENUM_CONSTANT(HAPI_NODEFLAGS_SOP_GUIDE);
+        BIND_ENUM_CONSTANT(HAPI_NODEFLAGS_TOP_NONSCHEDULER);
+        BIND_ENUM_CONSTANT(HAPI_NODEFLAGS_NON_BYPASS);
+
+        BIND_ENUM_CONSTANT(HAPI_RAMPTYPE_INVALID);
+        BIND_ENUM_CONSTANT(HAPI_RAMPTYPE_FLOAT);
+        BIND_ENUM_CONSTANT(HAPI_RAMPTYPE_COLOR);
+        BIND_ENUM_CONSTANT(HAPI_RAMPTYPE_MAX);
         godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetObjectInfo","session","nodeId"),&HoudiniEngine::GetObjectInfo);
         godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetAssetInfo","session","nodeId"),&HoudiniEngine::GetAssetInfo);
         godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetNodeInfo","session","nodeId"),&HoudiniEngine::GetNodeInfo);
         godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetGeoInfo","session","nodeId"),&HoudiniEngine::GetGeoInfo);
         godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetMaterialInfo","session","nodeId"),&HoudiniEngine::GetMaterialInfo);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetPartInfo","session","nodeId","partId"),&HoudiniEngine::GetPartInfo);
         godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetAttrInfo","session","nodeId","partId","name","owner"),&HoudiniEngine::GetAttrInfo);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetParmInfo","session","nodeId","parmId","parmInfo"),&HoudiniEngine::GetParmInfo);
         godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("AddAttribute","session","nodeId","partId","name","attrInfo"),&HoudiniEngine::AddAttribute);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("Cleanup","session"),&HoudiniEngine::Cleanup);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("ClearConnectionError"),&HoudiniEngine::ClearConnectionError);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("CloseSession","session"),&HoudiniEngine::CloseSession);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("CommitGeo","session","nodeId"),&HoudiniEngine::CommitGeo);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("ConnectNodeInput","session","nodeId","inputIndex","nodeId_toConnect","outputIndex"),&HoudiniEngine::ConnectNodeInput);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("CookNode","session","nodeId","cookOptions"),&HoudiniEngine::CookNode);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("CookOptions_Create"),&HoudiniEngine::CookOptions_Create);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("CreateInProcessSession","session","sessionInfo"),&HoudiniEngine::CreateInProcessSession);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("CreateInputNode","session","parentId","nodeId","name"),&HoudiniEngine::CreateInputNode);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("CreateNode","session","parentId","operatorName","nodeLabel","cookOnCreation","nodeId"),&HoudiniEngine::CreateNode);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("CreateThriftNamedPipeSession","session","pipeName","sessionInfo"),&HoudiniEngine::CreateThriftNamedPipeSession);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("CreateThriftSharedMemorySession","session","sharedMemName","sessionInfo"),&HoudiniEngine::CreateThriftSharedMemorySession);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("CreateThriftSocketSession","session","hostName","port","sessionInfo"),&HoudiniEngine::CreateThriftSocketSession);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("DeleteAttribute","session","nodeId","partId","name","attrInfo"),&HoudiniEngine::DeleteAttribute);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("DeleteNode","session","nodeId"),&HoudiniEngine::DeleteNode);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("DisconnectNodeInput","session","nodeId","inputIndex"),&HoudiniEngine::DisconnectNodeInput);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GeoInfo_Create"),&HoudiniEngine::GeoInfo_Create);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetAttributeFloatData","session","nodeId","partId","name","owner"),&HoudiniEngine::GetAttributeFloatData);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetAttributeIntData","session","nodeId","partId","name","owner"),&HoudiniEngine::GetAttributeIntData);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetAttributeStringData","session","nodeId","partId","name","owner"),&HoudiniEngine::GetAttributeStringData);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetConnectionError"),&HoudiniEngine::GetConnectionError);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetCookingCurrentCount","session"),&HoudiniEngine::GetCookingCurrentCount);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetCookingTotalCount","session"),&HoudiniEngine::GetCookingTotalCount);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetDisplayGeoInfo","session","nodeId"),&HoudiniEngine::GetDisplayGeoInfo);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetInstanceTransformsOnPart","session","nodeId","partId","rst_order","transforms","start","length"),&HoudiniEngine::GetInstanceTransformsOnPart);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetInstancedObjectIds","session","nodeId","objectIds","start","length"),&HoudiniEngine::GetInstancedObjectIds);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetInstancedPartIds","session","nodeId","partId","partIds","start","length"),&HoudiniEngine::GetInstancedPartIds);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetInstancerPartTransforms", "session", "nodeId", "partId","rst_order","transforms","start","length"),&HoudiniEngine::GetInstancerPartTransforms);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetLastCookError","session"),&HoudiniEngine::GetLastCookError);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetLastError","session"),&HoudiniEngine::GetLastError);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetNodeCookResult","session","stringValue", "length"),&HoudiniEngine::GetNodeCookResult);
+        godot::ClassDB::bind_static_method("houdiniengine",godot::D_METHOD("GetNodeCookResultLength","session","nodeId","verbosity","length"),&HoudiniEngine::GetNodeCookResultLength);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetNodeFromPath","session","parentId","path","nodeId"),&HoudiniEngine::GetNodeFromPath);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetNodeInputName","session","nodeId","inputIndex","nameHandle"),&HoudiniEngine::GetNodeInputName);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetNodeOutputName","session","nodeId","outputIndex","nameHandle"),&HoudiniEngine::GetNodeOutputName);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetNodePath","session","nodeId","relativeToNodeId","pathHandle"),&HoudiniEngine::GetNodePath);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetObjectTransform","session","nodeId","relativeToNodeId","rst_order","transform"),&HoudiniEngine::GetObjectTransform);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetOutputGeoCount","session","nodeId","count"),&HoudiniEngine::GetOutputGeoCount);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetOutputGeoInfos","session","nodeId","geoInfos","count"),&HoudiniEngine::GetOutputGeoInfos);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetOutputNodeId","session","nodeId","output","outputNodeId"),&HoudiniEngine::GetOutputNodeId);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetParameters","session","nodeId","parameters","start","length"),&HoudiniEngine::GetParameters);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetParmFloatValue","session","nodeId","parmName","index","value"),&HoudiniEngine::GetParmFloatValue);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetParmIdFromName","session","nodeId","parmName","parmId"),&HoudiniEngine::GetParmIdFromName);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetParmIntValue","session","nodeId","parmName","index","value"),&HoudiniEngine::GetParmIntValue);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetParmNodeValue","session","nodeId","parmName","value"),&HoudiniEngine::GetParmNodeValue);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetParmStringValue","session","nodeId","parmName","index","evaluate","value"),&HoudiniEngine::GetParmStringValue);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetStatus","session","statusType","status"),&HoudiniEngine::GetStatus);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetStatusString","session","statusType"),&HoudiniEngine::GetStatusString);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetString","session","stringHandle"),&HoudiniEngine::GetString);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("Initialize","session","cookOptions","useCookingThread","cookingThreadStackSize","houdiniEnvironmentFiles","otlSearchPath","dsoSearchPath","imageDsoSearchPath","audioDsoSearchPath"),&HoudiniEngine::Initialize);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("Interrupt","session"),&HoudiniEngine::Interrupt);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("IsInitialized","session"),&HoudiniEngine::IsInitialized);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("IsNodeValid","session","nodeId","uniqueNodeId","answer"),&HoudiniEngine::IsNodeValid);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("SaveToHip","session","filename"),&HoudiniEngine::SaveToHip);
         godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("SetCustomString","session","string_value","handle_value"),&HoudiniEngine::SetCustomString);
 
     }
 public:
-    GDE_EXPORT static HAPI_ObjectInfo  DictToObjectInfo(HoudiniEngineManager* session, godot::Dictionary objectInfo);
-    GDE_EXPORT static godot::Dictionary ObjectInfoToDict(HoudiniEngineManager* session, HAPI_ObjectInfo info);
-    GDE_EXPORT static HAPI_AssetInfo DictToAssetInfo(HoudiniEngineManager* session, godot::Dictionary assetInfo);
-    GDE_EXPORT static godot::Dictionary AssetInfoToDict(HoudiniEngineManager* session, HAPI_AssetInfo info);
-    GDE_EXPORT static HAPI_NodeInfo DictToNodeInfo(HoudiniEngineManager* session, godot::Dictionary nodeInfo);
-    GDE_EXPORT static godot::Dictionary NodeInfoToDict(HoudiniEngineManager* session, HAPI_NodeInfo info);
-    GDE_EXPORT static HAPI_GeoInfo DictToGeoInfo(HoudiniEngineManager* session, godot::Dictionary geoInfo);
-    GDE_EXPORT static godot::Dictionary GeoInfoToDict(HoudiniEngineManager* session, HAPI_GeoInfo info);
-    GDE_EXPORT static HAPI_MaterialInfo DictToMaterialInfo(HoudiniEngineManager* session, godot::Dictionary matInfo);
-    GDE_EXPORT static godot::Dictionary MaterialInfoToDict(HoudiniEngineManager* session, HAPI_MaterialInfo info);
-    GDE_EXPORT static HAPI_AttributeInfo DictToAttrInfo(HoudiniEngineManager* session, godot::Dictionary attrInfo);
-    GDE_EXPORT static godot::Dictionary AttrInfoToDict(HoudiniEngineManager* session, HAPI_AttributeInfo info);
+    GDE_EXPORT static HAPI_SessionInfo  DictToSessionInfo(godot::Dictionary objectInfo);
+    GDE_EXPORT static godot::Dictionary SessionInfoToDict(HAPI_SessionInfo info);
+    GDE_EXPORT static HAPI_ObjectInfo  DictToObjectInfo(godot::Dictionary objectInfo);
+    GDE_EXPORT static godot::Dictionary ObjectInfoToDict(HAPI_ObjectInfo info);
+    GDE_EXPORT static HAPI_AssetInfo DictToAssetInfo(godot::Dictionary assetInfo);
+    GDE_EXPORT static godot::Dictionary AssetInfoToDict(HAPI_AssetInfo info);
+    GDE_EXPORT static HAPI_NodeInfo DictToNodeInfo(godot::Dictionary nodeInfo);
+    GDE_EXPORT static godot::Dictionary NodeInfoToDict(HAPI_NodeInfo info);
+    GDE_EXPORT static HAPI_GeoInfo DictToGeoInfo(godot::Dictionary geoInfo);
+    GDE_EXPORT static godot::Dictionary GeoInfoToDict(HAPI_GeoInfo info);
+    GDE_EXPORT static HAPI_MaterialInfo DictToMaterialInfo(godot::Dictionary matInfo);
+    GDE_EXPORT static godot::Dictionary MaterialInfoToDict(HAPI_MaterialInfo info);
+    GDE_EXPORT static HAPI_PartInfo DictToPartInfo(godot::Dictionary partInfo);
+    GDE_EXPORT static godot::Dictionary PartInfoToDict(HAPI_PartInfo info);
+    GDE_EXPORT static HAPI_AttributeInfo DictToAttrInfo(godot::Dictionary attrInfo);
+    GDE_EXPORT static godot::Dictionary AttrInfoToDict(HAPI_AttributeInfo info);
+    GDE_EXPORT static HAPI_ParmInfo DictToParmInfo(godot::Dictionary parmInfo);
+    GDE_EXPORT static godot::Dictionary ParmInfoToDict(HAPI_ParmInfo info);
     GDE_EXPORT static HAPI_CookOptions DictToCookOptions(godot::Dictionary cookOptions);
     GDE_EXPORT static godot::Dictionary CookOptionsToDict(HAPI_CookOptions options);
+    GDE_EXPORT static HAPI_Transform DictToTransform(godot::Dictionary transform);
+    GDE_EXPORT static godot::Dictionary TransformToDict(HAPI_Transform transform);
 
 
     GDE_EXPORT static godot::Dictionary GetObjectInfo(HoudiniEngineManager* session,int nodeId);
@@ -249,7 +621,9 @@ public:
     GDE_EXPORT static godot::Dictionary GetNodeInfo(HoudiniEngineManager* session, int nodeId);
     GDE_EXPORT static godot::Dictionary GetGeoInfo(HoudiniEngineManager* session, int nodeId);
     GDE_EXPORT static godot::Dictionary GetMaterialInfo(HoudiniEngineManager* session, int nodeId);
+    GDE_EXPORT static godot::Dictionary GetPartInfo(HoudiniEngineManager* session, int nodeId, int partId);
     GDE_EXPORT static godot::Dictionary GetAttrInfo(HoudiniEngineManager* session,int nodeId,int partId,godot::String name,HAPI_AttributeOwner owner);
+    GDE_EXPORT static godot::Dictionary GetParmInfo(HoudiniEngineManager* session,int nodeId,int parmId, godot::Ref<RefDictionary> parmInfo);
     GDE_EXPORT static HAPI_Result AddAttribute(HoudiniEngineManager* session,int nodeId,int partId,godot::String name,godot::Ref<RefDictionary> attrInfo);
     GDE_EXPORT static HAPI_Result Cleanup(HoudiniEngineManager* session);
     GDE_EXPORT static HAPI_Result ClearConnectionError();
@@ -258,6 +632,53 @@ public:
     GDE_EXPORT static HAPI_Result ConnectNodeInput(HoudiniEngineManager* session, int nodeId, int inputIndex, int nodeId_toConnect, int outputIndex);
     GDE_EXPORT static HAPI_Result CookNode(HoudiniEngineManager* session, int nodeId, godot::Ref<RefDictionary> cookOptions);
     GDE_EXPORT static godot::Dictionary CookOptions_Create();
+    GDE_EXPORT static HAPI_Result CreateInProcessSession(HoudiniEngineManager* session,godot::Ref<RefDictionary> sessionInfo);
+    GDE_EXPORT static HAPI_Result CreateInputNode(HoudiniEngineManager* session, int parentId, godot::Ref<Int> nodeId,godot::String name);
+    GDE_EXPORT static HAPI_Result CreateNode(HoudiniEngineManager* session, int parentId, godot::String operatorName, godot::String nodeLabel, bool cookOnCreation, godot::Ref<Int> nodeId);
+    GDE_EXPORT static HAPI_Result CreateThriftNamedPipeSession(HoudiniEngineManager* session, godot::String pipeName, godot::Ref<RefDictionary> sessionInfo);
+    GDE_EXPORT static HAPI_Result CreateThriftSharedMemorySession(HoudiniEngineManager* session, godot::String sharedMemName, godot::Ref<RefDictionary> sessionInfo);
+    GDE_EXPORT static HAPI_Result CreateThriftSocketSession(HoudiniEngineManager* session, godot::String hostName, int port, godot::Ref<RefDictionary> sessionInfo);
+    GDE_EXPORT static HAPI_Result DeleteAttribute(HoudiniEngineManager* session, int nodeId, int partId, godot::String name, godot::Ref<RefDictionary> attrInfo);
+    GDE_EXPORT static HAPI_Result DeleteNode(HoudiniEngineManager* session, int nodeId);
+    GDE_EXPORT static HAPI_Result DisconnectNodeInput(HoudiniEngineManager* session, int nodeId, int inputIndex);
+    GDE_EXPORT static godot::Dictionary GeoInfo_Create();
+    GDE_EXPORT static HAPI_Result GetAttributeFloatData(HoudiniEngineManager* session, int nodeId, int partId, godot::String name, godot::Ref<RefDictionary> attrInfo, int stride, godot::Ref<RefArray> dataArray, int start, int length);
+    GDE_EXPORT static HAPI_Result GetAttributeIntData(HoudiniEngineManager* session, int nodeId, int partId, godot::String name, godot::Ref<RefDictionary> attrInfo, int stride, godot::Ref<RefArray> dataArray, int start, int length);
+    GDE_EXPORT static HAPI_Result GetAttributeStringData(HoudiniEngineManager* session, int nodeId, int partId, godot::String name, godot::Ref<RefDictionary> attrInfo, godot::Ref<RefArray> dataArray, int start, int length);
+    GDE_EXPORT static godot::String GetConnectionError();
+    GDE_EXPORT static int GetCookingCurrentCount(HoudiniEngineManager* session);
+    GDE_EXPORT static int GetCookingTotalCount(HoudiniEngineManager* session);
+    GDE_EXPORT static godot::Dictionary GetDisplayGeoInfo(HoudiniEngineManager* session, int nodeId);
+    GDE_EXPORT static HAPI_Result GetInstanceTransformsOnPart(HoudiniEngineManager* session, int nodeId, int partId, HAPI_RSTOrder rst_order, godot::Ref<RefArray> transforms, int start, int length);
+    GDE_EXPORT static HAPI_Result GetInstancedObjectIds(HoudiniEngineManager* session, int nodeId, godot::Ref<RefArray> objectIds, int start, int length);
+    GDE_EXPORT static HAPI_Result GetInstancedPartIds(HoudiniEngineManager* session, int nodeId, int partId, godot::Ref<RefArray> partIds, int start, int length);
+    GDE_EXPORT static HAPI_Result GetInstancerPartTransforms(HoudiniEngineManager* session, int nodeId, int partId, HAPI_RSTOrder rst_order, godot::Ref<RefArray> transforms, int start, int length);
+    GDE_EXPORT static godot::String GetLastCookError(HoudiniEngineManager* session = nullptr);
+    GDE_EXPORT static godot::String GetLastError(HoudiniEngineManager* session = nullptr);
+    GDE_EXPORT static HAPI_Result GetNodeCookResult(HoudiniEngineManager* session, godot::String stringValue, int length);
+    GDE_EXPORT static HAPI_Result GetNodeCookResultLength(HoudiniEngineManager* session, int nodeId, HAPI_StatusVerbosity verbosity, godot::Ref<Int> length);
+    GDE_EXPORT static HAPI_Result GetNodeFromPath(HoudiniEngineManager* session, int parentId, godot::String path, godot::Ref<Int> nodeId);
+    GDE_EXPORT static HAPI_Result GetNodeInputName(HoudiniEngineManager* session, int nodeId, int inputIndex, godot::Ref<Int> nameHandle);
+    GDE_EXPORT static HAPI_Result GetNodeOutputName(HoudiniEngineManager* session, int nodeId, int outputIndex, godot::Ref<Int> nameHandle);
+    GDE_EXPORT static HAPI_Result GetNodePath(HoudiniEngineManager* session, int nodeId, int relativeToNodeId, godot::Ref<Int> pathHandle);
+    GDE_EXPORT static HAPI_Result GetObjectTransform(HoudiniEngineManager* session, int nodeId, int relativeToNodeId, HAPI_RSTOrder rst_order, godot::Ref<RefDictionary> transform);
+    GDE_EXPORT static HAPI_Result GetOutputGeoCount(HoudiniEngineManager* session, int nodeId, godot::Ref<Int> count);
+    GDE_EXPORT static HAPI_Result GetOutputGeoInfos(HoudiniEngineManager* session, int nodeId, godot::Ref<RefArray> geoInfos, int count);
+    GDE_EXPORT static HAPI_Result GetOutputNodeId(HoudiniEngineManager* session, int nodeId, int output, godot::Ref<Int> outputNodeId);
+    GDE_EXPORT static HAPI_Result GetParameters(HoudiniEngineManager* session, int nodeId, godot::Ref<RefArray> parameters, int start, int length);
+    GDE_EXPORT static HAPI_Result GetParmFloatValue(HoudiniEngineManager* session, int nodeId, godot::String parmName, int index, godot::Ref<Float> value);
+    GDE_EXPORT static HAPI_Result GetParmIdFromName(HoudiniEngineManager* session, int nodeId, godot::String parmName, godot::Ref<Int> parmId);
+    GDE_EXPORT static HAPI_Result GetParmIntValue(HoudiniEngineManager* session, int nodeId, godot::String parmName, int index, godot::Ref<Int> value);
+    GDE_EXPORT static HAPI_Result GetParmNodeValue(HoudiniEngineManager* session, int nodeId, godot::String parmName, godot::Ref<Int> value);
+    GDE_EXPORT static HAPI_Result GetParmStringValue(HoudiniEngineManager* session, int nodeId, godot::String parmName, int index, bool evaluate, godot::Ref<Int> value);
+    GDE_EXPORT static HAPI_Result GetStatus(HoudiniEngineManager* session, HAPI_StatusType statusType, godot::Ref<Int> status);
+    GDE_EXPORT static godot::String GetStatusString(HoudiniEngineManager* session, HAPI_StatusType status_type);
+    GDE_EXPORT static godot::String GetString(HoudiniEngineManager* session, int stringHandle);
+    GDE_EXPORT static HAPI_Result Initialize(HoudiniEngineManager* session, godot::Dictionary cookOptions, bool useCookingThread, int cookingThreadStackSize, godot::String houdiniEnvironmentFiles, godot::String otlSearchPath, godot::String dsoSearchPath, godot::String imageDsoSearchPath, godot::String audioDsoSearchPath);
+    GDE_EXPORT static HAPI_Result Interrupt(HoudiniEngineManager* session);
+    GDE_EXPORT static HAPI_Result IsInitialized(HoudiniEngineManager* session);
+    GDE_EXPORT static HAPI_Result IsNodeValid(HoudiniEngineManager* session, int nodeId, int uniqueNodeId, godot::Ref<Bool> answer);
+    GDE_EXPORT static bool SaveToHip(HoudiniEngineManager* session, godot::String filename);
     GDE_EXPORT static HAPI_Result SetCustomString(HoudiniEngineManager* session, godot::String string_value, godot::Ref<Int> handle_value);
 };
 
@@ -289,7 +710,7 @@ class HDANode: public godot::Resource{
         if(nodeInfo.is_empty()){
             if(session == nullptr)
                 return {};
-            nodeInfo = HoudiniEngine::GetNodeInfo(session,nodeId);
+            //nodeInfo = HoudiniEngine::GetNodeInfo(session,nodeId);
         }
         return nodeInfo;
     }
@@ -394,90 +815,224 @@ constexpr const char* DefaultNamedPipe = "hapi";
 constexpr const char* DefaultSharedMemoryName = "hapi";
 constexpr const char* DefaultHostName = "127.0.0.1";
 constexpr int DefaultTcpPort = 9090;
+class HoudiniSettings: public godot::Object{
+    GDCLASS(HoudiniSettings,godot::Object)
+    static void _bind_methods(){
+        godot::ClassDB::bind_method(godot::D_METHOD("_settings_changed"),&HoudiniSettings::_settings_changed);
+        godot::ClassDB::bind_method(godot::D_METHOD("set_logFilePath","path"),&HoudiniSettings::set_logFilePath);
+    }
+    friend class HoudiniEngineManager;
+    GDE_EXPORT 
+    void _notification(int what){
+        switch(what){
+        case NOTIFICATION_POSTINITIALIZE:{
+            _init_settings();
+            godot::ProjectSettings::get_singleton()->connect("settings_changed",godot::Callable(this,"_settings_changed"));
+            _settings_changed();
+        }break;
+        }
+    }
+    GDE_EXPORT 
+    void _init_settings(){
+        
+        auto tempDic = godot::Dictionary();
+        godot::ProjectSettings* settings = godot::ProjectSettings::get_singleton();
+        auto addSetting = [&tempDic,settings](godot::String name,godot::Variant value,godot::Variant::Type type,godot::PropertyHint hint = godot::PROPERTY_HINT_NONE,godot::String hint_string = ""){
+            if(!settings->has_setting(name)){
+                settings->set_setting(name,value);
+            }
+            tempDic["name"] = name;
+            tempDic["type"] = type;
+            tempDic["hint"] = hint;
+            tempDic["hint_string"] = hint_string;
+            settings->add_property_info(tempDic);
+            settings->set_initial_value(name,value);
+            tempDic.clear();
+        };
+        addSetting("houdini/config/useEnvLibPath",true,godot::Variant::BOOL);
+
+        settings->set_restart_if_changed("houdini/config/useEnvLibPath",true);
+
+        addSetting("houdini/config/houdiniRootPath","",godot::Variant::STRING,godot::PROPERTY_HINT_GLOBAL_DIR);
+
+        settings->set_restart_if_changed("houdini/config/houdiniRootPath",true);
+
+        addSetting("houdini/config/houdiniLibPath","",godot::Variant::STRING,godot::PROPERTY_HINT_GLOBAL_DIR);
+        
+        settings->set_restart_if_changed("houdini/config/houdiniLibPath",true);
+
+        addSetting("houdini/config/logFilePath","",godot::Variant::STRING,godot::PROPERTY_HINT_SAVE_FILE);
+
+    }
+    GDE_EXPORT 
+    void _settings_changed(){
+        using namespace _houdini_engine_log;
+        godot::Variant value;
+        std::string tempStr;
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/useEnvLibPath");
+        if(useEnvLibPath != (bool)value){
+            useEnvLibPath = (bool)value;
+        }
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/houdiniRootPath");
+        tempStr = string_cast((godot::String)value);
+        if(tempStr != houdiniRootPath){
+            set_houdiniRootPath((godot::String)value);
+        }
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/houdiniLibPath");
+        tempStr = string_cast((godot::String)value);
+        if(tempStr != houdiniRootPath){
+            set_houdiniLibPath((godot::String)value);
+        }
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/logFilePath");
+        tempStr = string_cast((godot::String)value);
+        if(tempStr != logFilePath){
+            set_logFilePath((godot::String)value);
+        }
+    }
+    GDE_EXPORT
+    void set_logFilePath(godot::String path){
+        using namespace _houdini_engine_log;
+        path = godot::ProjectSettings::get_singleton()->globalize_path(path);
+        if(path.is_absolute_path()){
+            if(!logFilePath.empty()){
+                logFile.close();
+                logFile.clear();
+            }
+            logFile.open(string_cast(path),std::ios::app|std::ios::out);
+            logFilePath = string_cast(path);
+        }else if(path.is_empty()){
+            logFile.close();
+            logFile.clear();
+            logFilePath.clear();
+        }
+    }
+
+    bool useEnvLibPath = true;
+    std::string houdiniRootPath = "";
+    void set_houdiniRootPath(godot::String path){
+        path = godot::ProjectSettings::get_singleton()->globalize_path(path);
+        if(path == ""){
+            houdiniRootPath.clear();
+            return;
+        }
+        std::string houdiniPath = string_cast(path);
+        std::string hconfigPath = houdiniPath+"/bin/hconfig";
+        if(!std::filesystem::exists(hconfigPath)){
+            hconfigPath += ".exe";
+            if(!std::filesystem::exists(hconfigPath)){
+                printError("Invalid houdini root path. Make sure \"${HoudiniRootPath}/bin/hconfig\" is exist.");
+                return;
+            }
+        }
+        if(findenv("HFS"))
+            return;
+        // Add Environment
+        std::string cmd = "\"" + hconfigPath + "\"";
+        std::string output = exec_output(cmd.c_str());
+        if(output.empty()){
+            printError("Houdini environment is null");
+            return;
+        }
+        std::istringstream iss(output);
+        std::string envLine,envKey,envValue,temp;
+        while(std::getline(iss,envLine)){
+            if(!iss)
+                break;
+            std::istringstream iss2(envLine);
+            iss2 >> envKey >> temp >> envValue;
+            if(envKey.empty())
+                continue;
+            envValue.erase(0,1);
+            envValue.erase(envValue.size()-1,1);
+            addenv(envKey,envValue);
+        }
+        houdiniRootPath = houdiniPath;
+        if(useEnvLibPath)
+            initHoudini();
+    }
+
+    std::string houdiniLibPath = "";
+    void set_houdiniLibPath(godot::String path){
+        path = godot::ProjectSettings::get_singleton()->globalize_path(path);
+        if(path == ""){
+            houdiniLibPath.clear();
+            return;
+        }
+        std::string houdiniPath = string_cast(path);
+        if(!std::filesystem::exists(houdiniPath)){
+            printError("Invalid houdini lib path. Make sure the dir exists.");
+            return;
+        }
+        houdiniLibPath = houdiniPath;
+        if(!useEnvLibPath)
+            initHoudini();
+    }
+    void initHoudini(){
+        if(putenv((char*)"HAPI_CLIENT_NAME=godot")){
+            printWarning("Failed to change env \"HAPI_CLIENT_NAME\" to \"godot\".\n");
+        }
+        if(useEnvLibPath)
+            libHAPIL = HoudiniEnginePlatform::LoadLibHAPIL();
+        else 
+            libHAPIL = HoudiniEnginePlatform::LoadLibHAPIL(houdiniLibPath);
+        if(libHAPIL != nullptr){
+            HoudiniApi::InitializeHAPI(libHAPIL);
+        }else{
+            printError("Failed to initialize hapi");
+        }
+        if(!HoudiniApi::IsHAPIInitialized()){
+            printError("Failed to load and initialize the "
+                        "Houdini Engine API from libHAPIL.\n");
+        }
+    }
+    void* libHAPIL = nullptr;
+public:
+    static HoudiniSettings* get_singleton(){
+        static HoudiniSettings* singleton = nullptr;
+        if(!singleton)
+            singleton = memnew(HoudiniSettings());
+        return singleton;
+    }
+    GDE_EXPORT 
+    void _update_settings(){
+        using namespace _houdini_engine_log;
+        godot::Variant value;
+        godot::String tempStr;
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/useEnvLibPath");
+        if(useEnvLibPath != (bool)value){
+            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/useEnvLibPath",useEnvLibPath);
+        }
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/houdiniRootPath");
+        tempStr = string_cast(houdiniRootPath);
+        if(tempStr != value){
+            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/houdiniRootPath",tempStr);
+        }
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/houdiniLibPath");
+        tempStr = string_cast(houdiniLibPath);
+        if(tempStr != value){
+            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/houdiniLibPath",tempStr);
+        }
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/logFilePath");
+        tempStr = string_cast(logFilePath);
+        if(tempStr != value){
+            set_logFilePath((godot::String)value);
+            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/logFilePath",tempStr);
+        }
+    }
+};
 class HoudiniEngineManager: public godot::Node3D{
     GDCLASS(HoudiniEngineManager,godot::Node3D)
     friend class HoudiniEngine;
-private:
     static void _bind_methods(){
-        BIND_ENUM_CONSTANT(HAPI_PACKEDPRIM_INSTANCING_MODE_INVALID)
-        BIND_ENUM_CONSTANT(HAPI_PACKEDPRIM_INSTANCING_MODE_DISABLED)
-        BIND_ENUM_CONSTANT(HAPI_PACKEDPRIM_INSTANCING_MODE_HIERARCHY)
-        BIND_ENUM_CONSTANT(HAPI_PACKEDPRIM_INSTANCING_MODE_FLAT)
-        BIND_ENUM_CONSTANT(HAPI_PACKEDPRIM_INSTANCING_MODE_MAX)
 
-
-        BIND_ENUM_CONSTANT(InProcess)
-        BIND_ENUM_CONSTANT(NewNamedPipe)
-        BIND_ENUM_CONSTANT(NewTCPSocket)
-        BIND_ENUM_CONSTANT(ExistingNamedPipe)
-        BIND_ENUM_CONSTANT(ExistingTCPSocket)
-        BIND_ENUM_CONSTANT(ExistingSharedMemory)
-
-        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_INVALID)
-        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_INT)
-        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_INT64)
-        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_FLOAT)
-        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_FLOAT64)
-        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_STRING)
-        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_UINT8)
-        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_INT8)
-        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_INT16)
-        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_DICTIONARY)
-        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_INT_ARRAY)
-        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_INT64_ARRAY)
-        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_FLOAT_ARRAY)
-        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_FLOAT64_ARRAY)
-        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_STRING_ARRAY)
-        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_UINT8_ARRAY)
-        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_INT8_ARRAY)
-        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_INT16_ARRAY)
-        BIND_ENUM_CONSTANT(HAPI_STORAGETYPE_DICTIONARY_ARRAY)
-
-        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_INVALID)
-        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_NONE)
-        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_POINT)
-        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_HPOINT)
-        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_VECTOR)
-        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_NORMAL)
-        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_COLOR)
-        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_QUATERNION)
-        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_MATRIX3)
-        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_MATRIX)
-        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_ST)
-        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_HIDDEN)
-        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_BOX2)
-        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_BOX)
-        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_TEXTURE)
-        BIND_ENUM_CONSTANT(HAPI_ATTRIBUTE_TYPE_MAX)
-
-        BIND_ENUM_CONSTANT(HAPI_ATTROWNER_INVALID)
-        BIND_ENUM_CONSTANT(HAPI_ATTROWNER_VERTEX)
-        BIND_ENUM_CONSTANT(HAPI_ATTROWNER_POINT)
-        BIND_ENUM_CONSTANT(HAPI_ATTROWNER_PRIM)
-        BIND_ENUM_CONSTANT(HAPI_ATTROWNER_DETAIL)
-        BIND_ENUM_CONSTANT(HAPI_ATTROWNER_MAX)
-
-        BIND_ENUM_CONSTANT(HAPI_NODETYPE_ANY)
-        BIND_ENUM_CONSTANT(HAPI_NODETYPE_NONE)
-        BIND_ENUM_CONSTANT(HAPI_NODETYPE_OBJ)
-        BIND_ENUM_CONSTANT(HAPI_NODETYPE_SOP)
-        BIND_ENUM_CONSTANT(HAPI_NODETYPE_CHOP)
-        BIND_ENUM_CONSTANT(HAPI_NODETYPE_ROP)
-        BIND_ENUM_CONSTANT(HAPI_NODETYPE_SHOP)
-        BIND_ENUM_CONSTANT(HAPI_NODETYPE_COP)
-        BIND_ENUM_CONSTANT(HAPI_NODETYPE_VOP)
-        BIND_ENUM_CONSTANT(HAPI_NODETYPE_DOP)
-        BIND_ENUM_CONSTANT(HAPI_NODETYPE_TOP)
-
-        BIND_ENUM_CONSTANT(HAPI_GEOTYPE_INVALID)
-        BIND_ENUM_CONSTANT(HAPI_GEOTYPE_DEFAULT)
-        BIND_ENUM_CONSTANT(HAPI_GEOTYPE_INTERMEDIATE)
-        BIND_ENUM_CONSTANT(HAPI_GEOTYPE_INPUT)
-        BIND_ENUM_CONSTANT(HAPI_GEOTYPE_CURVE)
-        BIND_ENUM_CONSTANT(HAPI_GEOTYPE_MAX)
-        
-
-        godot::ClassDB::bind_method(godot::D_METHOD("_settings_changed"),&HoudiniEngineManager::_settings_changed);
         godot::ClassDB::bind_method(godot::D_METHOD("get_assets"),&HoudiniEngineManager::get_assets);
         godot::ClassDB::bind_method(godot::D_METHOD("get_nodes"),&HoudiniEngineManager::get_nodes);
         godot::ClassDB::bind_method(godot::D_METHOD("cookSession"),&HoudiniEngineManager::cookSession);
@@ -485,7 +1040,6 @@ private:
         godot::ClassDB::bind_method(godot::D_METHOD("set_sessionAction","action"),&HoudiniEngineManager::set_sessionAction);
         godot::ClassDB::bind_method(godot::D_METHOD("set_assetAction","action"),&HoudiniEngineManager::set_assetAction);
         godot::ClassDB::bind_method(godot::D_METHOD("set_nodeAction","action"),&HoudiniEngineManager::set_nodeAction);
-        godot::ClassDB::bind_method(godot::D_METHOD("set_logFilePath","path"),&HoudiniEngineManager::set_logFilePath);
         godot::ClassDB::bind_method(godot::D_METHOD("set_cookOptions","options"),&HoudiniEngineManager::set_cookOptions);
         godot::ClassDB::bind_method(godot::D_METHOD("get_cookOptions"),&HoudiniEngineManager::get_cookOptions);
         godot::ClassDB::bind_method(godot::D_METHOD("startSession","type","use_cooking_thread"),&HoudiniEngineManager::startSession);
@@ -512,8 +1066,15 @@ private:
         list->clear();
 
 
+        list->push_back(godot::PropertyInfo(godot::Variant::DICTIONARY,"cookOptions"));
+
+        list->push_back(godot::PropertyInfo(godot::Variant::NIL,"Session Settings",godot::PROPERTY_HINT_NONE,"SessionSettings_",godot::PROPERTY_USAGE_GROUP));
+        list->push_back(godot::PropertyInfo(godot::Variant::OBJECT,"SessionSettings_sessionAction",godot::PROPERTY_HINT_RESOURCE_TYPE,"SessionAction"));
+        list->push_back(godot::PropertyInfo(godot::Variant::INT,"SessionSettings_sessionType",godot::PROPERTY_HINT_ENUM,"InProcess:1,NewNamedPipe:2,NewTCPSocket:3,ExistingNamedPipe:4,ExistingTCPSocket:5,ExistingSharedMemory:6"));
+        list->push_back(godot::PropertyInfo(godot::Variant::BOOL,"SessionSettings_useCookingThread"));
+        list->push_back(godot::PropertyInfo(godot::Variant::DICTIONARY,"SessionSettings_sessionConfig"));
+
         list->push_back(godot::PropertyInfo(godot::Variant::NIL,"Asset Settings",godot::PROPERTY_HINT_NONE,"AssetSettings_",godot::PROPERTY_USAGE_GROUP));
-        
         list->push_back(godot::PropertyInfo(godot::Variant::OBJECT,"AssetSettings_assetAction",godot::PROPERTY_HINT_RESOURCE_TYPE,"AssetAction"));
         list->push_back(godot::PropertyInfo(godot::Variant::OBJECT,"AssetSettings_nowAsset",godot::PROPERTY_HINT_RESOURCE_TYPE,"HDAResource"));
         list->push_back(godot::PropertyInfo(godot::Variant::ARRAY,"AssetSettings_assets"));
@@ -528,7 +1089,6 @@ private:
         list->push_back(godot::PropertyInfo(godot::Variant::ARRAY,"NodeSettings_nodes"));
         
 
-        list->push_back(godot::PropertyInfo(godot::Variant::OBJECT,"sessionAction",godot::PROPERTY_HINT_RESOURCE_TYPE,"SessionAction"));
         list->push_back(godot::PropertyInfo(godot::Variant::BOOL,"autoCook"));
         
         if(!sessionOpened){
@@ -561,9 +1121,23 @@ private:
     }
     bool _get(const godot::StringName& property, godot::Variant& ret){
 
-        std::string propertyName = property.c_escape().utf8().get_data();
-
-        if(propertyName == "AssetSettings_assetAction"){
+        std::string propertyName = string_cast(property.c_escape());
+        if(propertyName == "cookOptions"){
+            ret = get_cookOptions();
+            return true;
+        }else if(propertyName == "SessionSettings_sessionAction"){
+            ret = sessionAction;
+            return true;
+        }else if(propertyName == "SessionSettings_sessionType"){
+            ret = sessionType;
+            return true;
+        }else if(propertyName == "SessionSettings_useCookingThread"){
+            ret = useCookingThread;
+            return true;
+        }else if(propertyName == "SessionSettings_sessionConfig"){
+            ret = get_sessionConfig();
+            return true;
+        }else if(propertyName == "AssetSettings_assetAction"){
             ret = assetAction;
             return true;
         }else if(propertyName == "AssetSettings_nowAsset"){
@@ -593,9 +1167,6 @@ private:
         }else if(propertyName == "autoCook"){
             ret = autoCook;
             return true;
-        }else if(propertyName == "sessionAction"){
-            ret = sessionAction;
-            return true;
         }
 
 
@@ -623,7 +1194,7 @@ private:
                     }else if(std::holds_alternative<double>(res[0])){
                         ret = std::get<double>(res[0]);
                     }else if(std::holds_alternative<std::string>(res[0])){
-                        ret = godot::String::utf8(std::get<std::string>(res[0]).c_str());
+                        ret = string_cast(std::get<std::string>(res[0]));
                     }
                 }else{
                     godot::Array arr;
@@ -633,7 +1204,7 @@ private:
                         }else if(std::holds_alternative<double>(res[0])){
                             arr.push_back(std::get<double>(res[0]));
                         }else if(std::holds_alternative<std::string>(res[0])){
-                            arr.push_back(godot::String::utf8(std::get<std::string>(res[0]).c_str()));
+                            arr.push_back(string_cast(std::get<std::string>(res[0])));
                         }
                     }
                     ret = arr;
@@ -644,9 +1215,24 @@ private:
     }
     bool _set(const godot::StringName& property, const godot::Variant& value){
 
-        std::string propertyName = property.c_escape().utf8().get_data();
+        std::string propertyName = string_cast(property.c_escape());
         
-        if(propertyName == "AssetSettings_assetAction"){
+        if(propertyName == "cookOptions"){
+            set_cookOptions((godot::Dictionary)value);
+            return true;
+        }else if(propertyName == "SessionSettings_sessionAction"){
+            set_sessionAction((godot::Ref<SessionAction>)(value));
+            return true;
+        }else if(propertyName == "SessionSettings_sessionType"){
+            sessionType = (SessionType)(int)value;
+            return true;
+        }else if(propertyName == "SessionSettings_useCookingThread"){
+            useCookingThread = (bool)value;
+            return true;
+        }else if(propertyName == "SessionSettings_sessionConfig"){
+            set_sessionConfig((godot::Dictionary)value);
+            return true;
+        }else if(propertyName == "AssetSettings_assetAction"){
             set_assetAction((godot::Ref<AssetAction>)(value));
             return true;
         }else if(propertyName == "AssetSettings_nowAsset"){
@@ -695,12 +1281,7 @@ private:
             autoCook = (bool)value;
             cookNode(nowNode);
             return true;
-        }else if(propertyName == "sessionAction"){
-            set_sessionAction((godot::Ref<SessionAction>)(value));
-            return true;
         }
-
-
 
 
         if(!sessionOpened){
@@ -725,7 +1306,7 @@ private:
                     res[0] = (double)value;
                     HoudiniApi::SetParmFloatValue(get_session(),id,argName.c_str(),0,(float)value);
                 }else if(std::holds_alternative<std::string>(res[0])){
-                    res[0] = (std::string)((godot::String)value).utf8().get_data();
+                    res[0] = string_cast((godot::String)value);
                     HAPI_ParmId parmId;
                     HoudiniApi::GetParmIdFromName(get_session(),id,argName.c_str(),&parmId);
                     HoudiniApi::SetParmStringValue(get_session(),id,((godot::String)value).utf8().get_data(),parmId,0);
@@ -744,7 +1325,7 @@ private:
                         HoudiniApi::SetParmFloatValue(get_session(),id,argName.c_str(),i,(float)value);
                     }break;
                     case godot::Variant::STRING:{
-                        res.push_back(((godot::String)((godot::Array)value)[i]).utf8().get_data());
+                        res.push_back(string_cast((godot::String)((godot::Array)value)[i]));
                         HAPI_ParmId parmId;
                         HoudiniApi::GetParmIdFromName(get_session(),id,argName.c_str(),&parmId);
                         HoudiniApi::SetParmStringValue(get_session(),id,((godot::String)value).utf8().get_data(),parmId,i);
@@ -767,201 +1348,17 @@ private:
         if(!findproc("hserver")){
             printError("Can't find hserver. Try to restart it by hkey.");
             printError("Please restart the hserver to manually.");
-            printWarning("Run ",(houdiniRootPath+"/bin/hkey").c_str()," to restart hserver");
-            if(houdiniRootPath.empty()){
+            printWarning("Run ",(HoudiniSettings::get_singleton()->houdiniRootPath+"/bin/hkey").c_str()," to restart hserver");
+            if(HoudiniSettings::get_singleton()->houdiniRootPath.empty()){
                 printWarning("Run Houdini License Administrator (hkey) to restart hserver");
             }else{
-                printWarning("Run ",(houdiniRootPath+"/bin/hkey").c_str()," to restart hserver");
+                printWarning("Run ",(HoudiniSettings::get_singleton()->houdiniRootPath+"/bin/hkey").c_str()," to restart hserver");
             }
-        }
-    }
-    GDE_EXPORT 
-    void _init_settings(){
-        
-        auto tempDic = godot::Dictionary();
-        godot::ProjectSettings* settings = godot::ProjectSettings::get_singleton();
-        auto addSetting = [&tempDic,settings](godot::String name,godot::Variant value,godot::Variant::Type type,godot::PropertyHint hint = godot::PROPERTY_HINT_NONE,godot::String hint_string = ""){
-            if(!settings->has_setting(name)){
-                settings->set_setting(name,value);
-            }
-            tempDic["name"] = name;
-            tempDic["type"] = type;
-            tempDic["hint"] = hint;
-            tempDic["hint_string"] = hint_string;
-            settings->add_property_info(tempDic);
-            settings->set_initial_value(name,value);
-            tempDic.clear();
-        };
-        addSetting("houdini/config/useEnvLibPath",true,godot::Variant::BOOL);
-
-        settings->set_restart_if_changed("houdini/config/useEnvLibPath",true);
-
-        addSetting("houdini/config/houdiniRootPath","",godot::Variant::STRING,godot::PROPERTY_HINT_GLOBAL_DIR);
-
-        settings->set_restart_if_changed("houdini/config/houdiniRootPath",true);
-
-        addSetting("houdini/config/houdiniLibPath","",godot::Variant::STRING,godot::PROPERTY_HINT_GLOBAL_DIR);
-        
-        settings->set_restart_if_changed("houdini/config/houdiniLibPath",true);
-
-        addSetting("houdini/config/logFilePath","",godot::Variant::STRING,godot::PROPERTY_HINT_SAVE_FILE);
-
-        addSetting("houdini/config/cookOptions",default_cookOptions(),godot::Variant::DICTIONARY);
-
-        addSetting("houdini/config/session/sessionType",1,godot::Variant::INT,godot::PROPERTY_HINT_ENUM,"InProcess:1,NewNamedPipe:2,NewTCPSocket:3,ExistingNamedPipe:4,ExistingTCPSocket:5,ExistingSharedMemory:6");
-
-        addSetting("houdini/config/session/useCookingThread",true,godot::Variant::BOOL);
-
-        addSetting("houdini/config/session/namedPipe","hapi",godot::Variant::STRING);
-
-        addSetting("houdini/config/session/sharedMemoryName","hapi",godot::Variant::STRING);
-
-        addSetting("houdini/config/session/hostName","127.0.0.1",godot::Variant::STRING);
-
-        addSetting("houdini/config/session/tcpPort",9090,godot::Variant::INT);
-
-    }
-    GDE_EXPORT 
-    void _update_settings(){
-        using namespace _houdini_engine_log;
-        godot::Variant value;
-        godot::String tempStr;
-
-        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/useEnvLibPath");
-        if(useEnvLibPath != (bool)value){
-            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/useEnvLibPath",useEnvLibPath);
-        }
-
-        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/houdiniRootPath");
-        tempStr = godot::String::utf8(houdiniRootPath.c_str());
-        if(tempStr != value){
-            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/houdiniRootPath",tempStr);
-        }
-
-        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/houdiniLibPath");
-        tempStr = godot::String::utf8(houdiniLibPath.c_str());
-        if(tempStr != value){
-            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/houdiniLibPath",tempStr);
-        }
-
-        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/logFilePath");
-        tempStr = godot::String::utf8(logFilePath.c_str());
-        if(tempStr != value){
-            set_logFilePath((godot::String)value);
-            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/logFilePath",tempStr);
-        }
-
-        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/cookOptions");
-        if(auto options = get_cookOptions();options != (godot::Dictionary)value){
-            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/cookOptions",options);
-        }
-
-        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/session/sessionType");
-        if((int)value != (int)sessionType){
-            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/session/sessionType",(int)sessionType);
-        }
-
-        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/session/useCookingThread");
-        if((bool)value != useCookingThread){
-            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/session/useCookingThread",useCookingThread);
-        }
-
-        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/session/namedPipe");
-        tempStr = godot::String::utf8(namedPipe.c_str());
-        if(tempStr != value){
-            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/session/namedPipe",tempStr);
-        }
-
-        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/session/sharedMemoryName");
-        tempStr = godot::String::utf8(sharedMemoryName.c_str());
-        if(tempStr != value){
-            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/session/sharedMemoryName",tempStr);
-        }
-
-        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/session/hostName");
-        tempStr = godot::String::utf8(hostName.c_str());
-        if(tempStr != value){
-            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/session/hostName",tempStr);
-        }
-
-        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/session/tcpPort");
-        if((int)value != tcpPort){
-            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/session/tcpPort",tcpPort);
-        }
-    }
-    GDE_EXPORT 
-    void _settings_changed(){
-        using namespace _houdini_engine_log;
-        godot::Variant value;
-        std::string tempStr;
-
-        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/useEnvLibPath");
-        if(useEnvLibPath != (bool)value){
-            useEnvLibPath = (bool)value;
-        }
-
-        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/houdiniRootPath");
-        tempStr = ((godot::String)value).utf8().get_data();
-        if(tempStr != houdiniRootPath){
-            set_houdiniRootPath((godot::String)value);
-        }
-
-        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/houdiniLibPath");
-        tempStr = ((godot::String)value).utf8().get_data();
-        if(tempStr != houdiniRootPath){
-            set_houdiniLibPath((godot::String)value);
-        }
-
-        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/logFilePath");
-        tempStr = ((godot::String)value).utf8().get_data();
-        if(tempStr != logFilePath){
-            set_logFilePath((godot::String)value);
-        }
-
-        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/cookOptions");
-        if((godot::Dictionary)value != get_cookOptions()){
-            set_cookOptions((godot::Dictionary)value);
-        }
-
-        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/session/sessionType");
-        if((int)value != (int)sessionType){
-            sessionType = (SessionType)(int)value;
-        }
-
-        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/session/useCookingThread");
-        if((bool)value != useCookingThread){
-            useCookingThread = (bool)value;
-        }
-
-        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/session/namedPipe");
-        tempStr = ((godot::String)value).utf8().get_data();
-        if(tempStr != namedPipe){
-            namedPipe = tempStr;
-        }
-
-        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/session/sharedMemoryName");
-        tempStr = ((godot::String)value).utf8().get_data();
-        if(tempStr != sharedMemoryName){
-            sharedMemoryName = tempStr;
-        }
-
-        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/session/hostName");
-        tempStr = ((godot::String)value).utf8().get_data();
-        if(tempStr != hostName){
-            hostName = tempStr;
-        }
-
-        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/session/tcpPort");
-        if((int)value != tcpPort){
-            tcpPort = (int)value;
         }
     }
     GDE_EXPORT 
     void _notification(int what){
         switch(what){
-        case NOTIFICATION_POSTINITIALIZE:{
-            _init_settings();
-        }break;
         case NOTIFICATION_ENTER_TREE:{
             init();
             set_process(1);
@@ -978,7 +1375,6 @@ private:
         }break;
         }
     }
-    void* libHAPIL = nullptr;
     bool sessionOpened = false;
 
     //      partId  mesh
@@ -1004,11 +1400,10 @@ private:
         defaultMaterial->set_flag(godot::BaseMaterial3D::Flags::FLAG_ALBEDO_FROM_VERTEX_COLOR,true);
         materialRes[""] = defaultMaterial;
 
+        default_cookOptions();
         
         get_tree()->connect("node_removed",godot::Callable(this,"freeGDNode"));
         get_tree()->connect("node_added",godot::Callable(this,"stopFreeGDNode"));
-        godot::ProjectSettings::get_singleton()->connect("settings_changed",godot::Callable(this,"_settings_changed"));
-        _settings_changed();
 
         sessionAction.unref();
         assetAction.unref();
@@ -1178,10 +1573,10 @@ private:
                     std::function<void(godot::Node*)> func = [&,this](godot::Node* root){
                         if(auto a = root;a->get_class() == godot::MeshInstance3D::get_class_static()){
                             auto mesh = static_cast<godot::MeshInstance3D*>(a)->get_mesh();
-                            createInputNode(a->get_name().c_escape().utf8().get_data(),id,-1,mesh);
+                            createInputNode(string_cast(a->get_name().c_escape()),id,-1,mesh);
                         }else if(a->get_class() == godot::MultiMeshInstance3D::get_class_static()){
                             auto mesh = static_cast<godot::MultiMeshInstance3D*>(a)->get_multimesh()->get_mesh();
-                            createInputNode(a->get_name().c_escape().utf8().get_data(),id,-1,mesh);
+                            createInputNode(string_cast(a->get_name().c_escape()),id,-1,mesh);
                         }
 
                         godot::TypedArray<godot::Node> children;
@@ -1256,116 +1651,42 @@ private:
     godot::Ref<godot::Mesh> inputMesh;
     godot::Node* inputMeshTreeRoot = nullptr;
 
-    bool useEnvLibPath = true;
-
-    std::string houdiniRootPath = "";
-    void set_houdiniRootPath(godot::String path){
-        path = godot::ProjectSettings::get_singleton()->globalize_path(path);
-        if(path == ""){
-            houdiniRootPath.clear();
-            return;
-        }
-        std::string houdiniPath = path.utf8().get_data();
-        std::string hconfigPath = houdiniPath+"/bin/hconfig";
-        if(!std::filesystem::exists(hconfigPath)){
-            hconfigPath += ".exe";
-            if(!std::filesystem::exists(hconfigPath)){
-                printError("Invalid houdini root path. Make sure \"${HoudiniRootPath}/bin/hconfig\" is exist.");
-                return;
-            }
-        }
-        if(findenv("HFS"))
-            return;
-        // Add Environment
-        std::string output = exec_output(hconfigPath.c_str());
-        if(output.empty()){
-            printError("Houdini environment is null");
-            return;
-        }
-        std::istringstream iss(output);
-        std::string envLine,envKey,envValue,temp;
-        while(std::getline(iss,envLine)){
-            if(!iss)
-                break;
-            std::istringstream iss2(envLine);
-            iss2 >> envKey >> temp >> envValue;
-            if(envKey.empty())
-                continue;
-            envValue.erase(0,1);
-            envValue.erase(envValue.size()-1,1);
-            addenv(envKey,envValue);
-        }
-        houdiniRootPath = houdiniPath;
-        if(useEnvLibPath)
-            initHoudini();
-    }
-
-    std::string houdiniLibPath = "";
-
-    void set_houdiniLibPath(godot::String path){
-        path = godot::ProjectSettings::get_singleton()->globalize_path(path);
-        if(path == ""){
-            houdiniLibPath.clear();
-            return;
-        }
-        std::string houdiniPath = path.utf8().get_data();
-        if(!std::filesystem::exists(houdiniPath)){
-            printError("Invalid houdini lib path. Make sure the dir exists.");
-            return;
-        }
-        houdiniLibPath = houdiniPath;
-        if(!useEnvLibPath)
-            initHoudini();
-    }
-    void initHoudini(){
-        if(putenv((char*)"HAPI_CLIENT_NAME=godot")){
-            printWarning("Failed to change env \"HAPI_CLIENT_NAME\" to \"godot\".\n");
-        }
-        if(useEnvLibPath)
-            libHAPIL = HoudiniEnginePlatform::LoadLibHAPIL();
-        else 
-            libHAPIL = HoudiniEnginePlatform::LoadLibHAPIL(houdiniLibPath);
-        if(libHAPIL != nullptr){
-            HoudiniApi::InitializeHAPI(libHAPIL);
-        }else{
-            printError("Failed to initialize hapi");
-        }
-        if(!HoudiniApi::IsHAPIInitialized()){
-            printError("Failed to load and initialize the "
-                        "Houdini Engine API from libHAPIL.\n");
-        }
-    }
-
-    GDE_EXPORT
-    void set_logFilePath(godot::String path){
-        using namespace _houdini_engine_log;
-        path = godot::ProjectSettings::get_singleton()->globalize_path(path);
-        if(path.is_absolute_path()){
-            if(!logFilePath.empty()){
-                logFile.close();
-                logFile.clear();
-            }
-            logFile.open(path.utf8().get_data(),std::ios::app|std::ios::out);
-            logFilePath = path.utf8().get_data();
-        }else if(path.is_empty()){
-            logFile.close();
-            logFile.clear();
-            logFilePath.clear();
-        }
-    }
 
 
     HAPI_Session session;
     SessionType sessionType = InProcess;
     bool useCookingThread = true;
 
-    std::string namedPipe = DefaultNamedPipe;
 
-    std::string hostName = DefaultHostName;
+    struct {
+        std::string namedPipe = DefaultNamedPipe;
 
-    std::string sharedMemoryName = DefaultSharedMemoryName;
+        std::string hostName = DefaultHostName;
 
-    int tcpPort = DefaultTcpPort;
+        std::string sharedMemoryName = DefaultSharedMemoryName;
+
+        int tcpPort = DefaultTcpPort;
+    } sessionConfig;
+    GDE_EXPORT
+    void set_sessionConfig(godot::Dictionary config){
+        if(config.has("namedPipe"))
+            sessionConfig.namedPipe = string_cast(static_cast<godot::String>(config["namedPipe"]));
+        if(config.has("hostName"))
+            sessionConfig.hostName = string_cast(static_cast<godot::String>(config["hostName"]));
+        if(config.has("sharedMemoryName"))
+            sessionConfig.sharedMemoryName = string_cast(static_cast<godot::String>(config["sharedMemoryName"]));
+        if(config.has("tcpPort"))
+            sessionConfig.tcpPort = (int)config["tcpPort"];
+    }
+    GDE_EXPORT
+    godot::Dictionary get_sessionConfig(){
+        godot::Dictionary dic;
+        dic["namedPipe"] = string_cast(sessionConfig.namedPipe);
+        dic["hostName"] = string_cast(sessionConfig.hostName);
+        dic["sharedMemoryName"] = string_cast(sessionConfig.sharedMemoryName);
+        dic["tcpPort"] = sessionConfig.tcpPort;
+        return dic;
+    }
 
 
     HAPI_CookOptions cookOptions;
@@ -1472,7 +1793,7 @@ private:
 
 public:
     HAPI_Session* get_session(){
-        return get_session();
+        return &session;
     }
     GDE_EXPORT
     bool startSession(SessionType type,bool use_cooking_thread){
@@ -1508,11 +1829,11 @@ public:
         case SessionType::NewNamedPipe:{
             HAPI_ProcessId processID;
             HOUDINI_CHECK_ERROR(HoudiniApi::StartThriftNamedPipeServer(
-                &server_options,namedPipe.c_str(),&processID,logFilePath.empty()?nullptr:logFilePath.c_str()
+                &server_options,sessionConfig.namedPipe.c_str(),&processID,logFilePath.empty()?nullptr:logFilePath.c_str()
             ));
             HAPI_SessionInfo sessionInfo = HoudiniApi::SessionInfo_Create();
             SessionResult = HoudiniApi::CreateThriftNamedPipeSession(
-                get_session(),namedPipe.c_str(),&sessionInfo
+                get_session(),sessionConfig.namedPipe.c_str(),&sessionInfo
             );
             if(SessionResult == HAPI_RESULT_SUCCESS){
                 printFile("Successful create a HAPI named-pipe session\n");
@@ -1523,11 +1844,11 @@ public:
         case SessionType::NewTCPSocket:{
             HAPI_ProcessId processID;
             HOUDINI_CHECK_ERROR(HoudiniApi::StartThriftSocketServer(
-                &server_options,tcpPort,&processID,logFilePath.empty()?nullptr:logFilePath.c_str()
+                &server_options,sessionConfig.tcpPort,&processID,logFilePath.empty()?nullptr:logFilePath.c_str()
             ));
             HAPI_SessionInfo sessionInfo = HoudiniApi::SessionInfo_Create();
             SessionResult = HoudiniApi::CreateThriftSocketSession(
-                get_session(),hostName.c_str(), tcpPort, &sessionInfo
+                get_session(),sessionConfig.hostName.c_str(), sessionConfig.tcpPort, &sessionInfo
             );
             if(SessionResult == HAPI_RESULT_SUCCESS){
                 printFile("Successful create a HAPI TCP socket session\n");
@@ -1538,7 +1859,7 @@ public:
         case SessionType::ExistingNamedPipe:{
             HAPI_SessionInfo sessionInfo = HoudiniApi::SessionInfo_Create();
             SessionResult = HoudiniApi::CreateThriftNamedPipeSession(
-                get_session(),namedPipe.c_str(),&sessionInfo
+                get_session(),sessionConfig.namedPipe.c_str(),&sessionInfo
             );
             if(SessionResult == HAPI_RESULT_SUCCESS){
                 printFile("Successful connect to an existint HAPI named-pipe session\n");
@@ -1549,7 +1870,7 @@ public:
         case SessionType::ExistingTCPSocket:{
             HAPI_SessionInfo sessionInfo = HoudiniApi::SessionInfo_Create();
             SessionResult = HoudiniApi::CreateThriftSocketSession(
-                get_session(),hostName.c_str(), tcpPort, &sessionInfo
+                get_session(),sessionConfig.hostName.c_str(), sessionConfig.tcpPort, &sessionInfo
             );
             if(SessionResult == HAPI_RESULT_SUCCESS){
                 printFile("Successful connect to an existint HAPI TCP socket session\n");
@@ -1560,7 +1881,7 @@ public:
         case SessionType::ExistingSharedMemory:{
             HAPI_SessionInfo sessionInfo = HoudiniApi::SessionInfo_Create();
             SessionResult = HoudiniApi::CreateThriftSharedMemorySession(
-                get_session(),sharedMemoryName.c_str(), &sessionInfo
+                get_session(),sessionConfig.sharedMemoryName.c_str(), &sessionInfo
             );
             if(SessionResult == HAPI_RESULT_SUCCESS){
                 printFile("Successful connect to an existint HAPI shared memory session\n");
@@ -1642,7 +1963,7 @@ public:
             HAPI_Result Result = HoudiniApi::Initialize(
                 get_session(),&cookOptions,use_cooking_thread,-1,"",nullptr,nullptr,nullptr,nullptr
             );
-            _update_settings();
+            HoudiniSettings::get_singleton()->_update_settings();
             if(Result == HAPI_RESULT_SUCCESS){
                 printFile("Successfully initialized Houdini Engine.");
             }else if(Result == HAPI_RESULT_ALREADY_INITIALIZED){
@@ -1726,7 +2047,7 @@ public:
     }
     GDE_EXPORT
     bool createNode(godot::String nodeLabel,godot::String operatorName, godot::Ref<NodeId> id, godot::Ref<NodeId> parentId, int assetId){
-        return createNode(std::string(nodeLabel.utf8().get_data()),std::string(operatorName.utf8().get_data()),*id->id.get(),(int)**parentId,assetId);
+        return createNode(string_cast(nodeLabel),string_cast(operatorName),*id->id.get(),(int)**parentId,assetId);
     }
     GDE_EXPORT
     bool connectNode(int nodeId, int inputIndex,int node_to_connect,int outputIndex){
@@ -2383,10 +2704,10 @@ public:
                 }else if(std::holds_alternative<double>(b)){
                     arr.push_back(std::get<double>(b));
                 }else if(std::holds_alternative<std::string>(b)){
-                    arr.push_back(godot::String::utf8(std::get<std::string>(b).c_str()));
+                    arr.push_back(string_cast(std::get<std::string>(b)));
                 }
             }
-            dict[godot::String::utf8(a.first.c_str())] = arr;
+            dict[string_cast(a.first)] = arr;
         }
         return dict;
     }
@@ -2427,7 +2748,7 @@ public:
             }
             if(!attr_info.exists)
                 continue;
-            point_attr["Name"] = godot::String::utf8(attr_name.c_str());
+            point_attr["Name"] = string_cast(attr_name);
             point_attr["Count"] = attr_info.count;
             point_attr["Storage"] = attr_info.storage;
             point_attr["Exists"] = attr_info.exists;
@@ -2458,7 +2779,7 @@ public:
             }
             if(!attr_info.exists)
                 continue;
-            vertex_attr["Name"] = godot::String::utf8(attr_name.c_str());
+            vertex_attr["Name"] = string_cast(attr_name);
             vertex_attr["Count"] = attr_info.count;
             vertex_attr["Storage"] = attr_info.storage;
             vertex_attr["Exists"] = attr_info.exists;
@@ -2489,7 +2810,7 @@ public:
             }
             if(!attr_info.exists)
                 continue;
-            prim_attr["Name"] = godot::String::utf8(attr_name.c_str());
+            prim_attr["Name"] = string_cast(attr_name);
             prim_attr["Count"] = attr_info.count;
             prim_attr["Storage"] = attr_info.storage;
             prim_attr["Exists"] = attr_info.exists;
@@ -2521,7 +2842,7 @@ public:
             }
             if(!attr_info.exists)
                 continue;
-            detail_attr["Name"] = godot::String::utf8(attr_name.c_str());
+            detail_attr["Name"] = string_cast(attr_name);
             detail_attr["Count"] = attr_info.count;
             detail_attr["Storage"] = attr_info.storage;
             detail_attr["Exists"] = attr_info.exists;
@@ -2708,7 +3029,7 @@ public:
             for(auto a : materialPaths){
                 std::string path = HoudiniEngineUtility::getString(get_session(),a);
                 if(materialRes.find(path) == materialRes.end()){
-                    materialRes[path] = godot::ResourceLoader::get_singleton()->load(godot::String::utf8(path.c_str()));
+                    materialRes[path] = godot::ResourceLoader::get_singleton()->load(string_cast(path));
                 }
                 resTypePaths.emplace_back(std::move(path));
             }
@@ -2937,7 +3258,7 @@ public:
                     uv2s.push_back(0);
                 }
             }
-            const char* matPath = keep_alive_string(rawMatPath.utf8().get_data());
+            const char* matPath = keep_alive_string(string_cast(rawMatPath));
 
             size_t vertexSize = allVertexs.size();
             if(!colors.empty()){

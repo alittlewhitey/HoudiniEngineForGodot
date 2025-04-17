@@ -7,7 +7,7 @@
 #include <iostream>
 #include <functional>
 #include <atomic>
-#include <list>
+#include <deque>
 #include <thread>
 #include <chrono>
 class Contact{
@@ -15,7 +15,7 @@ public:
     typedef uint32_t TaskID;
 private:
     static std::atomic<bool> is_changing;
-    static std::list<std::pair<TaskID,std::function<void()>>> call_pool;
+    static std::deque<std::pair<TaskID,std::function<void()>>> call_pool;
     static TaskID counter;
 public:
     static TaskID add_call(std::function<void()> func);
