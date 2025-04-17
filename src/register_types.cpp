@@ -58,7 +58,6 @@ void initialize_module(ModuleInitializationLevel p_level){
     GDREGISTER_CLASS(HDAImportPlugin)
 
     EditorPlugins::add_by_type<HDAImportPlugin>();
-    godot::Engine::get_singleton()->register_singleton("HoudiniSettings",HoudiniSettings::get_singleton());
 }
 void uninitialize_module(ModuleInitializationLevel p_level){
     if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {

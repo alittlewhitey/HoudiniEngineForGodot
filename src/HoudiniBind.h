@@ -565,7 +565,7 @@ class HoudiniEngine: public godot::Object{
         godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetLastCookError","session"),&HoudiniEngine::GetLastCookError);
         godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetLastError","session"),&HoudiniEngine::GetLastError);
         godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetNodeCookResult","session","stringValue", "length"),&HoudiniEngine::GetNodeCookResult);
-        godot::ClassDB::bind_static_method("houdiniengine",godot::D_METHOD("GetNodeCookResultLength","session","nodeId","verbosity","length"),&HoudiniEngine::GetNodeCookResultLength);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetNodeCookResultLength","session","nodeId","verbosity","length"),&HoudiniEngine::GetNodeCookResultLength);
         godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetNodeFromPath","session","parentId","path","nodeId"),&HoudiniEngine::GetNodeFromPath);
         godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetNodeInputName","session","nodeId","inputIndex","nameHandle"),&HoudiniEngine::GetNodeInputName);
         godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetNodeOutputName","session","nodeId","outputIndex","nameHandle"),&HoudiniEngine::GetNodeOutputName);
@@ -1358,10 +1358,12 @@ class HoudiniEngineManager: public godot::Node3D{
     }
     GDE_EXPORT 
     void _notification(int what){
+        static HoudiniSettings* settings = nullptr;
         switch(what){
         case NOTIFICATION_ENTER_TREE:{
             init();
             set_process(1);
+            settings = HoudiniSettings::get_singleton();
         }break;
         case NOTIFICATION_PROCESS:{
             Contact::process_call();
