@@ -971,10 +971,12 @@ class HoudiniSettings: public godot::Object{
                 break;
             std::istringstream iss2(envLine);
             iss2 >> envKey >> temp >> envValue;
-            if(envKey.empty())
+            if(envKey.empty()||envValue.empty())
                 continue;
-            envValue.erase(0,1);
-            envValue.erase(envValue.size()-1,1);
+            if(envValue[0] == '\'')
+                envValue.erase(0,1);
+            if(envValue[envValue.size()-1] == '\'')
+                envValue.erase(envValue.size()-1,1);
             addenv(envKey,envValue);
         }
         houdiniRootPath = houdiniPath;
