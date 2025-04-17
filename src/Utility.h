@@ -31,22 +31,22 @@ void _print_godot_msg(_godot_msg_type type, T... output){
     switch (type)
     {
     case _godot_msg_type::log:
-        godot::UtilityFunctions::print(output...,'\n');
+        godot::UtilityFunctions::print(output...);
         break;
     case _godot_msg_type::warning:
-        godot::UtilityFunctions::push_warning(output...,'\n');
+        godot::UtilityFunctions::push_warning(output...);
         break;
     case _godot_msg_type::error:
-        godot::UtilityFunctions::push_error(output...,'\n');
+        godot::UtilityFunctions::push_error(output...);
         break;
     default:
         break;
     }
 }
 #define printFile(...) ;{std::source_location _houdini_engine_source_loc = std::source_location::current();_output_log("\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);};
-#define printLog(...) ;{std::source_location _houdini_engine_source_loc = std::source_location::current();_output_log("\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);_print_godot_msg(_godot_msg_type::log,"\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__,"   ");};
-#define printWarning(...) ;{std::source_location _houdini_engine_source_loc = std::source_location::current();_output_log("\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);_print_godot_msg(_godot_msg_type::warning,"\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__,"   ");};
-#define printError(...) ;{std::source_location _houdini_engine_source_loc = std::source_location::current();_output_log("\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);_print_godot_msg(_godot_msg_type::error,"\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__,"   ");};
+#define printLog(...) ;{std::source_location _houdini_engine_source_loc = std::source_location::current();_output_log("\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);_print_godot_msg(_godot_msg_type::log,"\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);};
+#define printWarning(...) ;{std::source_location _houdini_engine_source_loc = std::source_location::current();_output_log("\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);_print_godot_msg(_godot_msg_type::warning,"\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);};
+#define printError(...) ;{std::source_location _houdini_engine_source_loc = std::source_location::current();_output_log("\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);_print_godot_msg(_godot_msg_type::error,"\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);};
 
 GDE_EXPORT 
 inline godot::String string_cast(std::string s){
