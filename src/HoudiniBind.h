@@ -879,6 +879,10 @@ class HoudiniSettings: public godot::Object{
         addSetting("houdini/config/useEnvLibPath",true,godot::Variant::BOOL);
 
         settings->set_restart_if_changed("houdini/config/useEnvLibPath",true);
+        
+        addSetting("houdini/config/hapiLib",HAPILibType::HAPIL,godot::Variant::INT,godot::PROPERTY_HINT_ENUM,"HAPIL:0,HAPI:1");
+
+        settings->set_restart_if_changed("houdini/config/hapiLib",true);
 
         addSetting("houdini/config/houdiniRootPath","",godot::Variant::STRING,godot::PROPERTY_HINT_GLOBAL_DIR);
 
@@ -900,6 +904,11 @@ class HoudiniSettings: public godot::Object{
         value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/useEnvLibPath");
         if(useEnvLibPath != (bool)value){
             useEnvLibPath = (bool)value;
+        }
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/hapiLib");
+        if(libType != (HAPILibType)(int)value){
+            libType = (HAPILibType)(int)value;
         }
 
         value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/houdiniRootPath");
@@ -1005,21 +1014,30 @@ class HoudiniSettings: public godot::Object{
             printWarning("Failed to change env \"HAPI_CLIENT_NAME\" to \"godot\".\n");
         }
         if(useEnvLibPath)
-            libHAPIL = HoudiniEnginePlatform::LoadLibHAPIL();
+            hapiLib = HoudiniEnginePlatform::LoadLibHAPIL(libType == HAPI);
         else 
-            libHAPIL = HoudiniEnginePlatform::LoadLibHAPIL(houdiniLibPath);
-        if(libHAPIL != nullptr){
-            HoudiniApi::InitializeHAPI(libHAPIL);
+            hapiLib = HoudiniEnginePlatform::LoadLibHAPIL(libType == HAPI, houdiniLibPath);
+        if(hapiLib != nullptr){
+            HoudiniApi::InitializeHAPI(hapiLib);
         }else{
             printError("Failed to initialize hapi");
         }
         if(!HoudiniApi::IsHAPIInitialized()){
-            printError("Failed to load and initialize the "
+            if(libType == HAPIL){
+                printError("Failed to load and initialize the "
                         "Houdini Engine API from libHAPIL.\n");
+            }else{
+                printError("Failed to load and initialize the "
+                        "Houdini Engine API from libHAPI.\n");  
+            }
         }
     }
-    void* libHAPIL = nullptr;
+    void* hapiLib = nullptr;
 public:
+    enum HAPILibType{
+        HAPIL = 0,
+        HAPI = 1
+    } libType = HAPIL;
     static HoudiniSettings* get_singleton(){
         static HoudiniSettings* singleton = nullptr;
         if(!singleton)
@@ -1035,6 +1053,11 @@ public:
         value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/useEnvLibPath");
         if(useEnvLibPath != (bool)value){
             godot::ProjectSettings::get_singleton()->set_setting("houdini/config/useEnvLibPath",useEnvLibPath);
+        }
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/hapiLib");
+        if(libType != (HAPILibType)(int)value){
+            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/hapiLib",libType);
         }
 
         value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/houdiniRootPath");
@@ -1158,6 +1181,8 @@ class HoudiniEngineManager: public godot::Node3D{
             ret = sessionAction;
             return true;
         }else if(propertyName == "SessionSettings_sessionType"){
+            if(HoudiniSettings::get_singleton()->libType == HoudiniSettings::HAPI)
+                sessionType = SessionType::InProcess;
             ret = sessionType;
             return true;
         }else if(propertyName == "SessionSettings_useCookingThread"){
@@ -1254,6 +1279,8 @@ class HoudiniEngineManager: public godot::Node3D{
             return true;
         }else if(propertyName == "SessionSettings_sessionType"){
             sessionType = (SessionType)(int)value;
+            if(HoudiniSettings::get_singleton()->libType == HoudiniSettings::HAPI)
+                sessionType = SessionType::InProcess;
             return true;
         }else if(propertyName == "SessionSettings_useCookingThread"){
             useCookingThread = (bool)value;

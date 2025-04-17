@@ -36,14 +36,17 @@
 #include <string>
 
 // Names of HAPI libraries on different platforms.
-const char* HAPI_LIB_OBJECT_WINDOWS = "libHAPIL.dll";
-const char* HAPI_LIB_OBJECT_LINUX = "libHAPIL.so";
-const char* HAPI_LIB_OBJECT_MAC = "libHAPIL.dylib";
+const char* HAPIL_LIB_OBJECT_WINDOWS = "libHAPIL.dll";
+const char* HAPIL_LIB_OBJECT_LINUX = "libHAPIL.so";
+const char* HAPIL_LIB_OBJECT_MAC = "libHAPIL.dylib";
+const char* HAPI_LIB_OBJECT_WINDOWS = "libHAPI.dll";
+const char* HAPI_LIB_OBJECT_LINUX = "libHAPI.so";
+const char* HAPI_LIB_OBJECT_MAC = "libHAPI.dylib";
 
 void*
-HoudiniEnginePlatform::LoadLibHAPIL(std::string libDir)
+HoudiniEnginePlatform::LoadLibHAPIL(bool useHAPI, std::string libDir)
 {
-    void* libHAPIL = nullptr;
+    void* libHAPI = nullptr;
 #if defined(WIN32) || defined(_WIN32)
     // Look up the HFS environment variable
 
@@ -54,13 +57,16 @@ HoudiniEnginePlatform::LoadLibHAPIL(std::string libDir)
     //if (_dupenv_s(&buf, &len, "HFS") == 0 && buf != nullptr)
     if(buf != nullptr)
     {
-        std::string libHAPIL_dir(buf);
+        std::string libHAPI_dir(buf);
         //free(buf);
 
-        libHAPIL_dir.append("/bin/");
-        if (SetDllDirectory(libHAPIL_dir.c_str()))
+        libHAPI_dir.append("/bin/");
+        if (SetDllDirectory(libHAPI_dir.c_str()))
         {
-            libHAPIL = LoadLibrary(HAPI_LIB_OBJECT_WINDOWS);
+            if(useHAPI)
+            libHAPI = LoadLibrary(HAPI_LIB_OBJECT_WINDOWS);
+            else
+                libHAPI = LoadLibrary(HAPIL_LIB_OBJECT_WINDOWS);
         }
     }
     else
@@ -69,16 +75,22 @@ HoudiniEnginePlatform::LoadLibHAPIL(std::string libDir)
         return nullptr;
     }
 #elif __linux__
-    // Location of libHAPIL on Mac & Linux added to the application's RPATH
-    libHAPIL = dlopen(((libDir.empty()?"":libDir+'/')+HAPI_LIB_OBJECT_LINUX).c_str(), RTLD_LAZY); 
+    // Location of libHAPI on Mac & Linux added to the application's RPATH
+    if(useHAPI)
+        libHAPI = dlopen(((libDir.empty()?"":libDir+'/')+HAPI_LIB_OBJECT_LINUX).c_str(), RTLD_LAZY); 
+    else
+        libHAPI = dlopen(((libDir.empty()?"":libDir+'/')+HAPIL_LIB_OBJECT_LINUX).c_str(), RTLD_LAZY); 
 #else
-    libHAPIL = dlopen(((libDir.empty()?"":libDir+'/')+HAPI_LIB_OBJECT_MAC).c_str(), RTLD_LAZY); 
+    if(useHAPI)
+        libHAPI = dlopen(((libDir.empty()?"":libDir+'/')+HAPI_LIB_OBJECT_MAC).c_str(), RTLD_LAZY); 
+    else
+        libHAPI = dlopen(((libDir.empty()?"":libDir+'/')+HAPIL_LIB_OBJECT_MAC).c_str(), RTLD_LAZY); 
 #endif
 
-    if (libHAPIL == nullptr)
-        std::cerr << "Failed to load the libHAPIL module." << std::endl;
+    if (libHAPI == nullptr)
+        std::cerr << "Failed to load the libHAPI module." << std::endl;
 
-    return libHAPIL;
+    return libHAPI;
 }
 
 bool

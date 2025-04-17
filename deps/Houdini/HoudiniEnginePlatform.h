@@ -30,7 +30,7 @@
 struct HoudiniEnginePlatform
 {
     // Dynamically load the libHAPIL shared library
-    static void* LoadLibHAPIL(std::string libDir = "");
+    static void* LoadLibHAPIL(bool useHAPI = false, std::string libDir = "");
 
     // Decrement the reference count of the libHAPIL module, freed at 0
     static bool FreeLibHAPIL(void* libHAPIL);
