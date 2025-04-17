@@ -677,9 +677,33 @@ public:
     GDE_EXPORT static HAPI_Result Initialize(HoudiniEngineManager* session, godot::Dictionary cookOptions, bool useCookingThread, int cookingThreadStackSize, godot::String houdiniEnvironmentFiles, godot::String otlSearchPath, godot::String dsoSearchPath, godot::String imageDsoSearchPath, godot::String audioDsoSearchPath);
     GDE_EXPORT static HAPI_Result Interrupt(HoudiniEngineManager* session);
     GDE_EXPORT static HAPI_Result IsInitialized(HoudiniEngineManager* session);
+    GDE_EXPORT static HAPI_Result IsSessionValid(HoudiniEngineManager* session);
     GDE_EXPORT static HAPI_Result IsNodeValid(HoudiniEngineManager* session, int nodeId, int uniqueNodeId, godot::Ref<Bool> answer);
+    GDE_EXPORT static HAPI_Result LoadAssetLibraryFromFile(HoudiniEngineManager* session, godot::String filePath, bool allowOverwrite, godot::Ref<Int> assetId);
+    GDE_EXPORT static HAPI_Result LoadAssetLibraryFromMemory(HoudiniEngineManager* session, godot::TypedArray<char> buffer, bool allowOverwrite, godot::Ref<Int> assetId);
+    GDE_EXPORT static HAPI_Result LoadGeoFromFile(HoudiniEngineManager* session, int nodeId, godot::String filePath);
+    GDE_EXPORT static HAPI_Result LoadGeoFromMemory(HoudiniEngineManager* session, int nodeId, godot::String format, godot::TypedArray<char> buffer);
+    GDE_EXPORT static HAPI_Result LoadHIPFile(HoudiniEngineManager* session, godot::String fileName, bool cookOnLoad);
+    GDE_EXPORT static HAPI_Result LoadNodeFromFile(HoudiniEngineManager* session, godot::String fileName, int parentId, godot::String nodeLabel, bool cookOnLoad, godot::Ref<Int> newNodeId);
+    GDE_EXPORT static godot::Dictionary MaterialInfo_Create();
+    GDE_EXPORT static godot::Dictionary NodeInfo_Create();
+    GDE_EXPORT static godot::Dictionary ObjectInfo_Create();
+    GDE_EXPORT static godot::Dictionary ParmInfo_Create();
+    GDE_EXPORT static godot::Dictionary PartInfo_Create();
+    GDE_EXPORT static HAPI_Result RemoveCustomString(HoudiniEngineManager* session, int stringHandle);
+    GDE_EXPORT static HAPI_Result RenameNode(HoudiniEngineManager* session, int nodeId, godot::String newName);
+    GDE_EXPORT static HAPI_Result RevertGeo(HoudiniEngineManager* session, int nodeId);
+    GDE_EXPORT static HAPI_Result RevertParmToDefault(HoudiniEngineManager* session, int nodeId, godot::String parmName, int index);
+    GDE_EXPORT static HAPI_Result RevertParmToDefaults(HoudiniEngineManager* session, int nodeId, godot::String parmName);
+    GDE_EXPORT static HAPI_Result SaveGeoToFile(HoudiniEngineManager* session, int nodeId, godot::String filePath);
     GDE_EXPORT static bool SaveToHip(HoudiniEngineManager* session, godot::String filename);
+    GDE_EXPORT static HAPI_Result SaveNodeToFile(HoudiniEngineManager* session, int nodeId, godot::String fileName);
+    GDE_EXPORT static godot::Dictionary SessionInfo_Create();
+    GDE_EXPORT static HAPI_Result SetAttributeFloatData(HoudiniEngineManager* session, int nodeId, int partId, godot::String name, godot::Dictionary attrInfo, godot::Ref<RefArray> dataArray, int start, int length);
+    GDE_EXPORT static HAPI_Result SetAttributeIntData(HoudiniEngineManager* session, int nodeId, int partId, godot::String name, godot::Dictionary attrInfo, godot::Ref<RefArray> dataArray, int start, int length);
+    GDE_EXPORT static HAPI_Result SetAttributeStringData(HoudiniEngineManager* session, int nodeId, int partId, godot::String name, godot::Dictionary attrInfo, godot::Ref<RefArray> dataArray, int start, int length);
     GDE_EXPORT static HAPI_Result SetCustomString(HoudiniEngineManager* session, godot::String string_value, godot::Ref<Int> handle_value);
+    GDE_EXPORT static HAPI_Result SetFaceCounts(HoudiniEngineManager* session, int nodeId, int partId, godot::Array faceCounts, int start, int length);
 };
 
 class HDANode: public godot::Resource{

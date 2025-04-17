@@ -48,12 +48,28 @@ void _print_godot_msg(_godot_msg_type type, T... output){
 #define printWarning(...) ;{std::source_location _houdini_engine_source_loc = std::source_location::current();_output_log("\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);_print_godot_msg(_godot_msg_type::warning,"\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__,"   ");};
 #define printError(...) ;{std::source_location _houdini_engine_source_loc = std::source_location::current();_output_log("\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__);_print_godot_msg(_godot_msg_type::error,"\nFile: ",_houdini_engine_source_loc.file_name(),"(",_houdini_engine_source_loc.line(),":",_houdini_engine_source_loc.column(),") `",_houdini_engine_source_loc.function_name(),"`: \n",__VA_ARGS__,"   ");};
 
+GDE_EXPORT 
+inline godot::String string_cast(std::string s){
+    return godot::String::utf8(s.c_str());
+}
+GDE_EXPORT 
+inline std::string string_cast(godot::String s){
+    return s.utf8().get_data();
+}
+
 static inline std::set<std::string> _houdini_endine_string_buffer;
 GDE_EXPORT
 inline const char* keep_alive_string(std::string s){
     return _houdini_endine_string_buffer.insert(std::move(s)).first->c_str();
 }
-
+GDE_EXPORT
+inline const char* keep_alive_string(const char* s){
+    return keep_alive_string(std::string(s));
+}
+GDE_EXPORT
+inline const char* keep_alive_string(godot::String s){
+    return keep_alive_string(string_cast(s));
+}
 #if defined (__linux__) || (defined (__APPLE__) && defined (__MACH__))
 GDE_EXPORT
 inline bool execute(std::string cmd){
@@ -124,25 +140,16 @@ inline bool findenv(std::string key){
 #if defined (__linux__)
 GDE_EXPORT
 inline void addenv(std::string key,std::string value){
-    putenv((key+"="+value).c_str());
+    putenv(keep_alive_string(key+"="+value));
 }
 #elif defined (_WIN32) || defined (WIN32)
 GDE_EXPORT
 inline void addenv(std::string key,std::string value){
-    _putenv((key+"="+value).c_str());
+    _putenv(keep_alive_string(key+"="+value));
 }
 #elif defined (__APPLE__) && defined (__MACH__)
 GDE_EXPORT
 inline void addenv(std::string key,std::string value){
-    setenv(key.c_str(),value.c_str(),1);
+    setenv(keep_alive_string(key),keep_alive_string(value),1);
 }
 #endif
-
-GDE_EXPORT 
-inline godot::String string_cast(std::string s){
-    return godot::String::utf8(s.c_str());
-}
-GDE_EXPORT 
-inline std::string string_cast(godot::String s){
-    return s.utf8().get_data();
-}

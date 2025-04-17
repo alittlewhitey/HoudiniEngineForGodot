@@ -825,18 +825,147 @@ HAPI_Result HoudiniEngine::Interrupt(HoudiniEngineManager* session){
 HAPI_Result HoudiniEngine::IsInitialized(HoudiniEngineManager* session){
     return HoudiniApi::IsInitialized(session->get_session());
 }
+HAPI_Result HoudiniEngine::IsSessionValid(HoudiniEngineManager* session){
+    return HoudiniApi::IsSessionValid(session->get_session());
+}
 HAPI_Result HoudiniEngine::IsNodeValid(HoudiniEngineManager* session, int nodeId, int uniqueNodeId, godot::Ref<Bool> answer){
     bool temp;
     auto res = HoudiniApi::IsNodeValid(session->get_session(),nodeId,uniqueNodeId,&temp);
     answer->value = temp;
     return res;
 }
+HAPI_Result HoudiniEngine::LoadAssetLibraryFromFile(HoudiniEngineManager* session, godot::String filePath, bool allowOverwrite, godot::Ref<Int> assetId){
+    int temp;
+    auto res = HoudiniApi::LoadAssetLibraryFromFile(session->get_session(),filePath.utf8().get_data(),allowOverwrite,&temp);
+    assetId->value = temp;
+    return res;
+}
+HAPI_Result HoudiniEngine::LoadAssetLibraryFromMemory(HoudiniEngineManager* session, godot::TypedArray<char> buffer, bool allowOverwrite, godot::Ref<Int> assetId){
+    int temp;
+    std::string buf;
+    for(int i = 0,sz = buffer.size();i!=sz;++i){
+        buf.push_back((int8_t)buffer[i]);
+    }
+    auto res = HoudiniApi::LoadAssetLibraryFromMemory(session->get_session(),buf.data(),buf.size(),allowOverwrite,&temp);
+    assetId->value = temp;
+    return res;
+}
+HAPI_Result HoudiniEngine::LoadGeoFromFile(HoudiniEngineManager* session, int nodeId, godot::String filePath){
+    return HoudiniApi::LoadGeoFromFile(session->get_session(),nodeId,filePath.utf8().get_data());
+}
+HAPI_Result HoudiniEngine::LoadGeoFromMemory(HoudiniEngineManager* session, int nodeId, godot::String format, godot::TypedArray<char> buffer){
+    std::string buf;
+    for(int i = 0,sz = buffer.size();i!=sz;++i){
+        buf.push_back((int8_t)buffer[i]);
+    }
+    return HoudiniApi::LoadGeoFromMemory(session->get_session(),nodeId,format.utf8().get_data(),buf.data(),buf.size());
+}
+HAPI_Result HoudiniEngine::LoadHIPFile(HoudiniEngineManager* session, godot::String fileName, bool cookOnLoad){
+    return HoudiniApi::LoadHIPFile(session->get_session(),fileName.utf8().get_data(),cookOnLoad);
+}
+HAPI_Result HoudiniEngine::LoadNodeFromFile(HoudiniEngineManager* session, godot::String fileName, int parentId, godot::String nodeLabel, bool cookOnLoad, godot::Ref<Int> newNodeId){
+    int temp;
+    auto res = HoudiniApi::LoadNodeFromFile(session->get_session(),fileName.utf8().get_data(),parentId,nodeLabel.utf8().get_data(),cookOnLoad,&temp);
+    newNodeId->value = temp;
+    return res;
+}
+godot::Dictionary HoudiniEngine::MaterialInfo_Create(){
+    HAPI_MaterialInfo info = HoudiniApi::MaterialInfo_Create();
+    HoudiniApi::MaterialInfo_Init(&info);
+    return MaterialInfoToDict(info);
+}
+godot::Dictionary HoudiniEngine::NodeInfo_Create(){
+    HAPI_NodeInfo info = HoudiniApi::NodeInfo_Create();
+    HoudiniApi::NodeInfo_Init(&info);
+    return NodeInfoToDict(info);
+}
+godot::Dictionary HoudiniEngine::ObjectInfo_Create(){
+    HAPI_ObjectInfo info = HoudiniApi::ObjectInfo_Create();
+    HoudiniApi::ObjectInfo_Init(&info);
+    return ObjectInfoToDict(info);
+}
+godot::Dictionary HoudiniEngine::ParmInfo_Create(){
+    HAPI_ParmInfo info = HoudiniApi::ParmInfo_Create();
+    HoudiniApi::ParmInfo_Init(&info);
+    return ParmInfoToDict(info);
+}
+godot::Dictionary HoudiniEngine::PartInfo_Create(){
+    HAPI_PartInfo info = HoudiniApi::PartInfo_Create();
+    HoudiniApi::PartInfo_Init(&info);
+    return PartInfoToDict(info);
+}
+HAPI_Result HoudiniEngine::RemoveCustomString(HoudiniEngineManager* session, int stringHandle){
+    return HoudiniApi::RemoveCustomString(session->get_session(),stringHandle);
+}
+HAPI_Result HoudiniEngine::RenameNode(HoudiniEngineManager* session, int nodeId, godot::String newName){
+    return HoudiniApi::RenameNode(session->get_session(),nodeId,newName.utf8().get_data());
+}
+HAPI_Result HoudiniEngine::RevertGeo(HoudiniEngineManager* session, int nodeId){
+    return HoudiniApi::RevertGeo(session->get_session(),nodeId);
+}
+HAPI_Result HoudiniEngine::RevertParmToDefault(HoudiniEngineManager* session, int nodeId, godot::String parmName, int index){
+    return HoudiniApi::RevertParmToDefault(session->get_session(),nodeId,parmName.utf8().get_data(),index);
+}
+HAPI_Result HoudiniEngine::RevertParmToDefaults(HoudiniEngineManager* session, int nodeId, godot::String parmName){
+    return HoudiniApi::RevertParmToDefaults(session->get_session(),nodeId,parmName.utf8().get_data());
+}
+HAPI_Result SaveGeoToFile(HoudiniEngineManager* session, int nodeId, godot::String filePath){
+    return HoudiniApi::SaveGeoToFile(session->get_session(),nodeId,filePath.utf8().get_data());
+}
 bool HoudiniEngine::SaveToHip(HoudiniEngineManager* session, godot::String filename){
     return HoudiniEngineUtility::saveToHip(session->get_session(), string_cast(filename));
+}
+HAPI_Result HoudiniEngine::SaveNodeToFile(HoudiniEngineManager* session, int nodeId, godot::String fileName){
+    return HoudiniApi::SaveNodeToFile(session->get_session(),nodeId,fileName.utf8().get_data());
+}
+godot::Dictionary HoudiniEngine::SessionInfo_Create(){
+    HAPI_SessionInfo info = HoudiniApi::SessionInfo_Create();
+    HoudiniApi::SessionInfo_Init(&info);
+    return SessionInfoToDict(info);
+}
+HAPI_Result HoudiniEngine::SetAttributeFloatData(HoudiniEngineManager* session, int nodeId, int partId, godot::String name, godot::Dictionary attrInfo, godot::Ref<RefArray> dataArray, int start, int length){
+    HAPI_AttributeInfo info = DictToAttrInfo(attrInfo);
+    std::vector<float> data(dataArray->value.size());
+    for(int i = 0,sz = dataArray->value.size();i!=sz;++i){
+        data[i] = dataArray->value[i];
+    }
+    auto res = HoudiniApi::SetAttributeFloatData(session->get_session(),nodeId,partId,name.utf8().get_data(),&info,data.data(),start,length);
+    for(int i = 0,sz = dataArray->value.size();i!=sz;++i){
+        dataArray->value[i] = data[i];
+    }
+    return res;
+}
+HAPI_Result HoudiniEngine::SetAttributeIntData(HoudiniEngineManager* session, int nodeId, int partId, godot::String name, godot::Dictionary attrInfo, godot::Ref<RefArray> dataArray, int start, int length){
+    HAPI_AttributeInfo info = DictToAttrInfo(attrInfo);
+    std::vector<int> data(dataArray->value.size());
+    for(int i = 0,sz = dataArray->value.size();i!=sz;++i){
+        data[i] = dataArray->value[i];
+    }
+    auto res = HoudiniApi::SetAttributeIntData(session->get_session(),nodeId,partId,name.utf8().get_data(),&info,data.data(),start,length);
+    for(int i = 0,sz = dataArray->value.size();i!=sz;++i){
+        dataArray->value[i] = data[i];
+    }
+    return res;
+}
+HAPI_Result HoudiniEngine::SetAttributeStringData(HoudiniEngineManager* session, int nodeId, int partId, godot::String name, godot::Dictionary attrInfo, godot::Ref<RefArray> dataArray, int start, int length){
+    HAPI_AttributeInfo info = DictToAttrInfo(attrInfo);
+    std::vector<const char*> data(dataArray->value.size());
+    for(int i = 0,sz = dataArray->value.size();i!=sz;++i){
+        data[i] = keep_alive_string((godot::String)dataArray->value[i]);
+    }
+    return HoudiniApi::SetAttributeStringData(session->get_session(),nodeId,partId,name.utf8().get_data(),&info,data.data(),start,length);
 }
 HAPI_Result HoudiniEngine::SetCustomString(HoudiniEngineManager* session, godot::String string_value, godot::Ref<Int> handle_value){
     int temp;
     auto res = HoudiniApi::SetCustomString(session->get_session(),keep_alive_string(string_value.utf8().get_data()),&temp);
     handle_value->value = temp;
+    return res;
+}
+HAPI_Result HoudiniEngine::SetFaceCounts(HoudiniEngineManager* session, int nodeId, int partId, godot::Array faceCounts, int start, int length){
+    std::vector<int> data(faceCounts.size());
+    for(int i = 0,sz = faceCounts.size();i!=sz;++i){
+        data[i] = faceCounts[i];
+    }
+    auto res = HoudiniApi::SetFaceCounts(session->get_session(),nodeId,partId,data.data(),start,length);
     return res;
 }
