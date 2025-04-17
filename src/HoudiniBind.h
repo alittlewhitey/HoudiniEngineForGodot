@@ -854,6 +854,9 @@ class HoudiniSettings: public godot::Object{
             godot::ProjectSettings::get_singleton()->connect("settings_changed",godot::Callable(this,"_settings_changed"));
             _settings_changed();
         }break;
+        case NOTIFICATION_PREDELETE:{
+            godot::ProjectSettings::get_singleton()->disconnect("settings_changed",godot::Callable(this,"_settings_changed"));
+        }break;
         }
     }
     GDE_EXPORT 
@@ -1453,7 +1456,6 @@ class HoudiniEngineManager: public godot::Node3D{
     void term(){
         get_tree()->disconnect("node_removed",godot::Callable(this,"freeGDNode"));
         get_tree()->disconnect("node_added",godot::Callable(this,"stopFreeGDNode"));
-        godot::ProjectSettings::get_singleton()->disconnect("settings_changed",godot::Callable(this,"_settings_changed"));
     }
     GDE_EXPORT
     void predel(){

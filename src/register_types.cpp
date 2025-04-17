@@ -63,7 +63,6 @@ void uninitialize_module(ModuleInitializationLevel p_level){
     if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
         return;
     }
-    godot::Engine::get_singleton()->unregister_singleton("HoudiniSettings");
 }
 extern "C" {
 // Initialization.
