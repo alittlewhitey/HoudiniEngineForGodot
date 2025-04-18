@@ -43,11 +43,11 @@ endif()
 
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp/include")
     execute_process(
-        COMMAND git "submodule update --init --recursive"
+        COMMAND git submodule update --init --recursive
         TIMEOUT 600
     )
     execute_process(
-        COMMAND git "checkout ${GODOT_CPP_BRANCH}"
+        COMMAND git checkout ${GODOT_CPP_BRANCH}
         TIMEOUT 60
     )
 endif()
