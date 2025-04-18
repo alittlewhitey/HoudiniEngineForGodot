@@ -11,7 +11,7 @@ set(CMAKE_CXX_STANDARD 20)
 if(${CMAKE_BUILD_TYPE} MATCHES "Release")
     set(BuildType "release") 
 else()
-    set(BuildType "debug")
+    set(BuildType "debug") 
 endif()
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     set(Platform "windows")
@@ -36,8 +36,8 @@ elseif(${SYSTEM_ARCH} MATCHES "riscv64" OR ${SYSTEM_ARCH} MATCHES "rv64")
 else()
     set(Arch "unknown")
 endif()
-
-if(${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
+message("Use compiler: ${CMAKE_CXX_COMPILER_ID}")
+if(${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
     add_compile_options("-fexperimental-library")
 endif()
 
@@ -54,19 +54,18 @@ endif()
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp/bin/libgodot-cpp.${Platform}.editor.${Arch}.a")
     execute_process(
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp"
-        COMMAND scons "target=editor"
-    )
+        COMMAND scons target=editor platform=${Platform} arch=${Arch} 
+    ) 
 endif()
-include_directories(deps/godot-cpp/gdextension)
+include_directories(src)
 include_directories(deps/Houdini)
+include_directories(deps/godot-cpp/gdextension)
 include_directories(deps/godot-cpp/include)
 include_directories(deps/godot-cpp/gen/include)
-include_directories(src)
 
 aux_source_directory(deps/Houdini DEP_SRC)
 aux_source_directory(src BIND_SRC)
 add_library(HoudiniEngine_${Platform}_${BuildType}_${Arch} SHARED ${DEP_SRC} ${BIND_SRC})
-
 target_link_libraries(HoudiniEngine_${Platform}_${BuildType}_${Arch}  "${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp/bin/libgodot-cpp.${Platform}.editor.${Arch}.a")
 if(${Platform} MATCHES "windows")
     add_custom_command(

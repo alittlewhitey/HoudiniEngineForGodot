@@ -2,7 +2,7 @@
 #ifndef REGISTER_PARTITION_SRC
 #define REGISTER_PARTITION_SRC
 
-#define ENABLE_HOT_RELOAD
+//#define HOT_RELOAD_ENABLED
 
 
 #include "register_types.h"
@@ -11,13 +11,14 @@
 #include <iostream>
 #include <cstring>
 #include <gdextension_interface.h>
-#include <godot_cpp/classes/editor_plugin_registration.hpp>
-#include <godot_cpp/core/defs.hpp>
 #include <godot_cpp/godot.hpp>
+#include <godot_cpp/core/defs.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/classes/wrapped.hpp>
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/editor_plugin.hpp>
 #include <godot_cpp/classes/project_settings.hpp>
+#include <godot_cpp/classes/editor_plugin_registration.hpp>
 
 #include "HoudiniBind.h"
 #include "HDAImporter.h"

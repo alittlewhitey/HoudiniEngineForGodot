@@ -2,7 +2,6 @@
 #ifndef HOUDINI_BIND_GODOT
 #define HOUDINI_BIND_GODOT
 
-#include <HAPI/HAPI.h>
 #include <stdlib.h>
 #include <string.h>
 #include <string>
