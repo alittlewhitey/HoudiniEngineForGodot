@@ -2,15 +2,13 @@ cmake_minimum_required(VERSION 3.10.2)
 project(HoudiniEngineForGodot)
 
 if(NOT DEFINED GODOT_CPP_BRANCH)
-    set(GODOT_CPP_BRANCH "master")
-    message("Use branch ${GODOT_CPP_BRANCH} of godot-cpp. Define GODOT_CPP_BRANCH to change it.")
+    message(FATAL_ERROR "You must define GODOT_CPP_BRANCH for what version you use.")
+else() 
+    message("Use branch ${GODOT_CPP_BRANCH} of godot-cpp.")
 endif()
-message("Use branch ${GODOT_CPP_BRANCH} of godot-cpp.")
 
 set(CMAKE_CXX_STANDARD 20)
-
-string(TOLOWER ${CMAKE_BUILD_TYPE} BUILD_TYPE)
-if(${BUILD_TYPE} MATCHES "release")
+if(${CMAKE_BUILD_TYPE} MATCHES "Release")
     set(BuildType "release") 
 else()
     set(BuildType "debug")
@@ -67,8 +65,28 @@ include_directories(src)
 
 aux_source_directory(deps/Houdini DEP_SRC)
 aux_source_directory(src BIND_SRC)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/project/addons/HoudiniEngineForGodot/bin")
-
 add_library(HoudiniEngine_${Platform}_${BuildType}_${Arch} SHARED ${DEP_SRC} ${BIND_SRC})
 
 target_link_libraries(HoudiniEngine_${Platform}_${BuildType}_${Arch}  "${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp/bin/libgodot-cpp.${Platform}.editor.${Arch}.a")
+if(${Platform} MATCHES "windows")
+    add_custom_command(
+        TARGET HoudiniEngine_${Platform}_${BuildType}_${Arch}
+        POST_BUILD
+        COMMAND cp build/libHoudiniEngine_${Platform}_${BuildType}_${Arch}.dll project/addons/HoudiniEngineForGodot/bin
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+elseif(${Platform} MATCHES "linux")
+    add_custom_command(
+        TARGET HoudiniEngine_${Platform}_${BuildType}_${Arch}
+        POST_BUILD
+        COMMAND cp build/libHoudiniEngine_${Platform}_${BuildType}_${Arch}.so project/addons/HoudiniEngineForGodot/bin
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+elseif(${Platform} MATCHES "macos")
+    add_custom_command(
+        TARGET HoudiniEngine_${Platform}_${BuildType}_${Arch}
+        POST_BUILD
+        COMMAND cp build/libHoudiniEngine_${Platform}_${BuildType}_${Arch}.dylib project/addons/HoudiniEngineForGodot/bin
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+endif()
