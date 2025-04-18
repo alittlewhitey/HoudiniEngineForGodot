@@ -1,0 +1,19 @@
+[configuration]
+
+entry_symbol = "init_library"
+compatibility_minimum = 4.2
+
+[libraries]
+
+linux.debug.x86_64 = "bin/libHoudiniEngine_linux_debug_x86_64.so"
+linux.release.x86_64 = "bin/libHoudiniEngine_linux_release_x86_64.so"
+linux.debug.arm64 = "bin/libHoudiniEngine_linux_debug_arm64.so"
+linux.release.arm64 = "bin/libHoudiniEngine_linux_release_arm64.so"
+linux.debug.rv64 = "bin/libHoudiniEngine_linux_debug_rv64.so"
+linux.release.rv64 = "bin/libHoudiniEngine_linux_release_rv64.so"
+windows.debug.x86_64 = "bin/libHoudiniEngine_windows_debug_x86_64.dll"
+windows.release.x86_64 = "bin/libHoudiniEngine_windows_release_x86_64.dll"
+macos.debug.arm64 = "bin/libHoudiniEngine_macos_debug_arm64"
+macos.release.arm64 = "bin/libHoudiniEngine_macos_release_arm64"
+android.debug.arm64 = "bin/libHoudiniEngine_android_debug_arm64.so"
+android.release.arm64 = "bin/libHoudiniEngine_android_release_arm64.so"
