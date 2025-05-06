@@ -3,11 +3,10 @@ import os
 from glob import glob
 from pathlib import Path
 
-HAPI_PATH = "/Applications/Houdini/Houdini20.5.487/Frameworks/Houdini.framework/Versions/20.5/Resources/toolkit/include/"
-
 env = SConscript("deps/godot-cpp/SConstruct")
+#env["CXX"] = "/opt/homebrew/opt/llvm/bin/clang++"
+env.Append(CPPPATH=["deps"])
 env.Append(CPPPATH=["deps/Houdini/"])
-env.Append(CPPPATH=[HAPI_PATH])
 env.Append(CPPPATH=["src/"])
 env.Append(CXXFLAGS=['-pthread', '-fexperimental-library', '-std=c++20', '-fexceptions'], LINKFLAGS=['-pthread', '-fexperimental-library'])
 sources = Glob("src/*.cpp") + Glob("deps/Houdini/*.cpp")
@@ -24,27 +23,41 @@ if scons_cache_path != None:
 
 # Create the library target (e.g. libexample.linux.debug.x86_64.so).
 debug_or_release = "release" if env["target"] == "template_release" else "debug"
-if env["platform"] == "macos":
-    library = env.SharedLibrary(
-        "{0}/bin/lib{1}.{2}.{3}.framework/{1}.{2}.{3}".format(
-            addon_path,
-            project_name,
-            env["platform"],
-            debug_or_release,
-        ),
-        source=sources,
-    )
-else:
-    library = env.SharedLibrary(
-        "{}/bin/lib{}.{}.{}.{}{}".format(
-            addon_path,
-            project_name,
-            env["platform"],
-            debug_or_release,
-            env["arch"],
-            env["SHLIBSUFFIX"],
-        ),
-        source=sources,
-    )
+# if env["platform"] == "macos":
+#     library = env.SharedLibrary(
+#         "{0}/bin/lib{1}.{2}.{3}.framework/{1}.{2}.{3}".format(
+#             addon_path,
+#             project_name,
+#             env["platform"],
+#             debug_or_release,
+#         ),
+#         source=sources,
+#     )
+# else:
+platform = env["platform"]
+arch = env["arch"]
+dylib_suffix = ".so"
+if platform == "macos":
+    dylib_suffix = ""
+elif platform == "windows":
+    dylib_suffix = ".dll"
+elif platform == "linux":
+    dylib_suffix = ".so"
+if platform == "macos":
+    if arch == "universal":
+        arch = "arm64"
+
+library = env.SharedLibrary(
+    "{}/bin/lib{}.{}.{}.{}{}".format(
+        addon_path,
+        project_name,
+        platform,
+        debug_or_release,
+        arch,
+        dylib_suffix,
+    ),
+    source=sources,
+)
 
 Default(library)
+print(env["CXX"])

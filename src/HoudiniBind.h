@@ -2,6 +2,7 @@
 #ifndef HOUDINI_BIND_GODOT
 #define HOUDINI_BIND_GODOT
 
+#include <cstddef>
 #include <stdlib.h>
 #include <string.h>
 #include <string>
@@ -42,6 +43,7 @@
 #include "Utility.h"
 #include "Contact.h"
 #include "HDAImporter.h"
+typedef std::size_t size_t;
 
 VARIANT_ENUM_CAST(HAPI_AttributeTypeInfo)
 VARIANT_ENUM_CAST(HAPI_AttributeOwner)
@@ -1498,7 +1500,7 @@ class HoudiniEngineManager: public godot::Node3D{
         }
         freeTimeout = 0ms;
         clearInternalModels();
-        std::this_thread::sleep_for(defaultFreeTimeout<1s?defaultFreeTimeout:1s);
+        std::this_thread::sleep_for(defaultFreeTimeout<1s?defaultFreeTimeout:1000ms);
         // if(libHAPIL != nullptr){
         //     HoudiniApi::FinalizeHAPI();
         //     HoudiniEnginePlatform::FreeLibHAPIL(libHAPIL);
@@ -1545,8 +1547,9 @@ class HoudiniEngineManager: public godot::Node3D{
     void set_sessionAction(godot::Ref<SessionAction> action){
         if(action.is_null())
             return;
-        const auto& type = typeid(*(action.ptr()));
-        if(type == typeid(StartSessionAction)){
+        const auto type = action->get_class();
+        //const auto& type = typeid(*(action.ptr()));
+        if(type == StartSessionAction::get_class_static()){
             this->sessionAction = action;
             std::jthread([this]{
                 startSession(sessionType,useCookingThread);
@@ -1555,7 +1558,7 @@ class HoudiniEngineManager: public godot::Node3D{
                     notify_property_list_changed();
                 });
             }).detach();
-        }else if(type == typeid(StopSessionAction)){
+        }else if(type == StopSessionAction::get_class_static()){
             this->sessionAction = action;
             std::jthread([this]{
                 stopSession();
@@ -1564,7 +1567,7 @@ class HoudiniEngineManager: public godot::Node3D{
                     notify_property_list_changed();
                 });
             }).detach();
-        }else if(type == typeid(CookSessionAction)){
+        }else if(type == CookSessionAction::get_class_static()){
             this->sessionAction = action;
             std::jthread([this]{
                 cookSession();
@@ -1582,8 +1585,8 @@ class HoudiniEngineManager: public godot::Node3D{
     void set_assetAction(godot::Ref<AssetAction> action){
         if(action.is_null()||nowAsset.is_null())
             return;
-        const auto& type = typeid(*(action.ptr()));
-        if(type == typeid(CookAssetAction)){
+        const auto& type = action->get_class();
+        if(type == CookAssetAction::get_class_static()){
             this->assetAction = action;
             std::jthread([this]{
                 
@@ -1593,7 +1596,7 @@ class HoudiniEngineManager: public godot::Node3D{
                     notify_property_list_changed();
                 });
             }).detach();
-        }else if(type == typeid(LoadAssetAction)){
+        }else if(type == LoadAssetAction::get_class_static()){
             this->assetAction = action;
             std::jthread([this]{
                 if(nowAsset.is_null())
@@ -1616,8 +1619,8 @@ class HoudiniEngineManager: public godot::Node3D{
     void set_nodeAction(godot::Ref<NodeAction> action){
         if(action.is_null())
             return;
-        const auto& type = typeid(*(action.ptr()));
-        if(type == typeid(LoadInputNodeAction)){
+        const auto& type = action->get_class();
+        if(type == LoadInputNodeAction::get_class_static()){
             if(inputMesh.is_null()&&inputMeshTreeRoot == nullptr)
                 return;
             this->nodeAction = action;
@@ -1656,7 +1659,7 @@ class HoudiniEngineManager: public godot::Node3D{
                 });
             }).detach();
         }
-        else if(type == typeid(CookNodeAction)){
+        else if(type == CookNodeAction::get_class_static()){
             if(nowNode.is_null())
                 return;
             this->nodeAction = action;
@@ -1671,7 +1674,7 @@ class HoudiniEngineManager: public godot::Node3D{
                 });
             }).detach();
         }
-        else if(type == typeid(DeleteNodeAction)){
+        else if(type == DeleteNodeAction::get_class_static()){
             if(nowNode.is_null())
                 return;
             this->nodeAction = action;
@@ -1686,7 +1689,7 @@ class HoudiniEngineManager: public godot::Node3D{
                 });
             }).detach();
         }
-        else if(type == typeid(CreateMeshAction)){
+        else if(type == CreateMeshAction::get_class_static()){
             if(nowNode.is_null())
                 return;
             this->nodeAction = action;
@@ -1716,11 +1719,8 @@ class HoudiniEngineManager: public godot::Node3D{
 
     struct {
         std::string namedPipe = DefaultNamedPipe;
-
         std::string hostName = DefaultHostName;
-
         std::string sharedMemoryName = DefaultSharedMemoryName;
-
         int tcpPort = DefaultTcpPort;
     } sessionConfig;
     GDE_EXPORT
@@ -2041,19 +2041,21 @@ public:
         printLog(" ");
         int assetId = -1;
         try{
-
+        printLog(" ");
         if(auto a = HoudiniApi::LoadAssetLibraryFromFile(get_session(),hdaRes->path.c_str(),true,&assetId);a != HAPI_RESULT_SUCCESS){
-            printError("Error load Asset from file: ");
+            printError("Error load Asset from file: ", a);
             return {};
         }
-
         }catch(std::exception& e){
+            printError(e.what());
         }
+        printLog(" ");
         int asset_count = 0;
         if(auto a = HoudiniApi::GetAvailableAssetCount(get_session(),assetId,&asset_count); a != HAPI_RESULT_SUCCESS){
             printError("Error get available asset count: ",a);
             return {};
         }
+        printLog(" ");
         std::vector<HAPI_StringHandle> assetSH;
         assetSH.resize(asset_count);
         if(auto a = HoudiniApi::GetAvailableAssets(get_session(),assetId,assetSH.data(),asset_count);a != HAPI_RESULT_SUCCESS){
@@ -2396,7 +2398,7 @@ public:
             updateInternalModel();
         Contact::add_call([=,this]{
 
-
+        
         if(instanceTransforms.find(internalNodeId) == instanceTransforms.end()||instanceTransforms[internalNodeId].empty()){
             godot::Node3D* father = this;
             if(internalModels.size() == 0){

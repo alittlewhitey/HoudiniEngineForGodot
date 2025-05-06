@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
@@ -135,7 +136,7 @@ inline bool findproc(std::string procName){
 #endif
 GDE_EXPORT
 inline bool findenv(std::string key){
-    return getenv(key.c_str()) != NULL;
+    return getenv(key.c_str()) != nullptr;
 }
 #if defined (__linux__)
 GDE_EXPORT
