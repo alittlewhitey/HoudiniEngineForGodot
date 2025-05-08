@@ -8,6 +8,9 @@ else()
 endif()
 
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+
 if(${CMAKE_BUILD_TYPE} MATCHES "Release")
     set(BuildType "release") 
 else()
@@ -41,10 +44,9 @@ endif()
 message("Use compiler: ${CMAKE_CXX_COMPILER_ID}.")
 if(${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
     add_compile_options("-fexperimental-library")
-    add_compile_options("-fexceptions")
-    add_link_options("-v")
 endif()
-
+add_compile_options("-fexceptions")
+add_compile_options("-ftls-model=global-dynamic")
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp/include")
     execute_process(
         COMMAND git submodule update --init --recursive
@@ -61,6 +63,7 @@ if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp/bin/libgodot-cpp.${Pla
         COMMAND scons target=editor platform=${Platform} arch=${Arch} 
     ) 
 endif()
+set(TARGET_NAME "HoudiniEngine.${Platform}.${BuildType}.${Arch}")
 include_directories(src)
 include_directories(deps)
 include_directories(deps/Houdini)
@@ -70,27 +73,50 @@ include_directories(deps/godot-cpp/gen/include)
 link_directories(deps/godot-cpp/bin)
 aux_source_directory(deps/Houdini DEP_SRC)
 aux_source_directory(src BIND_SRC)
-add_library(HoudiniEngine_${Platform}_${BuildType}_${Arch} SHARED ${DEP_SRC} ${BIND_SRC})
-target_link_libraries(HoudiniEngine_${Platform}_${BuildType}_${Arch} PUBLIC "godot-cpp.${Platform}.editor.${Arch}")
+add_library(${TARGET_NAME} SHARED ${DEP_SRC} ${BIND_SRC})
+target_link_libraries(${TARGET_NAME} PRIVATE "godot-cpp.${Platform}.editor.${Arch}")
 if(${Platform} MATCHES "windows")
+    set(STATIC_CPP "$<BOOL:${GODOTCPP_USE_STATIC_CPP}>")
+    set_target_properties(${TARGET_NAME} PROPERTIES PDB_OUTPUT_DIRECTORY "$<1:${CMAKE_SOURCE_DIR}/bin>")
+    target_compile_definitions(
+        ${TARGET_NAME}
+        PUBLIC WINDOWS_ENABLED $<${IS_MSVC}: TYPED_METHOD_BIND NOMINMAX >
+    )
+    target_link_options(
+        ${TARGET_NAME}
+        PUBLIC
+            $<${NOT_MSVC}:
+                -Wl,--no-undefined
+                $<${STATIC_CPP}:
+                    -static
+                    -static-libgcc
+                    -static-libstdc++
+                >
+            >
+
+            $<${IS_CLANG}:-lstdc++>
+    )
     add_custom_command(
-        TARGET HoudiniEngine_${Platform}_${BuildType}_${Arch}
+        TARGET ${TARGET_NAME}
         POST_BUILD
-        COMMAND cp build/libHoudiniEngine_${Platform}_${BuildType}_${Arch}.dll project/addons/HoudiniEngineForGodot/bin
+        COMMAND cp build/lib${TARGET_NAME}.dll project/addons/HoudiniEngineForGodot/bin
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 elseif(${Platform} MATCHES "linux")
+    target_compile_definitions(${TARGET_NAME} PUBLIC LINUX_ENABLED UNIX_ENABLED)
     add_custom_command(
-        TARGET HoudiniEngine_${Platform}_${BuildType}_${Arch}
+        TARGET ${TARGET_NAME}
         POST_BUILD
-        COMMAND cp build/libHoudiniEngine_${Platform}_${BuildType}_${Arch}.so project/addons/HoudiniEngineForGodot/bin
+        COMMAND cp build/lib${TARGET_NAME}.so project/addons/HoudiniEngineForGodot/bin
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 elseif(${Platform} MATCHES "macos")
+    target_compile_definitions(${TARGET_NAME} PUBLIC MACOS_ENABLED UNIX_ENABLED)
+    target_link_options(${TARGET_NAME} PUBLIC -Wl,-undefined,dynamic_lookup)
     add_custom_command(
-        TARGET HoudiniEngine_${Platform}_${BuildType}_${Arch}
+        TARGET ${TARGET_NAME}
         POST_BUILD
-        COMMAND cp build/libHoudiniEngine_${Platform}_${BuildType}_${Arch}.dylib project/addons/HoudiniEngineForGodot/bin
+        COMMAND cp build/lib${TARGET_NAME}.dylib project/addons/HoudiniEngineForGodot/bin
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 endif()

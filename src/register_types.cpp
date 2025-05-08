@@ -2,11 +2,9 @@
 #ifndef REGISTER_PARTITION_SRC
 #define REGISTER_PARTITION_SRC
 
-//#define HOT_RELOAD_ENABLED
-
+#define HOT_RELOAD_ENABLED
 
 #include "register_types.h"
-
 
 #include <iostream>
 #include <cstring>

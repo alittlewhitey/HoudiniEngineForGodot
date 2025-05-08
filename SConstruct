@@ -38,7 +38,7 @@ platform = env["platform"]
 arch = env["arch"]
 dylib_suffix = ".so"
 if platform == "macos":
-    dylib_suffix = ""
+    dylib_suffix = ".dylib"
 elif platform == "windows":
     dylib_suffix = ".dll"
 elif platform == "linux":
