@@ -63,7 +63,7 @@ if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp/bin/libgodot-cpp.${Pla
         COMMAND scons target=editor platform=${Platform} arch=${Arch} 
     ) 
 endif()
-set(TARGET_NAME "HoudiniEngine.${Platform}.${BuildType}.${Arch}")
+set(TARGET_NAME "HoudiniEngineForGodot.${Platform}.${BuildType}.${Arch}")
 include_directories(src)
 include_directories(deps)
 include_directories(deps/Houdini)
