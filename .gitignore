@@ -14,7 +14,6 @@ deps/godot-cpp/*
 project/.godot
 project/*.*
 project/addons/HoudiniEngineForGodot/bin/*
-project/addons/houdini_engine_godot/bin
 
 .sconsign.dblite
 
