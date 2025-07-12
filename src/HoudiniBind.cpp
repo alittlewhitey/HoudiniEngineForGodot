@@ -498,6 +498,111 @@ godot::Dictionary HoudiniEngine::TransformToDict(HAPI_Transform transform){
     dic["rstOrder"] = transform.rstOrder;
     return dic;
 }
+
+HAPI_TransformEuler HoudiniEngine::DictToTransformEuler(godot::Dictionary transform){
+    HAPI_TransformEuler info;
+    for(int i = 0;i!=HAPI_POSITION_VECTOR_SIZE;++i){
+        info.position[i] = ((godot::Array)transform["position"])[i];        
+    }
+    for(int i = 0;i!=HAPI_EULER_VECTOR_SIZE;++i){
+        info.rotationEuler[i] = ((godot::Array)transform["rotationEuler"])[i];        
+    }
+    for(int i = 0;i!=HAPI_SCALE_VECTOR_SIZE;++i){
+        info.scale[i] = ((godot::Array)transform["scale"])[i];        
+    }
+    for(int i = 0;i!=HAPI_SHEAR_VECTOR_SIZE;++i){
+        info.shear[i] = ((godot::Array)transform["shear"])[i];        
+    }
+
+    info.rstOrder = (HAPI_RSTOrder)(int)transform["rstOrder"];
+    info.rotationOrder = (HAPI_XYZOrder)(int)transform["rotationOrder"];
+    return info;
+}
+godot::Dictionary HoudiniEngine::TransformEulerToDict(HAPI_TransformEuler transform){
+    godot::Dictionary dic;
+    godot::Array position;
+    for(int i = 0;i!=HAPI_POSITION_VECTOR_SIZE;++i){
+        position.push_back(transform.position[i]);        
+    }
+    dic["position"] = position;
+    godot::Array rotationEuler;
+    for(int i = 0;i!=HAPI_EULER_VECTOR_SIZE;++i){
+        rotationEuler.push_back(transform.rotationEuler[i]);        
+    }
+    dic["rotationEuler"] = rotationEuler;
+    godot::Array scale;
+    for(int i = 0;i!=HAPI_SCALE_VECTOR_SIZE;++i){
+        scale.push_back(transform.scale[i]);        
+    }
+    dic["scale"] = scale;
+    godot::Array shear;
+    for(int i = 0;i!=HAPI_SHEAR_VECTOR_SIZE;++i){
+        shear.push_back(transform.shear[i]);        
+    }
+    dic["shear"] = shear;
+
+    dic["rstOrder"] = transform.rstOrder;
+    dic["rotationOrder"] = transform.rotationOrder;
+    return dic;
+}
+HAPI_SessionSyncInfo HoudiniEngine::DictToSessionSyncInfo(godot::Dictionary sessionSyncInfo){
+    HAPI_SessionSyncInfo info;
+    info.cookUsingHoudiniTime = sessionSyncInfo["cookUsingHoudiniTime"];
+    info.syncViewport = sessionSyncInfo["syncViewport"];
+    return info;
+}
+godot::Dictionary HoudiniEngine::SessionSyncInfoToDict(HAPI_SessionSyncInfo info){
+    godot::Dictionary dic;
+    dic["cookUsingHoudiniTime"] = info.cookUsingHoudiniTime;
+    dic["syncViewport"] = info.syncViewport;
+    return dic;
+}
+HAPI_CurveInfo HoudiniEngine::DictToCurveInfo(godot::Dictionary inputCurveInfo){
+    HAPI_CurveInfo info;
+    info.curveType = (HAPI_CurveType)(int)inputCurveInfo["curveType"];
+    info.curveCount = inputCurveInfo["curveCount"];
+    info.vertexCount = inputCurveInfo["vertexCount"];
+    info.knotCount = inputCurveInfo["knotCount"];
+    info.isPeriodic = inputCurveInfo["isPeriodic"];
+    info.isRational = inputCurveInfo["isRational"];
+    info.order = inputCurveInfo["order"];
+    info.hasKnots = inputCurveInfo["hasKnots"];
+    info.isClosed = inputCurveInfo["isClosed"];
+    return info;
+}
+godot::Dictionary HoudiniEngine::CurveInfoToDict(HAPI_CurveInfo info){
+    godot::Dictionary dic;
+    dic["curveType"] = info.curveType;
+    dic["curveCount"] = info.curveCount;
+    dic["vertexCount"] = info.vertexCount;
+    dic["knotCount"] = info.knotCount;
+    dic["isPeriodic"] = info.isPeriodic;
+    dic["isRational"] = info.isRational;
+    dic["order"] = info.order;
+    dic["hasKnots"] = info.hasKnots;
+    dic["isClosed"] = info.isClosed;
+    return dic;
+}
+HAPI_InputCurveInfo HoudiniEngine::DictToInputCurveInfo(godot::Dictionary inputCurveInfo){
+    HAPI_InputCurveInfo info;
+    info.curveType = (HAPI_CurveType)(int)inputCurveInfo["curveType"];
+    info.order = (int)inputCurveInfo["order"];
+    info.closed = (bool)inputCurveInfo["closed"];
+    info.reverse = (bool)inputCurveInfo["reverse"];
+    info.inputMethod = (HAPI_InputCurveMethod)(int)inputCurveInfo["inputMethod"];
+    info.breakpointParameterization = (HAPI_InputCurveParameterization)(int)inputCurveInfo["breakpointParameterization"];
+    return info;
+}
+godot::Dictionary HoudiniEngine::InputCurveInfoToDict(HAPI_InputCurveInfo info){
+    godot::Dictionary dic;
+    dic["curveType"] = info.curveType;
+    dic["order"] = info.order;
+    dic["closed"] = info.closed;
+    dic["reverse"] = info.reverse;
+    dic["inputMethod"] = info.inputMethod;
+    dic["breakpointParameterization"] = info.breakpointParameterization;
+    return dic;
+}
 HAPI_Result HoudiniEngine::AddAttribute(HoudiniEngineManager* session,int nodeId,int partId,godot::String name,godot::Ref<RefDictionary> attrInfo){
     auto info = DictToAttrInfo(attrInfo->value);
     auto res = HoudiniApi::AddAttribute(session->get_session(),nodeId,partId,name.utf8().get_data(),&info);
@@ -840,10 +945,10 @@ HAPI_Result HoudiniEngine::LoadAssetLibraryFromFile(HoudiniEngineManager* sessio
     assetId->value = temp;
     return res;
 }
-HAPI_Result HoudiniEngine::LoadAssetLibraryFromMemory(HoudiniEngineManager* session, godot::TypedArray<char> buffer, bool allowOverwrite, godot::Ref<Int> assetId){
+HAPI_Result HoudiniEngine::LoadAssetLibraryFromMemory(HoudiniEngineManager* session, godot::String buffer, bool allowOverwrite, godot::Ref<Int> assetId){
     int temp;
     std::string buf;
-    for(int i = 0,sz = buffer.size();i!=sz;++i){
+    for(int i = 0,sz = buffer.length();i!=sz;++i){
         buf.push_back((int8_t)buffer[i]);
     }
     auto res = HoudiniApi::LoadAssetLibraryFromMemory(session->get_session(),buf.data(),buf.size(),allowOverwrite,&temp);
@@ -853,9 +958,9 @@ HAPI_Result HoudiniEngine::LoadAssetLibraryFromMemory(HoudiniEngineManager* sess
 HAPI_Result HoudiniEngine::LoadGeoFromFile(HoudiniEngineManager* session, int nodeId, godot::String filePath){
     return HoudiniApi::LoadGeoFromFile(session->get_session(),nodeId,filePath.utf8().get_data());
 }
-HAPI_Result HoudiniEngine::LoadGeoFromMemory(HoudiniEngineManager* session, int nodeId, godot::String format, godot::TypedArray<char> buffer){
+HAPI_Result HoudiniEngine::LoadGeoFromMemory(HoudiniEngineManager* session, int nodeId, godot::String format, godot::String buffer){
     std::string buf;
-    for(int i = 0,sz = buffer.size();i!=sz;++i){
+    for(int i = 0,sz = buffer.length();i!=sz;++i){
         buf.push_back((int8_t)buffer[i]);
     }
     return HoudiniApi::LoadGeoFromMemory(session->get_session(),nodeId,format.utf8().get_data(),buf.data(),buf.size());
@@ -909,7 +1014,7 @@ HAPI_Result HoudiniEngine::RevertParmToDefault(HoudiniEngineManager* session, in
 HAPI_Result HoudiniEngine::RevertParmToDefaults(HoudiniEngineManager* session, int nodeId, godot::String parmName){
     return HoudiniApi::RevertParmToDefaults(session->get_session(),nodeId,parmName.utf8().get_data());
 }
-HAPI_Result SaveGeoToFile(HoudiniEngineManager* session, int nodeId, godot::String filePath){
+HAPI_Result HoudiniEngine::SaveGeoToFile(HoudiniEngineManager* session, int nodeId, godot::String filePath){
     return HoudiniApi::SaveGeoToFile(session->get_session(),nodeId,filePath.utf8().get_data());
 }
 bool HoudiniEngine::SaveToHip(HoudiniEngineManager* session, godot::String filename){
@@ -955,6 +1060,34 @@ HAPI_Result HoudiniEngine::SetAttributeStringData(HoudiniEngineManager* session,
     }
     return HoudiniApi::SetAttributeStringData(session->get_session(),nodeId,partId,name.utf8().get_data(),&info,data.data(),start,length);
 }
+HAPI_Result HoudiniEngine::SetCurveCounts(HoudiniEngineManager* session, int nodeId, int partId, godot::Array curveCounts, int start, int length){
+    std::vector<int> data(curveCounts.size());
+    for(int i = 0,sz = curveCounts.size();i!=sz;++i){
+        data[i] = curveCounts[i];
+    }
+    auto res = HoudiniApi::SetCurveCounts(session->get_session(),nodeId,partId,data.data(),start,length);
+    return res;
+}
+HAPI_Result HoudiniEngine::SetCurveInfo(HoudiniEngineManager* session, int nodeId, int partId, godot::Dictionary curveInfo){
+    HAPI_CurveInfo info = DictToCurveInfo(curveInfo);
+    return HoudiniApi::SetCurveInfo(session->get_session(),nodeId,partId,&info);
+}
+HAPI_Result HoudiniEngine::SetCurveKnots(HoudiniEngineManager* session, int nodeId, int partId, godot::Array knots, int start, int length){
+    std::vector<float> data(knots.size());
+    for(int i = 0,sz = knots.size();i!=sz;++i){
+        data[i] = knots[i];
+    }
+    auto res = HoudiniApi::SetCurveKnots(session->get_session(),nodeId,partId,data.data(),start,length);
+    return res;
+}
+HAPI_Result HoudiniEngine::SetCurveOrders(HoudiniEngineManager* session, int nodeId, int partId, godot::Array orders, int start, int length){
+    std::vector<int> data(orders.size());
+    for(int i = 0,sz = orders.size();i!=sz;++i){
+        data[i] = orders[i];
+    }
+    auto res = HoudiniApi::SetCurveOrders(session->get_session(),nodeId,partId,data.data(),start,length);
+    return res;
+}
 HAPI_Result HoudiniEngine::SetCustomString(HoudiniEngineManager* session, godot::String string_value, godot::Ref<Int> handle_value){
     int temp;
     auto res = HoudiniApi::SetCustomString(session->get_session(),keep_alive_string(string_value.utf8().get_data()),&temp);
@@ -968,4 +1101,36 @@ HAPI_Result HoudiniEngine::SetFaceCounts(HoudiniEngineManager* session, int node
     }
     auto res = HoudiniApi::SetFaceCounts(session->get_session(),nodeId,partId,data.data(),start,length);
     return res;
+}
+HAPI_Result HoudiniEngine::SetInputCurveInfo(HoudiniEngineManager* session, int nodeId, int partId, godot::Dictionary curveInfo){
+    HAPI_InputCurveInfo info = DictToInputCurveInfo(curveInfo);
+    return HoudiniApi::SetInputCurveInfo(session->get_session(),nodeId,partId,&info);
+}
+HAPI_Result HoudiniEngine::SetInputCurvePositions(HoudiniEngineManager* session, int nodeId, int partId, godot::Array positions, int start, int length){
+    std::vector<float> data(positions.size());
+    for(int i = 0,sz = positions.size();i!=sz;++i){
+        data[i] = positions[i];
+    }
+    return HoudiniApi::SetInputCurvePositions(session->get_session(),nodeId,partId,data.data(),start,length);
+}
+HAPI_Result HoudiniEngine::SetNodeDisplay(HoudiniEngineManager* session, int nodeId, int onOff){
+    return HoudiniApi::SetNodeDisplay(session->get_session(),nodeId,onOff);
+}
+HAPI_Result HoudiniEngine::SetObjectTransform(HoudiniEngineManager* session, int nodeId, godot::Dictionary transform){
+    HAPI_TransformEuler info = DictToTransformEuler(transform);
+    return HoudiniApi::SetObjectTransform(session->get_session(),nodeId,&info);
+}
+HAPI_Result HoudiniEngine::SetServerEnvInt(HoudiniEngineManager* session, godot::String envName, int value){
+    return HoudiniApi::SetServerEnvInt(session->get_session(), envName.utf8().get_data(), value);
+}
+HAPI_Result HoudiniEngine::SetServerEnvString(HoudiniEngineManager* session, godot::String envName, godot::String value){
+    return HoudiniApi::SetServerEnvString(session->get_session(), envName.utf8().get_data(), keep_alive_string(value.utf8().get_data()));
+}
+
+HAPI_Result HoudiniEngine::SetSessionSync(HoudiniEngineManager* session, bool enable){
+    return HoudiniApi::SetSessionSync(session->get_session(), enable);
+}
+HAPI_Result HoudiniEngine::SetSessionSyncInfo(HoudiniEngineManager* session, godot::Dictionary syncInfo){
+    HAPI_SessionSyncInfo info = DictToSessionSyncInfo(syncInfo);
+    return HoudiniApi::SetSessionSyncInfo(session->get_session(), &info);
 }

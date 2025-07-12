@@ -1,4 +1,3 @@
-
 #ifndef HOUDINI_BIND_GODOT
 #define HOUDINI_BIND_GODOT
 
@@ -27,14 +26,17 @@
 #include <godot_cpp/classes/standard_material3d.hpp>
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/classes/node3d.hpp>
+#include <godot_cpp/classes/camera3d.hpp>
 #include <godot_cpp/classes/resource.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/project_settings.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/surface_tool.hpp>
+#include <godot_cpp/classes/sub_viewport.hpp>
 #include <godot_cpp/classes/multi_mesh.hpp>
 #include <godot_cpp/classes/mesh_instance3d.hpp>
 #include <godot_cpp/classes/multi_mesh_instance3d.hpp>
+#include <godot_cpp/classes/editor_interface.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 #include <godot_cpp/variant/transform3d.hpp>
 #include <godot_cpp/core/math.hpp>
@@ -53,6 +55,7 @@ VARIANT_ENUM_CAST(HAPI_GeoType)
 VARIANT_ENUM_CAST(HAPI_PartType)
 VARIANT_ENUM_CAST(HAPI_ParmType)
 VARIANT_ENUM_CAST(HAPI_InputType)
+VARIANT_ENUM_CAST(HAPI_CurveType)
 VARIANT_ENUM_CAST(HAPI_Result)
 VARIANT_ENUM_CAST(HAPI_NodeFlags)
 VARIANT_ENUM_CAST(HAPI_StorageType)
@@ -61,11 +64,14 @@ VARIANT_ENUM_CAST(HAPI_StatusVerbosity)
 VARIANT_ENUM_CAST(HAPI_StatusType)
 VARIANT_ENUM_CAST(HAPI_RampType)
 VARIANT_ENUM_CAST(HAPI_RSTOrder)
+VARIANT_ENUM_CAST(HAPI_XYZOrder)
 VARIANT_ENUM_CAST(HAPI_TCP_PortType)
 VARIANT_ENUM_CAST(HAPI_ThriftSharedMemoryBufferType)
 VARIANT_ENUM_CAST(HAPI_Permissions)
 VARIANT_ENUM_CAST(HAPI_ChoiceListType)
 VARIANT_ENUM_CAST(HAPI_PackedPrimInstancingMode)
+VARIANT_ENUM_CAST(HAPI_InputCurveMethod)
+VARIANT_ENUM_CAST(HAPI_InputCurveParameterization)
 enum SessionType
 {
     None = 0,
@@ -311,6 +317,14 @@ class HoudiniEngine: public godot::Object{
         BIND_ENUM_CONSTANT(HAPI_SRT);
         BIND_ENUM_CONSTANT(HAPI_RSTORDER_DEFAULT);
 
+        BIND_ENUM_CONSTANT(HAPI_XYZ);
+        BIND_ENUM_CONSTANT(HAPI_XZY);
+        BIND_ENUM_CONSTANT(HAPI_YXZ);
+        BIND_ENUM_CONSTANT(HAPI_YZX);
+        BIND_ENUM_CONSTANT(HAPI_ZXY);
+        BIND_ENUM_CONSTANT(HAPI_ZYX);
+        BIND_ENUM_CONSTANT(HAPI_XYZORDER_DEFAULT);
+
         BIND_ENUM_CONSTANT(HAPI_STATUS_CALL_RESULT);
         BIND_ENUM_CONSTANT(HAPI_STATUS_COOK_RESULT);
         BIND_ENUM_CONSTANT(HAPI_STATUS_COOK_STATE);
@@ -412,6 +426,12 @@ class HoudiniEngine: public godot::Object{
         BIND_ENUM_CONSTANT(HAPI_INPUT_TRANSFORM);
         BIND_ENUM_CONSTANT(HAPI_INPUT_GEOMETRY);
         BIND_ENUM_CONSTANT(HAPI_INPUT_MAX);
+
+        BIND_ENUM_CONSTANT(HAPI_CURVETYPE_INVALID);
+        BIND_ENUM_CONSTANT(HAPI_CURVETYPE_LINEAR);
+        BIND_ENUM_CONSTANT(HAPI_CURVETYPE_NURBS);
+        BIND_ENUM_CONSTANT(HAPI_CURVETYPE_BEZIER);
+        BIND_ENUM_CONSTANT(HAPI_CURVETYPE_MAX);
 
         BIND_ENUM_CONSTANT(HAPI_PARMTYPE_INT);
         BIND_ENUM_CONSTANT(HAPI_PARMTYPE_MULTIPARMLIST);
@@ -528,6 +548,18 @@ class HoudiniEngine: public godot::Object{
         BIND_ENUM_CONSTANT(HAPI_RAMPTYPE_FLOAT);
         BIND_ENUM_CONSTANT(HAPI_RAMPTYPE_COLOR);
         BIND_ENUM_CONSTANT(HAPI_RAMPTYPE_MAX);
+
+        BIND_ENUM_CONSTANT(HAPI_CURVEMETHOD_INVALID);
+        BIND_ENUM_CONSTANT(HAPI_CURVEMETHOD_CVS);
+        BIND_ENUM_CONSTANT(HAPI_CURVEMETHOD_BREAKPOINTS);
+        BIND_ENUM_CONSTANT(HAPI_CURVEMETHOD_MAX);
+
+        BIND_ENUM_CONSTANT(HAPI_CURVEPARAMETERIZATION_INVALID);
+        BIND_ENUM_CONSTANT(HAPI_CURVEPARAMETERIZATION_UNIFORM);
+        BIND_ENUM_CONSTANT(HAPI_CURVEPARAMETERIZATION_CHORD);
+        BIND_ENUM_CONSTANT(HAPI_CURVEPARAMETERIZATION_CENTRIPETAL);
+        BIND_ENUM_CONSTANT(HAPI_CURVEPARAMETERIZATION_MAX);
+
         godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetObjectInfo","session","nodeId"),&HoudiniEngine::GetObjectInfo);
         godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetAssetInfo","session","nodeId"),&HoudiniEngine::GetAssetInfo);
         godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("GetNodeInfo","session","nodeId"),&HoudiniEngine::GetNodeInfo);
@@ -590,9 +622,43 @@ class HoudiniEngine: public godot::Object{
         godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("Interrupt","session"),&HoudiniEngine::Interrupt);
         godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("IsInitialized","session"),&HoudiniEngine::IsInitialized);
         godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("IsNodeValid","session","nodeId","uniqueNodeId","answer"),&HoudiniEngine::IsNodeValid);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("LoadAssetLibraryFromFile","session","filePath","allowOverwrite","assetId"),&HoudiniEngine::LoadAssetLibraryFromFile);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("LoadAssetLibraryFromMemory","session","buffer","allowOverwrite", "assetId"),&HoudiniEngine::LoadAssetLibraryFromMemory);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("LoadGeoFromFile","session","nodeId","filePath"),&HoudiniEngine::LoadGeoFromFile);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("LoadGeoFromMemory","session","nodeId","format","buffer"),&HoudiniEngine::LoadGeoFromMemory);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("LoadHIPFile","session","filePath","cookOnLoad"),&HoudiniEngine::LoadHIPFile);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("LoadNodeFromFile","session","fileName","parentId","nodeLabel","cookOnLoad","newNodeId"),&HoudiniEngine::LoadNodeFromFile);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("MaterialInfo_Create"),&HoudiniEngine::MaterialInfo_Create);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("NodeInfo_Create"),&HoudiniEngine::NodeInfo_Create);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("ObjectInfo_Create"),&HoudiniEngine::ObjectInfo_Create);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("ParmInfo_Create"),&HoudiniEngine::ParmInfo_Create);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("PartInfo_Create"),&HoudiniEngine::PartInfo_Create);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("SessionInfo_Create"),&HoudiniEngine::SessionInfo_Create);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("RemoveCustomString","session","stringHandle"),&HoudiniEngine::RemoveCustomString);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("RenameNode","session","nodeId","newName"),&HoudiniEngine::RenameNode);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("RevertGeo","session","nodeId"),&HoudiniEngine::RevertGeo);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("RevertParmToDefault","session","nodeId","parmName","index"),&HoudiniEngine::RevertParmToDefault);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("RevertParmToDefaults","session","nodeId","parmName"),&HoudiniEngine::RevertParmToDefaults);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("SaveGeoToFile","session","nodeId","filePath"),&HoudiniEngine::SaveGeoToFile);
         godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("SaveToHip","session","filename"),&HoudiniEngine::SaveToHip);
         godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("SetCustomString","session","string_value","handle_value"),&HoudiniEngine::SetCustomString);
-
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("SetAttributeFloatData","session","nodeId","partId","name","attrInfo","dataArray","start","length"),&HoudiniEngine::SetAttributeFloatData);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("SetAttributeIntData","session","nodeId","partId","name","attrInfo","dataArray","start","length"),&HoudiniEngine::SetAttributeIntData);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("SetAttributeStringData","session","nodeId","partId","name","attrInfo","dataArray","start","length"),&HoudiniEngine::SetAttributeStringData);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("SetCurveCounts","session","nodeId","partId","curveCounts","start","length"),&HoudiniEngine::SetCurveCounts);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("SetCurveInfo","session","nodeId","partId","curveInfo"),&HoudiniEngine::SetCurveInfo);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("SetCurveKnots","session","nodeId","partId","knots","start","length"),&HoudiniEngine::SetCurveKnots);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("SetCurveOrders","session","nodeId","partId","orders","start","length"),&HoudiniEngine::SetCurveOrders);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("SetFaceCounts","session","nodeId","partId","faceCounts","start","length"),&HoudiniEngine::SetFaceCounts);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("SetInputCurveInfo","session","nodeId","partId","curveInfo"),&HoudiniEngine::SetInputCurveInfo);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("SetInputCurvePositions","session","nodeId","partId","positions","start","length"),&HoudiniEngine::SetInputCurvePositions);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("SetNodeDisplay","session","nodeId","onOff"),&HoudiniEngine::SetNodeDisplay);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("SetObjectTransform","session","nodeId","transform"),&HoudiniEngine::SetObjectTransform);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("SetServerEnvInt","session","envName","value"),&HoudiniEngine::SetServerEnvInt);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("SetServerEnvString","session","envName","value"),&HoudiniEngine::SetServerEnvString);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("SetSessionSync","session","enable"),&HoudiniEngine::SetSessionSync);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("SetSessionSyncInfo","session","syncInfo"),&HoudiniEngine::SetSessionSyncInfo);
+        godot::ClassDB::bind_static_method("HoudiniEngine",godot::D_METHOD("SaveNodeToFile","session","nodeId","fileName"),&HoudiniEngine::SaveNodeToFile);
     }
 public:
     GDE_EXPORT static HAPI_SessionInfo  DictToSessionInfo(godot::Dictionary objectInfo);
@@ -617,6 +683,14 @@ public:
     GDE_EXPORT static godot::Dictionary CookOptionsToDict(HAPI_CookOptions options);
     GDE_EXPORT static HAPI_Transform DictToTransform(godot::Dictionary transform);
     GDE_EXPORT static godot::Dictionary TransformToDict(HAPI_Transform transform);
+    GDE_EXPORT static HAPI_TransformEuler DictToTransformEuler(godot::Dictionary transform);
+    GDE_EXPORT static godot::Dictionary TransformEulerToDict(HAPI_TransformEuler transform);
+    GDE_EXPORT static HAPI_CurveInfo DictToCurveInfo(godot::Dictionary inputCurveInfo);
+    GDE_EXPORT static godot::Dictionary CurveInfoToDict(HAPI_CurveInfo info);
+    GDE_EXPORT static HAPI_InputCurveInfo DictToInputCurveInfo(godot::Dictionary inputCurveInfo);
+    GDE_EXPORT static godot::Dictionary InputCurveInfoToDict(HAPI_InputCurveInfo info);
+    GDE_EXPORT static HAPI_SessionSyncInfo DictToSessionSyncInfo(godot::Dictionary sessionSyncInfo);
+    GDE_EXPORT static godot::Dictionary SessionSyncInfoToDict(HAPI_SessionSyncInfo info);
 
 
     GDE_EXPORT static godot::Dictionary GetObjectInfo(HoudiniEngineManager* session,int nodeId);
@@ -683,9 +757,9 @@ public:
     GDE_EXPORT static HAPI_Result IsSessionValid(HoudiniEngineManager* session);
     GDE_EXPORT static HAPI_Result IsNodeValid(HoudiniEngineManager* session, int nodeId, int uniqueNodeId, godot::Ref<Bool> answer);
     GDE_EXPORT static HAPI_Result LoadAssetLibraryFromFile(HoudiniEngineManager* session, godot::String filePath, bool allowOverwrite, godot::Ref<Int> assetId);
-    GDE_EXPORT static HAPI_Result LoadAssetLibraryFromMemory(HoudiniEngineManager* session, godot::TypedArray<char> buffer, bool allowOverwrite, godot::Ref<Int> assetId);
+    GDE_EXPORT static HAPI_Result LoadAssetLibraryFromMemory(HoudiniEngineManager* session, godot::String buffer, bool allowOverwrite, godot::Ref<Int> assetId);
     GDE_EXPORT static HAPI_Result LoadGeoFromFile(HoudiniEngineManager* session, int nodeId, godot::String filePath);
-    GDE_EXPORT static HAPI_Result LoadGeoFromMemory(HoudiniEngineManager* session, int nodeId, godot::String format, godot::TypedArray<char> buffer);
+    GDE_EXPORT static HAPI_Result LoadGeoFromMemory(HoudiniEngineManager* session, int nodeId, godot::String format, godot::String buffer);
     GDE_EXPORT static HAPI_Result LoadHIPFile(HoudiniEngineManager* session, godot::String fileName, bool cookOnLoad);
     GDE_EXPORT static HAPI_Result LoadNodeFromFile(HoudiniEngineManager* session, godot::String fileName, int parentId, godot::String nodeLabel, bool cookOnLoad, godot::Ref<Int> newNodeId);
     GDE_EXPORT static godot::Dictionary MaterialInfo_Create();
@@ -693,6 +767,7 @@ public:
     GDE_EXPORT static godot::Dictionary ObjectInfo_Create();
     GDE_EXPORT static godot::Dictionary ParmInfo_Create();
     GDE_EXPORT static godot::Dictionary PartInfo_Create();
+    GDE_EXPORT static godot::Dictionary SessionInfo_Create();
     GDE_EXPORT static HAPI_Result RemoveCustomString(HoudiniEngineManager* session, int stringHandle);
     GDE_EXPORT static HAPI_Result RenameNode(HoudiniEngineManager* session, int nodeId, godot::String newName);
     GDE_EXPORT static HAPI_Result RevertGeo(HoudiniEngineManager* session, int nodeId);
@@ -701,12 +776,23 @@ public:
     GDE_EXPORT static HAPI_Result SaveGeoToFile(HoudiniEngineManager* session, int nodeId, godot::String filePath);
     GDE_EXPORT static bool SaveToHip(HoudiniEngineManager* session, godot::String filename);
     GDE_EXPORT static HAPI_Result SaveNodeToFile(HoudiniEngineManager* session, int nodeId, godot::String fileName);
-    GDE_EXPORT static godot::Dictionary SessionInfo_Create();
     GDE_EXPORT static HAPI_Result SetAttributeFloatData(HoudiniEngineManager* session, int nodeId, int partId, godot::String name, godot::Dictionary attrInfo, godot::Ref<RefArray> dataArray, int start, int length);
     GDE_EXPORT static HAPI_Result SetAttributeIntData(HoudiniEngineManager* session, int nodeId, int partId, godot::String name, godot::Dictionary attrInfo, godot::Ref<RefArray> dataArray, int start, int length);
     GDE_EXPORT static HAPI_Result SetAttributeStringData(HoudiniEngineManager* session, int nodeId, int partId, godot::String name, godot::Dictionary attrInfo, godot::Ref<RefArray> dataArray, int start, int length);
+    GDE_EXPORT static HAPI_Result SetCurveCounts(HoudiniEngineManager* session, int nodeId, int partId, godot::Array curveCounts, int start, int length);
+    GDE_EXPORT static HAPI_Result SetCurveInfo(HoudiniEngineManager* session, int nodeId, int partId, godot::Dictionary curveInfo);
+    GDE_EXPORT static HAPI_Result SetCurveKnots(HoudiniEngineManager* session, int nodeId, int partId, godot::Array knots, int start, int length);
+    GDE_EXPORT static HAPI_Result SetCurveOrders(HoudiniEngineManager* session, int nodeId, int partId, godot::Array orders, int start, int length);
     GDE_EXPORT static HAPI_Result SetCustomString(HoudiniEngineManager* session, godot::String string_value, godot::Ref<Int> handle_value);
     GDE_EXPORT static HAPI_Result SetFaceCounts(HoudiniEngineManager* session, int nodeId, int partId, godot::Array faceCounts, int start, int length);
+    GDE_EXPORT static HAPI_Result SetInputCurveInfo(HoudiniEngineManager* session, int nodeId, int partId, godot::Dictionary curveInfo);
+    GDE_EXPORT static HAPI_Result SetInputCurvePositions(HoudiniEngineManager* session, int nodeId, int partId, godot::Array positions, int start, int length);
+    GDE_EXPORT static HAPI_Result SetNodeDisplay(HoudiniEngineManager* session, int nodeId, int onOff);
+    GDE_EXPORT static HAPI_Result SetObjectTransform(HoudiniEngineManager* session, int nodeId, godot::Dictionary transform);
+    GDE_EXPORT static HAPI_Result SetServerEnvInt(HoudiniEngineManager* session, godot::String envName, int value);
+    GDE_EXPORT static HAPI_Result SetServerEnvString(HoudiniEngineManager* session, godot::String envName, godot::String value);
+    GDE_EXPORT static HAPI_Result SetSessionSync(HoudiniEngineManager* session, bool enable);
+    GDE_EXPORT static HAPI_Result SetSessionSyncInfo(HoudiniEngineManager* session, godot::Dictionary syncInfo);
 };
 
 class HDANode: public godot::Resource{
@@ -842,7 +928,7 @@ constexpr const char* DefaultNamedPipe = "hapi";
 constexpr const char* DefaultSharedMemoryName = "hapi";
 constexpr const char* DefaultHostName = "127.0.0.1";
 constexpr int DefaultTcpPort = 9090;
-constexpr int DefaultNewSessionTimeoutSec = 15;
+constexpr int DefaultNewSessionTimeoutSec = 120;
 class HoudiniSettings: public godot::Object{
     GDCLASS(HoudiniSettings,godot::Object)
     static void _bind_methods(){
@@ -1113,8 +1199,8 @@ class HoudiniEngineManager: public godot::Node3D{
         godot::ClassDB::bind_method(godot::D_METHOD("getParameters","nodeId"),static_cast<godot::Dictionary(HoudiniEngineManager::*)(godot::Ref<NodeId>)>(&HoudiniEngineManager::getParameters));
         //godot::ClassDB::bind_method(godot::D_METHOD("getAttributes","nodeId","partId"),static_cast<godot::Dictionary(HoudiniEngineManager::*)(godot::Ref<NodeId>,godot::Ref<PartId>)>(&HoudiniEngineManager::getAttributes));
 
-        godot::ClassDB::add_signal("HoudiniEngineManager",godot::MethodInfo("materialChanged",godot::PropertyInfo(godot::Variant::INT,"nodeId")));
-        godot::ClassDB::add_signal("HoudiniEngineManager",godot::MethodInfo("geometryChanged",godot::PropertyInfo(godot::Variant::INT,"nodeId")));
+        // godot::ClassDB::add_signal("HoudiniEngineManager",godot::MethodInfo("materialChanged",godot::PropertyInfo(godot::Variant::INT,"nodeId")));
+        // godot::ClassDB::add_signal("HoudiniEngineManager",godot::MethodInfo("geometryChanged",godot::PropertyInfo(godot::Variant::INT,"nodeId")));
     }
 
 
@@ -1138,6 +1224,7 @@ class HoudiniEngineManager: public godot::Node3D{
 
         list->push_back(godot::PropertyInfo(godot::Variant::NIL,"Node Settings",godot::PROPERTY_HINT_NONE,"NodeSettings_",godot::PROPERTY_USAGE_GROUP));
         list->push_back(godot::PropertyInfo(godot::Variant::BOOL,"NodeSettings_showModel"));
+        list->push_back(godot::PropertyInfo(godot::Variant::BOOL,"NodeSettings_syncViewport"));
         list->push_back(godot::PropertyInfo(godot::Variant::OBJECT,"NodeSettings_nodeAction",godot::PROPERTY_HINT_RESOURCE_TYPE,"NodeAction"));
         list->push_back(godot::PropertyInfo(godot::Variant::OBJECT,"NodeSettings_nowNode",godot::PROPERTY_HINT_RESOURCE_TYPE,"HDANode"));
         list->push_back(godot::PropertyInfo(godot::Variant::OBJECT,"NodeSettings_inputMesh",godot::PROPERTY_HINT_RESOURCE_TYPE,"Mesh"));
@@ -1206,6 +1293,9 @@ class HoudiniEngineManager: public godot::Node3D{
             return true;
         }else if(propertyName == "NodeSettings_showModel"){
             ret = showModel;
+            return true;
+        }else if(propertyName == "NodeSettings_syncViewport"){
+            ret = syncViewport;
             return true;
         }else if(propertyName == "NodeSettings_nodeAction"){
             ret = nodeAction;
@@ -1309,6 +1399,13 @@ class HoudiniEngineManager: public godot::Node3D{
             }
             for(auto a : internalModels)
                 a.second->set_visible(showModel);
+            return true;
+        }else if(propertyName == "NodeSettings_syncViewport"){
+            HAPI_SessionSyncInfo info;
+            HoudiniApi::GetSessionSyncInfo(get_session(),&info);
+            info.syncViewport = true;
+            HoudiniApi::SetSessionSyncInfo(get_session(),&info);
+            syncViewport = (bool)value;
             return true;
         }else if(propertyName == "NodeSettings_nodeAction"){
             set_nodeAction((godot::Ref<NodeAction>)(value));
@@ -1496,6 +1593,8 @@ class HoudiniEngineManager: public godot::Node3D{
                 if(focused)
                     sessionCookSync();
             }
+
+            syncCamera();
         }
     }
     GDE_EXPORT
@@ -1613,16 +1712,20 @@ class HoudiniEngineManager: public godot::Node3D{
                 });
             }).detach();
         }else if(type == LoadAssetAction::get_class_static()){
+            printLog("");
             this->assetAction = action;
             std::jthread([this]{
+            printLog("");
                 if(nowAsset.is_null())
                     return;
                 loadAssets(nowAsset,Void{});
                 this->assetAction.unref();
                 Contact::add_call([this]{
+            printLog("");
                     notify_property_list_changed();
                 });
             }).detach();
+            printLog("");
         }else{
             return;
         }
@@ -1720,10 +1823,51 @@ class HoudiniEngineManager: public godot::Node3D{
 
     bool autoCook = 0;
     bool showModel = 0;
+    bool syncViewport = 0;
     godot::Ref<godot::Mesh> inputMesh;
     godot::Node* inputMeshTreeRoot = nullptr;
 
-
+    void syncCamera(){
+        if(!syncViewport)
+            return;
+        godot::Camera3D* camera = godot::EditorInterface::get_singleton()->get_editor_viewport_3d()->get_camera_3d();
+        auto trans = camera->get_transform();
+        auto pos = trans.get_origin();
+        auto rot = trans.get_basis().get_rotation_quaternion();
+        HAPI_Viewport viewport;
+        HoudiniApi::GetViewport(get_session(),&viewport);
+        bool equal = true;
+        if(viewport.position[0] != pos.x){
+            viewport.position[0] = pos.x;
+            equal = false;
+        }
+        if(viewport.position[1] != pos.y){
+            viewport.position[1] = pos.y;
+            equal = false;
+        }
+        if(viewport.position[2] != pos.z){
+            viewport.position[2] = pos.z;
+            equal = false;
+        }
+        if(viewport.rotationQuaternion[0] != rot.x){
+            viewport.rotationQuaternion[0] = rot.x;
+            equal = false;
+        }
+        if(viewport.rotationQuaternion[1] != rot.y){
+            viewport.rotationQuaternion[1] = rot.y;
+            equal = false;
+        }
+        if(viewport.rotationQuaternion[2] != rot.z){
+            viewport.rotationQuaternion[2] = rot.z;
+            equal = false;
+        }
+        if(viewport.rotationQuaternion[3] != rot.w){
+            viewport.rotationQuaternion[3] = rot.w;
+            equal = false;
+        }
+        if(!equal)
+            HoudiniApi::SetViewport(get_session(),&viewport);
+    }
 
     HAPI_Session session;
     SessionType sessionType = InProcess;
@@ -2077,6 +2221,8 @@ public:
             printError("Error load Asset with invalid session");
             return {};
         }
+
+        std::cerr << __LINE__ << std::endl;
         int assetId = -1;
         try{
         if(auto a = HoudiniApi::LoadAssetLibraryFromFile(get_session(),hdaRes->path.c_str(),true,&assetId);a != HAPI_RESULT_SUCCESS){
@@ -2086,17 +2232,20 @@ public:
         }catch(std::exception& e){
             printError(e.what());
         }
+        std::cerr << __LINE__ << std::endl;
         int asset_count = 0;
         if(auto a = HoudiniApi::GetAvailableAssetCount(get_session(),assetId,&asset_count); a != HAPI_RESULT_SUCCESS){
             printError("Error get available asset count: ",a);
             return {};
         }
+        std::cerr << __LINE__ << std::endl;
         std::vector<HAPI_StringHandle> assetSH;
         assetSH.resize(asset_count);
         if(auto a = HoudiniApi::GetAvailableAssets(get_session(),assetId,assetSH.data(),asset_count);a != HAPI_RESULT_SUCCESS){
             printError("Error get available assets: ",a);
             return {};
         }
+        std::cerr << __LINE__ << std::endl;
         std::string temp;
         int rootId = -1;
         std::vector<int> result;
@@ -2107,8 +2256,10 @@ public:
             createNode(temp,temp,id,rootId,assetId);
             result.push_back(id);
         }
+        std::cerr << __LINE__ << std::endl;
         hdaRes->assetId = assetId;
         assetIds.insert({assetId,hdaRes});
+        std::cerr << __LINE__ << std::endl;
         return result;
     }
     GDE_EXPORT
@@ -2705,7 +2856,10 @@ public:
             return;
         if(auto a = cookCounts.find(id);a != cookCounts.end()){
             int count = 0;
-            if(HoudiniApi::GetTotalCookCount(get_session(),id,0,0,true,&count) != HAPI_RESULT_SUCCESS)
+            if(HoudiniApi::GetTotalCookCount(get_session(),id
+                ,(HAPI_NodeTypeBits)(HAPI_NODETYPE_OBJ||HAPI_NODETYPE_SOP)
+                ,(HAPI_NodeFlagsBits)(HAPI_NODEFLAGS_DISPLAY||HAPI_NODEFLAGS_RENDER||HAPI_NODEFLAGS_OBJ_GEOMETRY)
+                ,true,&count) != HAPI_RESULT_SUCCESS)
                 return;
             if(count != a->second){
                 a->second = count;
@@ -2715,14 +2869,8 @@ public:
     }
     GDE_EXPORT
     void sessionCookSync(){
-        for(auto& a : cookCounts){
-            int count = 0;
-            if(HoudiniApi::GetTotalCookCount(get_session(),a.first,0,0,true,&count) != HAPI_RESULT_SUCCESS)
-                continue;
-            if(count != a.second){
-                a.second = count;
-                cookNode(a.first);
-            }
+        for(auto id : nodeIds){
+            nodeCookSync(id.first);
         }
     }
 
@@ -3201,6 +3349,7 @@ public:
     }
     GDE_EXPORT
     int initInputNode(int id,godot::Ref<godot::Mesh> mesh){
+        godot::MultiMesh mp;
         auto geoInfo = getGeoInfo(id);
         if(geoInfo.isTemplated)
             return -1;
