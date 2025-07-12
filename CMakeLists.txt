@@ -78,24 +78,6 @@ target_link_libraries(${TARGET_NAME} PRIVATE "godot-cpp.${Platform}.editor.${Arc
 if(${Platform} MATCHES "windows")
     set(STATIC_CPP "$<BOOL:${GODOTCPP_USE_STATIC_CPP}>")
     set_target_properties(${TARGET_NAME} PROPERTIES PDB_OUTPUT_DIRECTORY "$<1:${CMAKE_SOURCE_DIR}/bin>")
-    target_compile_definitions(
-        ${TARGET_NAME}
-        PUBLIC WINDOWS_ENABLED $<${IS_MSVC}: TYPED_METHOD_BIND NOMINMAX >
-    )
-    target_link_options(
-        ${TARGET_NAME}
-        PUBLIC
-            $<${NOT_MSVC}:
-                -Wl,--no-undefined
-                $<${STATIC_CPP}:
-                    -static
-                    -static-libgcc
-                    -static-libstdc++
-                >
-            >
-
-            $<${IS_CLANG}:-lstdc++>
-    )
     add_custom_command(
         TARGET ${TARGET_NAME}
         POST_BUILD
