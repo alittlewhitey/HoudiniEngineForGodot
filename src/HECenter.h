@@ -398,9 +398,9 @@ public:
         _init_hserver();
 
         HoudiniApi::ClearConnectionError();
-        HAPI_ThriftServerOptions server_options = HoudiniApi::ThriftServerOptions_Create();
-        server_options.autoClose = true;
-        server_options.timeoutMs = 3000.f;
+        // HAPI_ThriftServerOptions server_options = HoudiniApi::ThriftServerOptions_Create();
+        // server_options.autoClose = true;
+        // server_options.timeoutMs = 3000.f;
 
         HAPI_Result SessionResult = HAPI_RESULT_FAILURE;
         int times(0);
@@ -1361,7 +1361,7 @@ public:
                 if(rawColorSize != 0){
                     collectColors.reserve(vertexSize);
                     for(auto a : vertexs){
-                        if(a < rawColorSize)
+                        if((size_t)a < rawColorSize)
                             collectColors.emplace_back(rawColors[a]);
                         else 
                             collectColors.emplace_back(godot::Color());
@@ -1371,7 +1371,7 @@ public:
                 if(rawNormalSize != 0){
                     collectNormals.reserve(vertexSize);
                     for(auto a : vertexs){
-                        if(a < rawNormalSize)
+                        if((size_t)a < rawNormalSize)
                             collectNormals.emplace_back(rawNormals[a]);
                         else 
                             collectNormals.emplace_back(godot::Vector3());
@@ -1381,7 +1381,7 @@ public:
                 if(rawUVSize != 0){
                     collectUVs.reserve(vertexSize);
                     for(auto a : vertexs){
-                        if(a < rawUVSize)
+                        if((size_t)a < rawUVSize)
                             collectUVs.emplace_back(rawUVs[a]);
                         else 
                             collectUVs.emplace_back(godot::Vector2());
@@ -1391,7 +1391,7 @@ public:
                 if(rawUV2Size != 0){
                     collectUV2s.reserve(vertexSize);
                     for(auto a : vertexs){
-                        if(a < rawUV2Size)
+                        if((size_t)a < rawUV2Size)
                             collectUV2s.emplace_back(rawUV2s[a]);
                         else 
                             collectUV2s.emplace_back(godot::Vector2());
