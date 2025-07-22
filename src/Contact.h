@@ -1,9 +1,7 @@
-//
-// Created by littlewhite on 2025/2/26
-//
+#ifndef HOUDINI_ENGINE_CONTACT_H
+#define HOUDINI_ENGINE_CONTACT_H
+#include "DebugSymbol.h"
 
-#ifndef GALENGINE_CONTACT_H
-#define GALENGINE_CONTACT_H
 #include <iostream>
 #include <functional>
 #include <atomic>
@@ -24,4 +22,4 @@ public:
 };
 
 
-#endif //GALENGINE_CONTACT_H
+#endif

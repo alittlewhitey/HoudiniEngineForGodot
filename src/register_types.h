@@ -1,7 +1,7 @@
 #pragma once
-#ifndef REGISTER_PARTITION_H
-#define REGISTER_PARTITION_H
-
+#ifndef GODOT_EXTENSION_REGISTER
+#define GODOT_EXTENSION_REGISTER
+#include "DebugSymbol.h"
 
 #define HOT_RELOAD_ENABLED
 
@@ -14,4 +14,4 @@ using namespace godot;
 void initialize_module(ModuleInitializationLevel p_level);
 void uninitialize_module(ModuleInitializationLevel p_level);
 
-#endif // REGISTER_PARTITION_H
+#endif // GODOT_EXTENSION_REGISTER

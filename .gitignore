@@ -7,7 +7,7 @@ lib
 
 build
 
-temp
+temp/
 
 deps/godot-cpp/*
 
@@ -19,3 +19,7 @@ project/addons/HoudiniEngineForGodot/bin/*
 
 *.os
 compile_commands.json
+
+*.old
+design.gd 
+TodoList.txt

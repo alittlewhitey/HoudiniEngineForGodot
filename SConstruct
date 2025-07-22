@@ -8,7 +8,10 @@ env = SConscript("deps/godot-cpp/SConstruct")
 env.Append(CPPPATH=["deps"])
 env.Append(CPPPATH=["deps/Houdini/"])
 env.Append(CPPPATH=["src/"])
-env.Append(CXXFLAGS=['-pthread', '-fexperimental-library', '-std=c++20', '-fexceptions'], LINKFLAGS=['-pthread', '-fexperimental-library'])
+if env['CC'] == 'clang':
+    env.Append(CXXFLAGS=['-pthread', '-fexperimental-library', '-std=c++20', '-fexceptions'], LINKFLAGS=['-pthread', '-fexperimental-library'])
+else:
+    env.Append(CXXFLAGS=['-pthread', '-std=c++20', '-fexceptions'], LINKFLAGS=['-pthread'])
 sources = Glob("src/*.cpp") + Glob("deps/Houdini/*.cpp")
 (extension_path,) = glob("project/addons/*/*.gdextension")
 
