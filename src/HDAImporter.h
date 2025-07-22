@@ -44,51 +44,51 @@ class HDAImporter : public godot::EditorImportPlugin{
     GDCLASS(HDAImporter,godot::EditorImportPlugin)
     static void _bind_methods(){}
 public:
-    godot::String _get_importer_name(){
+    godot::String _get_importer_name()const override{
         return "littlewhite.houdini_digital_assets";
     }
-    godot::String _get_visible_name(){
+    godot::String _get_visible_name()const override{
         return "Houdini Digital Assets";
     }
-    godot::PackedStringArray _get_recognized_extensions(){
+    godot::PackedStringArray _get_recognized_extensions()const override{
         godot::PackedStringArray arr;
         arr.push_back("hda");
         arr.push_back("otl");
         arr.push_back("hdalc");
         return arr;
     }
-    godot::String _get_save_extension(){
+    godot::String _get_save_extension()const override{
         return "res";
     }
-    godot::String _get_resource_type(){
+    godot::String _get_resource_type()const override{
         return "HDAResource";
     }
     enum Presets{
         PresetSize
     };
-    int32_t _get_preset_count(){
+    int32_t _get_preset_count()const override{
         return PresetSize;
     }
-    double _get_priority(){
+    float _get_priority()const override{
         return 1.0;
     }
-    int32_t _get_import_order(){
+    int32_t _get_import_order()const override{
         return 1;
     }
-    godot::String _get_preset_name(int32_t p_preset_index){
+    godot::String _get_preset_name(int32_t p_preset_index)const override{
         switch((Presets)p_preset_index){
         default:{
             return "Unknown";
         }break;
         }
     }
-    godot::TypedArray<godot::Dictionary> _get_import_options(const godot::String &p_path, int32_t p_preset_index){
+    godot::TypedArray<godot::Dictionary> _get_import_options(const godot::String &p_path, int32_t p_preset_index)const override{
         return {};
     }
-    bool _get_option_visibility(const godot::String &p_path, const godot::StringName &p_option_name, const godot::Dictionary &p_options){
+    bool _get_option_visibility(const godot::String &p_path, const godot::StringName &p_option_name, const godot::Dictionary &p_options)const override{
         return true;
     }
-    godot::Error _import(const godot::String &p_source_file, const godot::String &p_save_path, const godot::Dictionary &p_options, const godot::TypedArray<godot::String> &p_platform_variants, const godot::TypedArray<godot::String> &p_gen_files){
+    godot::Error _import(const godot::String &p_source_file, const godot::String &p_save_path, const godot::Dictionary &p_options, const godot::TypedArray<godot::String> &p_platform_variants, const godot::TypedArray<godot::String> &p_gen_files)const override{
         godot::Ref<HDAResource> res;
         res.instantiate();
         res->path = godot::ProjectSettings::get_singleton()->globalize_path(p_source_file).utf8().get_data();

@@ -250,8 +250,8 @@ class HECenter: public godot::Node{
         if(auto a = cookCounts.find(id);a != cookCounts.end()){
             int count = 0;
             if(HoudiniApi::GetTotalCookCount(get_session(),id
-                ,(HAPI_NodeTypeBits)(HAPI_NODETYPE_OBJ||HAPI_NODETYPE_SOP)
-                ,(HAPI_NodeFlagsBits)(HAPI_NODEFLAGS_DISPLAY||HAPI_NODEFLAGS_RENDER||HAPI_NODEFLAGS_OBJ_GEOMETRY)
+                ,(HAPI_NodeTypeBits)(HAPI_NODETYPE_OBJ|HAPI_NODETYPE_SOP)
+                ,(HAPI_NodeFlagsBits)(HAPI_NODEFLAGS_DISPLAY|HAPI_NODEFLAGS_RENDER|HAPI_NODEFLAGS_OBJ_GEOMETRY)
                 ,true,&count) != HAPI_RESULT_SUCCESS)
                 return;
             if(count != a->second){
@@ -876,7 +876,7 @@ public:
                     return;
                 }
                 const char* attr_name = info.isRational ? "Pw" : "P";
-                int components = info.isRational ? 4 : 3;
+                [[maybe_unused]]int components = info.isRational ? 4 : 3;
                 std::vector<float> rawControlPoints;
                 //Using for debug
                 HAPI_AttributeInfo attr_info;
@@ -942,7 +942,7 @@ public:
             else
                 for(auto& b : a.second.second){
                     HAPI_MaterialInfo materialInfo;
-                    if(HoudiniApi::GetMaterialInfo(get_session(),a.second.second[0],&materialInfo)!=HAPI_RESULT_SUCCESS){
+                    if(HoudiniApi::GetMaterialInfo(get_session(),b,&materialInfo)!=HAPI_RESULT_SUCCESS){
                         printError(HoudiniEngineUtility::getLastError().c_str());
                     }else{
                         if(materialInfo.hasChanged)
@@ -1025,7 +1025,7 @@ public:
             return {};
         }
         auto& part = meshGeometries[nodeId][partId];
-        std::vector<int>& faces = std::get<0>(part);
+        [[maybe_unused]]std::vector<int>& faces = std::get<0>(part);
         std::vector<float>& positions = std::get<1>(part);
         std::vector<int>& vertexs = std::get<2>(part);
         std::pair<AttribOwner,std::vector<float>>& color_Attrib = std::get<3>(part);
