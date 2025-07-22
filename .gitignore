@@ -23,3 +23,5 @@ compile_commands.json
 *.old
 design.gd 
 TodoList.txt
+*.o
+*.obj

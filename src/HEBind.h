@@ -11,6 +11,8 @@
 #include "HEClass.h"
 #include "HEBindEnum.h"
 
+
+
 class Bool: public godot::RefCounted{
 GDCLASS(Bool, godot::RefCounted)
     void set_value(bool value){

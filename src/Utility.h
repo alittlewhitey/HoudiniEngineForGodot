@@ -18,7 +18,7 @@
 #include <source_location>
 #include <godot_cpp/variant/utility_functions.hpp>
 #if defined (_WIN32) || defined (WIN32)
-#include <windows.h>
+#include <libloaderapi.h>
 #elif defined (__linux__) || (defined (__APPLE__) && defined (__MACH__))
 #include <dlfcn.h>
 #endif
@@ -159,7 +159,7 @@ inline void addenv(std::string key,std::string value){
 #endif
 
 #if defined (__linux__) || (defined (__APPLE__) && defined (__MACH__))
-inline std::filesystem::path get_current_dylib_path(){
+inline std::string get_current_dylib_path(){
     std::string path;
     Dl_info dl_info;
     if(dladdr((void*)&get_current_dylib_path,&dl_info)){
@@ -168,10 +168,10 @@ inline std::filesystem::path get_current_dylib_path(){
     return path;
 }
 #elif defined (_WIN32) || defined (WIN32)
-inline std::filesystem::path get_current_dylib_path(){
+inline std::string get_current_dylib_path(){
     std::string path;
     HMODULE hModule = NULL;
-    if(GetModuleHandleEx(
+    if(GetModuleHandleExA(
         GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
         (LPCSTR) &get_current_dylib_path,
         &hModule)){
