@@ -23,6 +23,8 @@
 #undef HE_DEBUG_MODE
 #endif
 #include <assert.h>
+#ifndef HOT_RELOAD_ENABLED
 #define HOT_RELOAD_ENABLED
+#endif
 
 #endif

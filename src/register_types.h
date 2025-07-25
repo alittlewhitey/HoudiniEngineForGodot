@@ -3,8 +3,6 @@
 #define GODOT_EXTENSION_REGISTER
 #include "DebugSymbol.h"
 
-#define HOT_RELOAD_ENABLED
-
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/classes/node.hpp>
 

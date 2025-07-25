@@ -72,10 +72,24 @@ if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp/include")
     )
 endif()
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp/bin/libgodot-cpp.${Platform}.editor.${Arch}.a")
-    execute_process(
-        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp"
-        COMMAND scons target=editor platform=${Platform} arch=${Arch} 
-    ) 
+    if(${Platform} MATCHES "windows")
+        if(${USE_LLVM} MATCHES yes)
+            execute_process(
+                WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp"
+                COMMAND scons target=editor platform=${Platform} arch=${Arch} use_mingw=yes use_llvm=yes
+            ) 
+        else()
+            execute_process(
+                WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp"
+                COMMAND scons target=editor platform=${Platform} arch=${Arch} use_mingw=yes
+            ) 
+        endif()
+    else()
+        execute_process(
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp"
+            COMMAND scons target=editor platform=${Platform} arch=${Arch} 
+        ) 
+    endif()
 endif()
 set(TARGET_NAME "HoudiniEngineForGodot.${Platform}.${BuildType}.${Arch}")
 include_directories(src)
@@ -95,7 +109,7 @@ if(${Platform} MATCHES "windows")
     add_custom_command(
         TARGET ${TARGET_NAME}
         POST_BUILD
-        COMMAND cp build/lib${TARGET_NAME}.dll project/addons/HoudiniEngineForGodot/bin
+        COMMAND copy build/lib${TARGET_NAME}.dll project/addons/HoudiniEngineForGodot/bin
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 elseif(${Platform} MATCHES "linux")
