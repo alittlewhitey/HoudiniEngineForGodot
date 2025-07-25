@@ -1,0 +1,11 @@
+name: Houdini Engine For Godot
+on: [push]
+jobs:
+    Mac-Build:
+        runs-on: macos-latest
+        steps:
+            - name: Check out repository code
+              uses: actions/checkout@v4
+            - run: pip install scons
+            - run: scons --version
+            - run: scons target=editor
