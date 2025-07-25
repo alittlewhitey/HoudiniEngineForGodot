@@ -1,5 +1,9 @@
 name: Houdini Engine For Godot
-on: [push]
+run-name: Pre-build for each platform
+on: 
+    push:
+        branches:
+            - main
 jobs:
     Mac-Build:
         runs-on: macos-latest
