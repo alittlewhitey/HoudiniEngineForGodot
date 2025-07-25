@@ -119,7 +119,7 @@ godot::PackedStringArray HENode::getParameterList(){
     auto list_size = list.size();
     godot::PackedStringArray arr;
     arr.resize(list_size);
-    for(int i = 0;i!=list_size;++i){
+    for(int i = 0,size = list_size;i!=size;++i){
         arr[i] = string_cast(std::move(list[i]));
     }
     return arr;
