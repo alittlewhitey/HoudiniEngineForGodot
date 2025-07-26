@@ -9,7 +9,10 @@ build
 
 temp/
 
+__pycache__
+
 deps/godot-cpp/*
+src/gen
 
 project/.godot
 project/*.*
@@ -23,5 +26,6 @@ compile_commands.json
 *.old
 design.gd 
 TodoList.txt
+test.py
 *.o
 *.obj
