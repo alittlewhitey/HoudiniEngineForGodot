@@ -97,12 +97,12 @@ class HECenter: public godot::Node{
         }
     }
     void process(){
-
+        
     }
     void term(){
-        get_tree()->disconnect("node_removed",godot::Callable(this,"freeGDNode"));
-        get_tree()->disconnect("node_added",godot::Callable(this,"stopFreeGDNode"));
-    }
+        get_tree()->disconnect("node_removed",godot::Callable((godot::Object*)this,"freeGDNode"));
+        get_tree()->disconnect("node_added",godot::Callable((godot::Object*)this,"stopFreeGDNode"));
+    } 
     void predel(){
         if(sessionOpened){
             stopSession();
