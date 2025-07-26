@@ -4,6 +4,7 @@
 	</brief_description>
 	<description>
 		Core of Houdini Engine Plugin
+		[b]You will never use this class![/b]
 	</description>
 	<tutorials>
 	</tutorials>
