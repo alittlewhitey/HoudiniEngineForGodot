@@ -11,6 +11,7 @@ env.Append(CPPPATH=["src/"])
 compiler = env['CXX']
 if compiler == "$CC":
     compiler = env['CC']
+print(compiler)
 match compiler:
     case "clang++":
         env.Append(CXXFLAGS=['-pthread', '-fexperimental-library', '-std=c++20', '-fexceptions'], LINKFLAGS=['-pthread', '-fexperimental-library'])
