@@ -12,18 +12,14 @@ compiler = env['CXX']
 if compiler == "$CC":
     compiler = env['CC']
 print(compiler)
-match compiler:
-    case "clang++":
+if(compiler == "clang++"):
         env.Append(CXXFLAGS=['-pthread', '-fexperimental-library', '-std=c++20', '-fexceptions'], LINKFLAGS=['-pthread', '-fexperimental-library'])
-        pass
-    case "g++":
+elif(compiler == "g++"):
         env.Append(CXXFLAGS=['-pthread', '-std=c++20', '-fexceptions'], LINKFLAGS=['-pthread'])
-        pass
-    case "cl":
+elif(compiler == "cl"):
         env.Append(CXXFLAGS=['-EHsc', '-std:c++20'])
-        pass
-    case _:
-        pass
+else:
+    pass
 
 sources = Glob("src/*.cpp") + Glob("deps/Houdini/*.cpp")
 
