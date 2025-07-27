@@ -30,4 +30,13 @@ jobs:
       - run: pip install scons
       - run: scons --version
       - run: scons target=editor
+  Windows-Build:
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - run: git submodule update --init --recursive
+      - run: pip install scons
+      - run: scons --version
+      - run: scons target=editor
         

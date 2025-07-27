@@ -233,8 +233,8 @@ class HESettings: public godot::Object{
         return dic;
     }
     godot::Dictionary default_cookOptions(){
-        #ifdef HE_RELEASE_MODE
-        #error "Be careful of cook options"
+        #ifdef HE_DEBUG_MODE
+        #warning "Be careful of cook options"
         #endif
         HAPI_CookOptions cookOptions = HoudiniApi::CookOptions_Create();
         cookOptions.curveRefineLOD = 8.0f;

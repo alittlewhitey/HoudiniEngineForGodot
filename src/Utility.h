@@ -18,7 +18,8 @@
 #include <source_location>
 #include <godot_cpp/variant/utility_functions.hpp>
 #if defined (_WIN32) || defined (WIN32)
-#include <libloaderapi.h>
+#include <windows.h>
+#undef GetGeoInfo
 #elif defined (__linux__) || (defined (__APPLE__) && defined (__MACH__))
 #include <dlfcn.h>
 #endif

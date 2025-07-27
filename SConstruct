@@ -9,6 +9,8 @@ env.Append(CPPPATH=["deps/Houdini/"])
 env.Append(CPPPATH=["src/"])
 
 compiler = env['CXX']
+if compiler == "$CC":
+    compiler = env['CC']
 match compiler:
     case "clang++":
         env.Append(CXXFLAGS=['-pthread', '-fexperimental-library', '-std=c++20', '-fexceptions'], LINKFLAGS=['-pthread', '-fexperimental-library'])
@@ -16,7 +18,8 @@ match compiler:
     case "g++":
         env.Append(CXXFLAGS=['-pthread', '-std=c++20', '-fexceptions'], LINKFLAGS=['-pthread'])
         pass
-    case "msvc":
+    case "cl":
+        env.Append(CXXFLAGS=['-EHsc', '-std:c++20'])
         pass
     case _:
         pass
