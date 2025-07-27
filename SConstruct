@@ -39,23 +39,21 @@ if scons_cache_path != None:
 
 debug_or_release = "release" if env["target"] == "template_release" else "debug"
 if debug_or_release == "debug":
-    match compiler:
-        case "msvc":
-            pass
-        case _:
-            env.Append(CXXFLAGS=["-DFORCE_DEBUG","-g"])
+    if(compiler == "cl"):
+        pass
+    else:
+        env.Append(CXXFLAGS=["-DFORCE_DEBUG","-g"])
+            
 
 platform = env["platform"]
 arch = env["arch"]
 dylib_suffix = ".so"
-match platform:
-    case "macos":
-        dylib_suffix = ".dylib"
-    case "windows":
-        dylib_suffix = ".dll"
-    case "linux":
-        dylib_suffix = ".so"
-
+if(platform == "macos"):
+    dylib_suffix = ".dylib"
+elif(platform == "windows"):
+    dylib_suffix = ".dll"
+elif(platform == "linux"):
+    dylib_suffix = ".so"
 if platform == "macos":
     if arch == "universal":
         arch = "arm64"
