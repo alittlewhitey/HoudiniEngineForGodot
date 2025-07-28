@@ -40,7 +40,7 @@ if scons_cache_path != None:
 debug_or_release = "release" if env["target"] == "template_release" else "debug"
 if debug_or_release == "debug":
     if(compiler == "cl"):
-        pass
+        env.Append(CXXFLAGS=["-Z7"])
     else:
         env.Append(CXXFLAGS=["-DFORCE_DEBUG","-g"])
             

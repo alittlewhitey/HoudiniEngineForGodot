@@ -21,6 +21,12 @@ jobs:
       - run: pip install scons
       - run: scons --version
       - run: scons target=editor
+      - run: zip -r HoudiniEngineForGodot-Macos.zip project/addons/HoudiniEngineForGodot
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: HoudiniEngineForGodot-Macos.zip
   Linux-Build:
     runs-on: ubuntu-latest
     steps:
@@ -30,6 +36,12 @@ jobs:
       - run: pip install scons
       - run: scons --version
       - run: scons target=editor
+      - run: zip -r HoudiniEngineForGodot-Linux.zip project/addons/HoudiniEngineForGodot
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: HoudiniEngineForGodot-Linux.zip
   Windows-Build:
     runs-on: windows-latest
     steps:
@@ -39,4 +51,29 @@ jobs:
       - run: pip install scons
       - run: scons --version
       - run: scons target=editor
+      - run: Compress-Archive -Path project/addons/HoudiniEngineForGodot -DestinationPath HoudiniEngineForGodot-Windows.zip
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: HoudiniEngineForGodot-Windows.zip
+  Release:
+    runs-on: ubuntu-latest
+    needs: [Linux-Build, Windows-Build, Mac-Build]
+    steps:
+      - name: Download
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - run: ls
+      - run: ls artifacts
+      - name: Release-Draft
+        uses: softprops/action-gh-release@v2
+        with: 
+          name: Release ${{github.ref_name}}
+          tag_name: ${{github.ref}}
+          draft: true
+          files: artifacts/**
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
         
