@@ -21,7 +21,9 @@ jobs:
       - run: pip install scons
       - run: scons --version
       - run: scons target=editor
-      - run: zip -r HoudiniEngineForGodot-Macos.zip project/addons/HoudiniEngineForGodot
+      - run: cd project/addons
+      - run: zip -r HoudiniEngineForGodot-Macos.zip HoudiniEngineForGodot
+      - run: cd ../..
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
@@ -36,7 +38,9 @@ jobs:
       - run: pip install scons
       - run: scons --version
       - run: scons target=editor
-      - run: zip -r HoudiniEngineForGodot-Linux.zip project/addons/HoudiniEngineForGodot
+      - run: cd project/addons
+      - run: zip -r HoudiniEngineForGodot-Linux.zip HoudiniEngineForGodot
+      - run: cd ../..
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
