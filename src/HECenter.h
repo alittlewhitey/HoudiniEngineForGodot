@@ -6,6 +6,7 @@
 #include <chrono>
 #include <variant>
 #include <filesystem>
+#include <concepts>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/classes/os.hpp>
 #include <godot_cpp/classes/ref.hpp>
@@ -360,6 +361,19 @@ public:
     }
     HAPI_Session* get_session(){
         return session->get_session();
+    }
+    template<typename T> requires std::derived_from<T,godot::Node>
+    T* makeTreeNode(std::string name, godot::Node* father, godot::Node::InternalMode p_internal = godot::Node::INTERNAL_MODE_DISABLED){
+        godot::Node* root = get_scene_root();
+        godot::Node* node = memnew(T());
+        node->set_name(name.c_str());
+        father->add_child(node,true,p_internal);
+        node->set_owner(root);
+        createdGDNodes.insert(node);
+        return (T*)node;
+    }
+    void removeTreeNode(godot::Node* treeNode){
+        treeNode->get_parent()->remove_child(treeNode);
     }
     int getPartCount(int nodeId){
         return partType[nodeId].size();
