@@ -19,6 +19,7 @@ project/addons/HoudiniEngineForGodot/bin/*
 *.gdextension.uid
 
 .sconsign.dblite
+.use_branch_master
 
 *.os
 compile_commands.json
