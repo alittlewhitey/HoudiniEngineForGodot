@@ -4,7 +4,6 @@ godot::Ref<HESession> HESession::switchSession(SessionType type){
     auto oldSession = getSession();
     if(oldSession.is_valid()&&oldSession->valid()){
         HECenter::get_singleton()->stopSession();
-        oldSession.unref();
     }
     HECenter::get_singleton()->startSession((::SessionType)type);
     return getSession();
@@ -43,6 +42,16 @@ bool HESession::connectNode(godot::Ref<HENode> connectingNode, int inputIdx, god
 }
 void HESession::deleteNode(godot::Ref<HENode> node){
     HECenter::get_singleton()->deleteNode(node->getId());
+}
+godot::Ref<HENode> HESession::inputMeshNode(godot::String nodeLabel, godot::Ref<godot::Mesh> mesh, godot::Ref<HENode> parentId){
+    int id,pId;
+    if(parentId.is_null()){
+        pId = -1;
+    }else{
+        pId = parentId->getId();
+    }
+    HECenter::get_singleton()->createInputNode(string_cast(nodeLabel),id,pId,mesh);
+    return HECenter::get_singleton()->findNodeRef(id);
 }
 HAPI_NodeType HENode::getType(){
     auto info = HECenter::get_singleton()->getNodeInfo(id);

@@ -17,6 +17,7 @@ src/gen
 project/.godot
 project/*.*
 project/addons/HoudiniEngineForGodot/bin/*
+HoudiniEngineForGodot.gdextension.uid
 
 .sconsign.dblite
 

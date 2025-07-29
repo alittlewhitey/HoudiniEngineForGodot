@@ -116,6 +116,7 @@ public:
     godot::Ref<HEAsset> loadHDA(godot::Ref<HDAResource> hda);
     godot::Ref<HEAsset> loadHDAExternal(godot::String hdaPath);
     godot::Ref<HENode> createNode(godot::String label, godot::String operatorName, godot::Ref<HENode> parentNode = {});
+    godot::Ref<HENode> inputMeshNode(godot::String nodeLabel, godot::Ref<godot::Mesh> mesh, godot::Ref<HENode> parentId = godot::Ref<HENode>());
     bool connectNode(godot::Ref<HENode> connectingNode, int inputIdx, godot::Ref<HENode> connectedNode, int connectedOutputIdx);
     void deleteNode(godot::Ref<HENode> node);
 };

@@ -55,6 +55,7 @@ class HECenter: public godot::Node{
     static void _bind_methods(){
         godot::ClassDB::bind_method(godot::D_METHOD("freeGDNode","node"),static_cast<bool(HECenter::*)(godot::Node*)>(&HECenter::freeGDNode));
         godot::ClassDB::bind_method(godot::D_METHOD("stopFreeGDNode","node"),static_cast<bool(HECenter::*)(godot::Node*)>(&HECenter::stopFreeGDNode));
+        godot::ClassDB::add_signal("HECenter", godot::MethodInfo("SessionStarted"));
     }
     void _notification(int what){
         switch(what){
@@ -83,7 +84,6 @@ class HECenter: public godot::Node{
         defaultMaterial->set_flag(godot::BaseMaterial3D::Flags::FLAG_ALBEDO_FROM_VERTEX_COLOR,true);
         materialRes[""] = defaultMaterial;
 
-        
         get_tree()->connect("node_removed",godot::Callable(this,"freeGDNode"));
         get_tree()->connect("node_added",godot::Callable(this,"stopFreeGDNode"));
 
@@ -278,6 +278,8 @@ public:
         return godot::ProjectSettings::get_singleton()->localize_path(string_cast(get_current_dylib_path()));
     }
     godot::Ref<HESession> getHESession(){
+        if(session.is_null())
+            session.instantiate();
         return session;
     }
     HAPI_NodeInfo getNodeInfo(int id){
@@ -360,6 +362,8 @@ public:
         }
     }
     HAPI_Session* get_session(){
+        if(session.is_null())
+            session.instantiate();
         return session->get_session();
     }
     template<typename T> requires std::derived_from<T,godot::Node>
@@ -389,8 +393,11 @@ public:
     }
     std::string getString(HAPI_StringHandle sh){
         if(sh == -1) return "";
-        char buffer[1024];
-        if(HoudiniApi::GetString(get_session(),sh,buffer,1024) != HAPI_RESULT_SUCCESS)
+        int bufLength;
+        if(HoudiniApi::GetStringBufLength(get_session(),sh,&bufLength) != HAPI_RESULT_SUCCESS)
+            return "";
+        std::string buffer(bufLength+1,'\0');
+        if(HoudiniApi::GetString(get_session(),sh,buffer.data(),1024) != HAPI_RESULT_SUCCESS)
             return "";
         return buffer;
     }
@@ -541,6 +548,8 @@ public:
                 printError("Houdini Engine API initialization failed: ",Result);
             }
         }
+        emit_signal("SessionStarted");
+
         return true;
     }
     bool stopSession(){

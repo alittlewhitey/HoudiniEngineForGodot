@@ -32,14 +32,16 @@ void initialize_module(ModuleInitializationLevel p_level){
 
     EditorPlugins::add_by_type<HDAImportPlugin>();
 
+    GDREGISTER_CLASS(HECenter)
 
-    GDREGISTER_CLASS(Bool);
-    GDREGISTER_CLASS(Int);
-    GDREGISTER_CLASS(Float);
-    GDREGISTER_CLASS(RefArray);
-    GDREGISTER_CLASS(RefDictionary);
-    GDREGISTER_CLASS(HAPI);
-    GDREGISTER_CLASS(HEBindEnum);
+    GDREGISTER_CLASS(Bool)
+    GDREGISTER_CLASS(Int)
+    GDREGISTER_CLASS(Float)
+    GDREGISTER_CLASS(RefArray)
+    GDREGISTER_CLASS(RefDictionary)
+    GDREGISTER_CLASS(HAPI)
+    GDREGISTER_CLASS(HEBindEnum)
+    GDREGISTER_CLASS(HESettings)
 
     GDREGISTER_ABSTRACT_CLASS(HENode)
     GDREGISTER_CLASS(HEAsset)
@@ -56,20 +58,20 @@ void initialize_module(ModuleInitializationLevel p_level){
     GDREGISTER_CLASS(HEGeometry)
     GDREGISTER_CLASS(HEMesh)
     GDREGISTER_CLASS(HEMultiMesh)
-
-    GDREGISTER_CLASS(HESettings)
-    GDREGISTER_CLASS(HECenter)
     auto center = HECenter::get_singleton();
+    auto settings = HESettings::get_singleton();
     // SceneTree *tree = Object::cast_to<SceneTree>(Engine::get_singleton()->get_main_loop());
     // tree->get_root()->add_child(center,false,godot::Node::InternalMode::INTERNAL_MODE_BACK);
     // center->set_owner(tree->get_root());
     Engine::get_singleton()->register_singleton("HECore", center);
+    Engine::get_singleton()->register_singleton("HESettings", settings);
 }
 void uninitialize_module(ModuleInitializationLevel p_level){
     if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
         return;
     }
     Engine::get_singleton()->unregister_singleton("HECore");
+    Engine::get_singleton()->unregister_singleton("HESettings");
 }
 extern "C" {
 // Initialization.

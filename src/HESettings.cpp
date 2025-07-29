@@ -1,28 +1,47 @@
 #include"HESettings.h"
 #include"HECenter.h"
-godot::Dictionary HESettings::get_cookOptions(){
-        godot::Dictionary dic;
-        HECenter* core = HECenter::get_singleton();
-        dic["splitGeosByGroup"] = cookOptions.splitGeosByGroup;
-        dic["splitGroup"] = string_cast(core->getString(cookOptions.splitGroupSH));
-        dic["splitGeosByAttribute"] = cookOptions.splitGeosByAttribute;
-        dic["splitAttr"] = string_cast(core->getString(cookOptions.splitAttrSH));
-        dic["maxVerticesPerPrimitive"] = cookOptions.maxVerticesPerPrimitive;
-        dic["refineCurveToLinear"] = cookOptions.refineCurveToLinear;
-        dic["curveRefineLOD"] = cookOptions.curveRefineLOD;
-        dic["clearErrorsAndWarnings"] = cookOptions.clearErrorsAndWarnings;
-        dic["cookTemplatedGeos"] = cookOptions.cookTemplatedGeos;
-        dic["splitPointsByVertexAttributes"] = cookOptions.splitPointsByVertexAttributes;
-        dic["packedPrimInstancingMode"] = cookOptions.packedPrimInstancingMode;
-        dic["handleBoxPartTypes"] = cookOptions.handleBoxPartTypes;
-        dic["handleSpherePartTypes"] = cookOptions.handleSpherePartTypes;
-        dic["checkPartChanges"] = cookOptions.checkPartChanges;
-        dic["cacheMeshTopology"] = cookOptions.cacheMeshTopology;
-        dic["preferOutputNodes"] = cookOptions.preferOutputNodes;
-        return dic;
+void HESettings::_notification(int what){
+    switch(what){
+    case NOTIFICATION_POSTINITIALIZE:{
+        godot::ProjectSettings::get_singleton()->connect("settings_changed",godot::Callable(this,"_settings_changed"));
+        HECenter::get_singleton()->connect("SessionStarted",godot::Callable(this,"_init"));
+        _init_settings();
+        _settings_changed();
+    }break;
+    case NOTIFICATION_PREDELETE:{
+        godot::ProjectSettings::get_singleton()->disconnect("settings_changed",godot::Callable(this,"_settings_changed"));
+    }break;
     }
+}
+godot::Dictionary HESettings::get_cookOptions(){
+    HECenter* core = HECenter::get_singleton();
+    if(core->getHESession().is_null() || !core->getHESession()->valid()){
+        return {};
+    }
+    godot::Dictionary dic;
+    dic["splitGeosByGroup"] = cookOptions.splitGeosByGroup;
+    dic["splitGroup"] = string_cast(core->getString(cookOptions.splitGroupSH));
+    dic["splitGeosByAttribute"] = cookOptions.splitGeosByAttribute;
+    dic["splitAttr"] = string_cast(core->getString(cookOptions.splitAttrSH));
+    dic["maxVerticesPerPrimitive"] = cookOptions.maxVerticesPerPrimitive;
+    dic["refineCurveToLinear"] = cookOptions.refineCurveToLinear;
+    dic["curveRefineLOD"] = cookOptions.curveRefineLOD;
+    dic["clearErrorsAndWarnings"] = cookOptions.clearErrorsAndWarnings;
+    dic["cookTemplatedGeos"] = cookOptions.cookTemplatedGeos;
+    dic["splitPointsByVertexAttributes"] = cookOptions.splitPointsByVertexAttributes;
+    dic["packedPrimInstancingMode"] = cookOptions.packedPrimInstancingMode;
+    dic["handleBoxPartTypes"] = cookOptions.handleBoxPartTypes;
+    dic["handleSpherePartTypes"] = cookOptions.handleSpherePartTypes;
+    dic["checkPartChanges"] = cookOptions.checkPartChanges;
+    dic["cacheMeshTopology"] = cookOptions.cacheMeshTopology;
+    dic["preferOutputNodes"] = cookOptions.preferOutputNodes;
+    return dic;
+}
 void HESettings::set_cookOptions(godot::Dictionary options){
     HECenter* core = HECenter::get_singleton();
+    if(core->getHESession().is_null() || !core->getHESession()->valid()){
+        return;
+    }
     if(options.has("splitGeosByGroup")){
         cookOptions.splitGeosByGroup = (bool)options["splitGeosByGroup"];
     }

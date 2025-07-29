@@ -16,24 +16,17 @@
 class HESettings: public godot::Object{
     GDCLASS(HESettings,godot::Object)
     friend class HECenter;
+    friend void initialize_module(godot::ModuleInitializationLevel);
     static void _bind_methods(){
+        godot::ClassDB::bind_method(godot::D_METHOD("_init"),&HESettings::_init);
         godot::ClassDB::bind_method(godot::D_METHOD("_settings_changed"),&HESettings::_settings_changed);
         godot::ClassDB::bind_method(godot::D_METHOD("set_logFilePath","path"),&HESettings::set_logFilePath);
     }
-    void _notification(int what){
-        switch(what){
-        case NOTIFICATION_POSTINITIALIZE:{
-            _init_settings();
-            godot::ProjectSettings::get_singleton()->connect("settings_changed",godot::Callable(this,"_settings_changed"));
-            _settings_changed();
-        }break;
-        case NOTIFICATION_PREDELETE:{
-            godot::ProjectSettings::get_singleton()->disconnect("settings_changed",godot::Callable(this,"_settings_changed"));
-        }break;
-        }
+    void _notification(int what);
+    void _init(){
+        _update_settings();
     }
     void _init_settings(){
-        
         auto tempDic = godot::Dictionary();
         godot::ProjectSettings* settings = godot::ProjectSettings::get_singleton();
         auto addSetting = [&tempDic,settings](godot::String name,godot::Variant value,godot::Variant::Type type,godot::PropertyHint hint = godot::PROPERTY_HINT_NONE,godot::String hint_string = ""){
@@ -143,11 +136,15 @@ class HESettings: public godot::Object{
                 return;
             }
         }
-        if(findenv("HFS"))
+        if(findenv("HFS")){
+            houdiniRootPath = houdiniPath;
+            if(useEnvLibPath)
+                initHoudini();
             return;
+        }
         // Add Environment
         std::string cmd = "\"" + hconfigPath + "\"";
-        std::string output = exec_output(cmd.c_str());
+        std::string output = exec_output(cmd);
         if(output.empty()){
             printError("Houdini environment is null");
             return;
@@ -189,9 +186,7 @@ class HESettings: public godot::Object{
             initHoudini();
     }
     void initHoudini(){
-        if(putenv((char*)"HAPI_CLIENT_NAME=godot")){
-            printWarning("Failed to change env \"HAPI_CLIENT_NAME\" to \"godot\".\n");
-        }
+        addenv("HAPI_CLIENT_NAME","godot");
         if(useEnvLibPath)
             hapiLib = HoudiniEnginePlatform::LoadLibHAPIL(libType == HAPI);
         else 
@@ -288,6 +283,7 @@ public:
         using namespace _houdini_engine_log;
         godot::Variant value;
         godot::String tempStr;
+        godot::Dictionary tempDic;
 
         value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/useEnvLibPath");
         if(useEnvLibPath != (bool)value){
@@ -299,23 +295,34 @@ public:
             godot::ProjectSettings::get_singleton()->set_setting("houdini/config/hapiLib",libType);
         }
 
-        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/houdiniRootDirPath");
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/houdiniRootPath");
         tempStr = string_cast(houdiniRootPath);
         if(tempStr != value){
-            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/houdiniRootDirPath",tempStr);
+            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/houdiniRootPath",tempStr);
         }
 
-        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/houdiniLibDirPath");
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/houdiniLibPath");
         tempStr = string_cast(houdiniLibPath);
         if(tempStr != value){
-            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/houdiniLibDirPath",tempStr);
+            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/houdiniLibPath",tempStr);
         }
 
         value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/logFilePath");
         tempStr = string_cast(logFilePath);
         if(tempStr != value){
-            set_logFilePath((godot::String)value);
             godot::ProjectSettings::get_singleton()->set_setting("houdini/config/logFilePath",tempStr);
+        }
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/sessionConfig");
+        tempDic = get_sessionConfig();
+        if(tempDic != value){
+            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/sessionConfig",tempDic);
+        }
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/cookOptions");
+        tempDic = get_cookOptions();
+        if(tempDic != value){
+            godot::ProjectSettings::get_singleton()->set_setting("houdini/config/cookOptions",tempDic);
         }
     }
 };
