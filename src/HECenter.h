@@ -397,7 +397,7 @@ public:
         if(HoudiniApi::GetStringBufLength(get_session(),sh,&bufLength) != HAPI_RESULT_SUCCESS)
             return "";
         std::string buffer(bufLength+1,'\0');
-        if(HoudiniApi::GetString(get_session(),sh,buffer.data(),1024) != HAPI_RESULT_SUCCESS)
+        if(HoudiniApi::GetString(get_session(),sh,buffer.data(),bufLength) != HAPI_RESULT_SUCCESS)
             return "";
         return buffer;
     }
