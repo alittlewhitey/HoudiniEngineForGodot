@@ -1,0 +1,14 @@
+[remap]
+
+importer="littlewhite.houdini_digital_assets"
+type="HDAResource"
+uid="uid://cdxbq8xvumgf5"
+path="res://.godot/imported/0_he_sop_box.hda-5cdd11d4e071f48eb18777ca42290a9a.res"
+
+[deps]
+
+source_file="res://hda/0_he_sop_box.hda"
+dest_files=["res://.godot/imported/0_he_sop_box.hda-5cdd11d4e071f48eb18777ca42290a9a.res"]
+
+[params]
+
