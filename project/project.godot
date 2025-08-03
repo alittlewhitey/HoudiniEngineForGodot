@@ -10,7 +10,7 @@ config_version=5
 
 [application]
 
-config/name="Houdini Engine For Godot"
+config/name="Houdini Engine For Godot(Test)"
 config/features=PackedStringArray("4.4", "Forward Plus")
 config/icon="res://icon.svg"
 
