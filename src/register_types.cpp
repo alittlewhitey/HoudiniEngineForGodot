@@ -26,6 +26,9 @@ void initialize_module(ModuleInitializationLevel p_level){
     if (p_level != MODULE_INITIALIZATION_LEVEL_EDITOR) {
         return;
     }
+    if(!godot::Engine::get_singleton()->is_editor_hint()){
+        return;
+    }
     GDREGISTER_CLASS(HDAResource)
     GDREGISTER_CLASS(HDAImporter)
     GDREGISTER_CLASS(HDAImportPlugin)
@@ -69,6 +72,9 @@ void initialize_module(ModuleInitializationLevel p_level){
 }
 void uninitialize_module(ModuleInitializationLevel p_level){
     if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
+        return;
+    }
+    if(!godot::Engine::get_singleton()->is_editor_hint()){
         return;
     }
     Engine::get_singleton()->unregister_singleton("HECore");

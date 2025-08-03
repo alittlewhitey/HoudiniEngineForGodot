@@ -11,6 +11,7 @@ config_version=5
 [application]
 
 config/name="Houdini Engine For Godot"
+run/main_scene="uid://cc3laxtlyi0og"
 config/features=PackedStringArray("4.4", "Forward Plus")
 config/icon="res://icon.svg"
 
@@ -19,4 +20,22 @@ config/icon="res://icon.svg"
 config/useEnvLibPath=false
 config/houdiniRootPath="/Applications/Houdini/Current/Frameworks/Houdini.framework/Resources"
 config/houdiniLibPath="/Applications/Houdini/Current/Frameworks/Houdini.framework/Libraries"
-config/logFilePath="res://log.txt"
+config/logFilePath="/Users/littlewhite/Root/Clones/HoudiniEngineForGodot/project/log.txt"
+config/cookOptions={
+"cacheMeshTopology": false,
+"checkPartChanges": false,
+"clearErrorsAndWarnings": false,
+"cookTemplatedGeos": false,
+"curveRefineLOD": 8.0,
+"handleBoxPartTypes": false,
+"handleSpherePartTypes": false,
+"maxVerticesPerPrimitive": 3,
+"packedPrimInstancingMode": 2,
+"preferOutputNodes": false,
+"refineCurveToLinear": true,
+"splitAttr": "Null string. Should never see this!",
+"splitGeosByAttribute": false,
+"splitGeosByGroup": false,
+"splitGroup": "Null string. Should never see this!",
+"splitPointsByVertexAttributes": false
+}

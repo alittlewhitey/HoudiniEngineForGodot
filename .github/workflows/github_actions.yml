@@ -2,8 +2,6 @@ name: Houdini Engine For Godot
 run-name: Pre-build for each platform
 on: 
   push:
-    branches:
-      - main
     tags:
       - "Release-v*.*.*"
 jobs:
