@@ -90,4 +90,7 @@ void HESettings::set_cookOptions(godot::Dictionary options){
     if(options.has("preferOutputNodes")){
         cookOptions.preferOutputNodes = (bool)options["preferOutputNodes"];
     }
+
+    if(autoCook)
+        HECenter::get_singleton()->cookSession();
 }

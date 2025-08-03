@@ -168,3 +168,9 @@ godot::Ref<HEGeometry> HESopNode::getGeometry(int partId){
     }
     return {};
 }
+godot::Ref<HEImage> HECopNode::getPNGImage(){
+    return HEImage::make_image(id);
+}
+godot::Ref<godot::Image> HEImage::bakeAsImage(){
+    return HECenter::get_singleton()->getImageRef(nodeId);
+}

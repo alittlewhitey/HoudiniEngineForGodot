@@ -16,6 +16,7 @@
 #include <godot_cpp/classes/multi_mesh.hpp>
 #include <godot_cpp/classes/array_mesh.hpp>
 #include <godot_cpp/classes/box_mesh.hpp>
+#include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/editor_interface.hpp>
@@ -88,13 +89,12 @@ class HECenter: public godot::Node{
         get_tree()->connect("node_added",godot::Callable(this,"stopFreeGDNode"));
     }
     void process(){
-        if(sessionOpened&&HESettings::get_singleton()->autoCook){
+        if(sessionOpened){
             if(focused != godot::DisplayServer::get_singleton()->window_is_focused()){
                 focused = !focused;
                 if(focused)
                     sessionCookSync();
             }
-
             syncCamera();
         }
     }
@@ -106,6 +106,7 @@ class HECenter: public godot::Node{
         if(sessionOpened){
             stopSession();
         }
+        cleanup();
         using namespace std::chrono_literals;
         freeTimeout = 0ms;
         std::this_thread::sleep_for(HESettings::defaultFreeTimeout<1s?HESettings::defaultFreeTimeout:1000ms);
@@ -146,13 +147,17 @@ class HECenter: public godot::Node{
     //      nodeId  instancerPartId   instancedPartId     multiMesh
     std::map<int,std::map<int,std::map<int,godot::Ref<godot::MultiMesh>>>> packedPrimMesh;
     //      nodeId      partId      sharedMesh
-    std::map<int,std::map<int,godot::Ref<godot::ArrayMesh>>> meshRef;
+    std::map<int,std::map<int,godot::Ref<godot::ArrayMesh>>> meshRefs;
     //      nodeId       partId                 Point-Attrib                Vertex-Attrib               Prim-Attrib                     Detail-Attrib    
     std::map<int,std::map<int,std::tuple<std::vector<HAPI_AttributeInfo>,std::vector<HAPI_AttributeInfo>,std::vector<HAPI_AttributeInfo>,std::vector<HAPI_AttributeInfo>>>> attributes;
     //      nodeId      partId      materialResPath
     std::map<int,std::map<int,std::vector<std::string>>> materials;
     //      nodeId      partId       if-allSame     material-nodeIds
     std::map<int,std::map<int,std::pair<bool,std::vector<int>>>> materialIds;
+    //      nodeId      info                imageData
+    std::map<int,std::pair<HAPI_ImageInfo,godot::PackedByteArray>> images;
+    //
+    std::map<int, godot::Ref<godot::Image>> imageRefs;
     //      nodeId  cookCount
     std::map<int,int> cookCounts;
     // made by user
@@ -161,6 +166,10 @@ class HECenter: public godot::Node{
     // for `freeGDNode` and `stopFreeGDNode`
     std::set<godot::Node*> createdGDNodes;
     std::map<godot::Node*, std::shared_ptr<std::jthread>> freeGDNodeTasks;
+
+    void cleanup(){
+
+    }
 
 //Functions:
     void _init_hserver(){
@@ -348,6 +357,8 @@ public:
             }
         }
         parameters[nodeId][name] = std::move(value);
+        if(HESettings::get_singleton()->autoCook)
+            cookNode(nodeId);
     }
     std::vector<std::string> getParameterList(int nodeId){
         std::vector<std::string> res;
@@ -555,6 +566,14 @@ public:
 
         return true;
     }
+    bool cookSession(){
+        bool suc = true;
+        for(auto a : nodeIds){
+            if(!cookNode(a))
+                suc = false;
+        }
+        return suc;
+    }
     bool stopSession(){
         if(sessionOpened){
             if(HoudiniApi::Cleanup(get_session()) != HAPI_RESULT_SUCCESS){
@@ -577,7 +596,7 @@ public:
         parameters.clear();
         partType.clear();
         meshGeometries.clear();
-        meshRef.clear();
+        meshRefs.clear();
         materials.clear();
         materialIds.clear();
         attributes.clear();
@@ -627,15 +646,12 @@ public:
         auto genRes = [] <typename T> () -> godot::Ref<HENode> requires std::derived_from<T,HENode>||std::same_as<T,HENode> {
             godot::Ref<T> temp;
             temp.instantiate();
-            std::cerr << __LINE__ << '\t' << string_cast(temp->get_class()) << std::endl;
             return temp;
         };
         switch(type){
             case HAPI_NODETYPE_OBJ:
-                std::cerr << __LINE__ << std::endl;
                 return genRes.operator()<HEObjNode>();
             case HAPI_NODETYPE_SOP:
-                std::cerr << __LINE__ << std::endl;
                 return genRes.operator()<HESopNode>();
             case HAPI_NODETYPE_CHOP:
                 return genRes.operator()<HEChopNode>();
@@ -652,7 +668,6 @@ public:
             case HAPI_NODETYPE_TOP:
                 return genRes.operator()<HETopNode>();
             default:
-                std::cerr << __LINE__ << std::endl;
                 return genRes.operator()<HENode>();
         }
     }
@@ -670,7 +685,6 @@ public:
         nodeIds.insert(id);
         auto info = getNodeInfo(id);
         godot::Ref<HENode> nodeRef = makeTypeNode(info.type);
-        std::cerr << __LINE__ << '\t' << string_cast(nodeRef->get_class()) << std::endl;
         nodeRefs.insert({id,nodeRef});
         return true;
     }
@@ -685,6 +699,9 @@ public:
         }else{
             printFile("Success connect node ",nodeId," with ",node_to_connect);
         }
+
+        if(HESettings::get_singleton()->autoCook)
+            cookNode(nodeId);
         return true;
     }
     bool disconnectNode(int nodeId, int inputIndex){
@@ -698,6 +715,9 @@ public:
         }else{
             printFile("Success dicconnect node ",nodeId,"'s port ",inputIndex);
         }
+
+        if(HESettings::get_singleton()->autoCook)
+            cookNode(nodeId);
         return true;
     }
     // Return input node id
@@ -740,7 +760,18 @@ public:
                 printError("Cook failed: ",HoudiniEngineUtility::getLastCookError().c_str());
             }else{
                 cookCounts[id]++;
-                updateInternalData(id);
+                HAPI_NodeInfo info = getNodeInfo(id);
+                switch(info.type){
+                    case HAPI_NODETYPE_SOP:
+                        updateSopData(id);
+                        break;
+                    case HAPI_NODETYPE_COP:
+                        updateCopData(id);
+                        break;
+                    default:
+                        getParameters(id);
+                        break;
+                }
             }
             cookStatus[id] = true;
         });
@@ -764,7 +795,7 @@ public:
         partType.erase(id);
         meshGeometries.erase(id);
         packedPrimData.erase(id);
-        meshRef.erase(id);
+        meshRefs.erase(id);
         materials.erase(id);
         materialIds.erase(id);
         attributes.erase(id);
@@ -844,6 +875,30 @@ public:
         }
         return true;
     };
+
+    void updateSopData(int nodeId){
+        getParameters(nodeId);
+        getGeometry(nodeId);
+        getMaterial(nodeId);
+        for(auto& a : partType[nodeId]){
+            switch(a.second){
+                case PartType::Mesh:
+                    createMeshRes(nodeId,a.first);
+                    break;
+                case PartType::Instancer:
+                    createMultiMeshRes(nodeId,a.first);
+                    break;
+                default:
+                    printWarning("Unsupported part type: ",(int)a.second);
+                    break;
+            }
+        }
+    }
+    void updateCopData(int nodeId){
+        getParameters(nodeId);
+        getImageData(nodeId);
+        createImageRes(nodeId);
+    }
     //Only for sop node
     bool checkGeometryChange(int nodeId){
         HAPI_NodeInfo nodeInfo = getNodeInfo(nodeId);
@@ -1084,24 +1139,6 @@ public:
     bool isInstanceNode(int nodeId){
         return packedPrimData.find(nodeId) != packedPrimData.end();
     }
-    void updateInternalData(int nodeId){
-        getParameters(nodeId);
-        getGeometry(nodeId);
-        getMaterial(nodeId);
-        for(auto& a : partType[nodeId]){
-            switch(a.second){
-                case PartType::Mesh:
-                    createMeshRes(nodeId,a.first);
-                    break;
-                case PartType::Instancer:
-                    createMultiMeshRes(nodeId,a.first);
-                    break;
-                default:
-                    printWarning("Unsupported part type in updateInternalData: ",(int)a.second);
-                    break;
-            }
-        }
-    }
     godot::Ref<godot::Mesh> createMeshRes(int nodeId, int partId){
         if(meshGeometries.find(nodeId) == meshGeometries.end()||meshGeometries[nodeId].empty()){
             return {};
@@ -1242,7 +1279,7 @@ public:
             st->add_vertex(pos[vertexs[i]]);
         }
         st->commit(arr_mesh);
-        auto& ref = meshRef[nodeId][partId];
+        auto& ref = meshRefs[nodeId][partId];
         if(ref.is_null())
             ref.instantiate();
         ref->clear_surfaces();
@@ -1254,7 +1291,7 @@ public:
         return ref;
     }
     godot::Ref<godot::Mesh> getMeshRef(int nodeId, int partId){
-        return meshRef[nodeId][partId];
+        return meshRefs[nodeId][partId];
     }
     std::map<int,godot::Ref<godot::MultiMesh>> createMultiMeshRes(int nodeId, int partId){
         if(packedPrimData.find(nodeId) == packedPrimData.end()||packedPrimData[nodeId].empty()){
@@ -1282,7 +1319,7 @@ public:
                         multiMesh.instantiate();
                         multiMesh->set_use_colors(true);
                         multiMesh->set_transform_format(godot::MultiMesh::TRANSFORM_3D);
-                        multiMesh->set_mesh(meshRef[nodeId][instancePartIds[i]]);
+                        multiMesh->set_mesh(meshRefs[nodeId][instancePartIds[i]]);
                     }
                     int count = multiMesh->get_instance_count();
                     multiMesh->set_instance_count(count+1);
@@ -1293,7 +1330,7 @@ public:
                 //         multiMesh.instantiate();
                 //         multiMesh->set_use_colors(true);
                 //         multiMesh->set_transform_format(godot::MultiMesh::TRANSFORM_3D);
-                //         //multiMesh->set_mesh(meshRef[nodeId][instancePartIds[i]]);
+                //         //multiMesh->set_mesh(meshRefs[nodeId][instancePartIds[i]]);
 
                 //     }
                 //     //TODO:
@@ -1308,6 +1345,60 @@ public:
     std::map<int,godot::Ref<godot::MultiMesh>> getMultiMeshRef(int nodeId, int partId){
         return packedPrimMesh[nodeId][partId];
     }
+    void getImageData(int nodeId){
+        if (HoudiniApi::RenderCOPToImage(get_session(), nodeId) != HAPI_RESULT_SUCCESS)
+        {
+            printError("Failed to render COP node: ", HoudiniEngineUtility::getLastError().c_str());
+            return;
+        }
+        HAPI_ImageInfo imageInfo;
+        if (HoudiniApi::GetImageInfo(get_session(), nodeId, &imageInfo) != HAPI_RESULT_SUCCESS)
+        {
+            printError("Failed to get image info from COP node: ", HoudiniEngineUtility::getLastError().c_str());
+            return;
+        }
+        int bufSize = 0;
+        if (HoudiniApi::ExtractImageToMemory(get_session(),nodeId,"png","C A", &bufSize) != HAPI_RESULT_SUCCESS)
+        {
+            printError("Failed to extract image from COP node: ", HoudiniEngineUtility::getLastError().c_str());
+            return;
+        }
+        godot::PackedByteArray buf;
+        buf.resize(bufSize);
+        if(HoudiniApi::GetImageMemoryBuffer(get_session(),nodeId, (char*)buf.ptrw(), bufSize) != HAPI_RESULT_SUCCESS)
+        {
+            printError("Failed to get image data from memory: ", HoudiniEngineUtility::getLastError().c_str());
+            return;
+        }
+        images[nodeId] = {std::move(imageInfo), std::move(buf)};
+    }
+    godot::Ref<godot::Image> createImageRes(int nodeId){
+        if (images.find(nodeId) == images.end())
+        {
+            getImageData(nodeId);
+            if (images.find(nodeId) == images.end())
+                return {};
+        }
+        auto& buffer = images[nodeId].second;
+        if (buffer.is_empty())
+            return {};
+
+        godot::Ref<godot::Image> image;
+        image.instantiate();
+
+        if (image->load_png_from_buffer(buffer) != godot::Error::OK)
+        {
+            printError("Failed to load image from buffer for node: ", nodeId);
+            return {};
+        }
+
+        imageRefs[nodeId] = image;
+        return image;
+    }
+    godot::Ref<godot::Image> getImageRef(int nodeId){
+        return imageRefs[nodeId];
+    }
+    
     bool createInputNode(std::string nodeLabel, int& id, int parentId, godot::Ref<godot::Mesh> mesh){
         if(!sessionOpened){
             printError("Failed to create input node: The session is invalid.");
@@ -1324,6 +1415,8 @@ public:
             auto info = getNodeInfo(id);
             godot::Ref<HENode> nodeRef = makeTypeNode(info.type);
             nodeRefs.insert({id,nodeRef});
+            if(HESettings::get_singleton()->autoCook)
+                cookNode(id);
         }else{
             deleteNode(id);
             printError("Failed to init input node.");

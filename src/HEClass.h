@@ -161,6 +161,7 @@ public:
     HAPI_NodeType getType(){
         return HAPI_NODETYPE_COP;
     }
+    godot::Ref<HEImage> getPNGImage();
 };
 class HEShopNode: public HENode{
     GDCLASS(HEShopNode, HENode)
@@ -269,5 +270,21 @@ public:
         return multimesh;
     }
     godot::Dictionary bakeAsMultiMesh();
+};
+class HEImage: public godot::RefCounted{
+    GDCLASS(HEImage, godot::RefCounted)
+    static void _bind_methods(){
+        godot::ClassDB::bind_method(godot::D_METHOD("bakeAsImage"),&HEImage::bakeAsImage);
+    }
+    friend class HECenter;
+    int nodeId;
+public:
+    static godot::Ref<HEImage> make_image(int nodeId){
+        godot::Ref<HEImage> mesh;
+        mesh.instantiate();
+        mesh->nodeId = nodeId;
+        return mesh;
+    }
+    godot::Ref<godot::Image> bakeAsImage();
 };
 #endif
