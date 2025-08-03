@@ -8,6 +8,7 @@
 #include <godot_cpp/classes/ref_counted.hpp>
 #include <godot_cpp/classes/mesh.hpp>
 #include <godot_cpp/classes/multi_mesh.hpp>
+#include <godot_cpp/classes/image.hpp>
 #include <HoudiniApi.h>
 #include <HoudiniEngineUtility.h>
 #include <HoudiniEnginePlatform.h>
@@ -151,10 +152,12 @@ public:
     int getGeometryCount();
     godot::Ref<HEGeometry> getGeometry(int partId);
 };
+class HEImage;
 class HECopNode: public HENode{
     GDCLASS(HECopNode, HENode)
     static void _bind_methods(){
         godot::ClassDB::bind_method(godot::D_METHOD("getType"),&HECopNode::getType);
+        godot::ClassDB::bind_method(godot::D_METHOD("getPNGImage"),&HECopNode::getPNGImage);
     }
     friend class HECenter;
 public:

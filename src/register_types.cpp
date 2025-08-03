@@ -58,6 +58,7 @@ void initialize_module(ModuleInitializationLevel p_level){
     GDREGISTER_CLASS(HEGeometry)
     GDREGISTER_CLASS(HEMesh)
     GDREGISTER_CLASS(HEMultiMesh)
+    GDREGISTER_CLASS(HEImage)
     auto center = HECenter::get_singleton();
     auto settings = HESettings::get_singleton();
     // SceneTree *tree = Object::cast_to<SceneTree>(Engine::get_singleton()->get_main_loop());

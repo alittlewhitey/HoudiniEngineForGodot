@@ -321,8 +321,6 @@ public:
         return ids;
     }
     bool getCookStatus(int nodeId){
-        if(cookStatus.find(nodeId) == cookStatus.end())
-            cookStatus[nodeId] = true;
         return cookStatus[nodeId];
     }
     std::vector<std::variant<int64_t,double,std::string>> getParameter(int nodeId, std::string name){
