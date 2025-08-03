@@ -137,13 +137,13 @@ godot::PackedStringArray HENode::getParameterList(){
     return arr;
 }
 godot::Ref<godot::Mesh> HEMesh::bakeAsMesh(){
-    return HECenter::get_singleton()->getMeshRef(nodeId,partId);
+    return HECenter::get_singleton()->getMeshRef(nodeId,partId)->duplicate(true);
 }
 godot::Dictionary HEMultiMesh::bakeAsMultiMesh(){
     godot::Dictionary res;
     auto arr = HECenter::get_singleton()->getMultiMeshRef(nodeId,partId);
     for(auto [id, ref]: arr){
-        res[id] = ref;
+        res[id] = (godot::Ref<godot::MultiMesh>)ref->duplicate(true);
     }
     return res;
 }
@@ -172,5 +172,5 @@ godot::Ref<HEImage> HECopNode::getPNGImage(){
     return HEImage::make_image(id);
 }
 godot::Ref<godot::Image> HEImage::bakeAsImage(){
-    return HECenter::get_singleton()->getImageRef(nodeId);
+    return HECenter::get_singleton()->getImageRef(nodeId)->duplicate(true);
 }

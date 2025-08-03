@@ -17,7 +17,10 @@ func _enter_tree() -> void:
 		print(node.getType(), node.get_class())
 		print(node.getGeometryCount())
 		print((node.getGeometry(0) as HEMesh).bakeAsMesh())
+		$MeshInstance3D.mesh = (node.getGeometry(0) as HEMesh).bakeAsMesh()
 "
 
 [node name="Node3D" type="Node3D"]
 script = SubResource("GDScript_4xowi")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
