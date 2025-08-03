@@ -5,7 +5,7 @@ on:
     branches:
       - main
     tags:
-      - "Release v*.*.*"
+      - "Release-v*.*.*"
 jobs:
   Mac-Build:
     runs-on: macos-latest
