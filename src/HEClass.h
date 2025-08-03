@@ -34,6 +34,7 @@ class HENode: public godot::RefCounted{
         godot::ClassDB::add_property("HENode",godot::PropertyInfo(godot::Variant::Type::INT,"id"),"setId","getId");
         godot::ClassDB::bind_method(godot::D_METHOD("getType"),&HENode::getType);
         godot::ClassDB::bind_method(godot::D_METHOD("cook"),&HENode::cook);
+        godot::ClassDB::bind_method(godot::D_METHOD("isCookFinished"),&HENode::isCookFinished);
         godot::ClassDB::bind_method(godot::D_METHOD("getParameter","name"),&HENode::getParameter);
         godot::ClassDB::bind_method(godot::D_METHOD("setParameter","name","value"),&HENode::setParameter);
         godot::ClassDB::bind_method(godot::D_METHOD("getParameterList"),&HENode::getParameterList);
@@ -50,6 +51,7 @@ public:
     }
     HAPI_NodeType getType();
     void cook();
+    bool isCookFinished();
     godot::Variant getParameter(godot::String name);
     void setParameter(godot::String name, godot::Variant value);
     godot::PackedStringArray getParameterList();
@@ -57,24 +59,25 @@ public:
 class HEAsset: public godot::RefCounted{
     GDCLASS(HEAsset,godot::RefCounted)
     static void _bind_methods(){
-        godot::ClassDB::bind_method(godot::D_METHOD("get_ownedNodeIds"),&HEAsset::get_ownedNodeIds);
-        godot::ClassDB::bind_method(godot::D_METHOD("set_ownedNodeIds","__"),&HEAsset::set_ownedNodeIds);
-        godot::ClassDB::add_property("HEAsset",godot::PropertyInfo(godot::Variant::Type::PACKED_INT32_ARRAY,"ownedNodeIds"),"set_ownedNodeIds","get_ownedNodeIds");
+        godot::ClassDB::bind_method(godot::D_METHOD("get_ownedNodeOperators"),&HEAsset::get_ownedNodeOperators);
+        godot::ClassDB::bind_method(godot::D_METHOD("set_ownedNodeOperators","__"),&HEAsset::set_ownedNodeOperators);
+        godot::ClassDB::add_property("HEAsset",godot::PropertyInfo(godot::Variant::Type::PACKED_STRING_ARRAY,"ownedNodeOperators"),"set_ownedNodeOperators","get_ownedNodeOperators");
     }
     friend class HECenter;
     friend class HESession;
 
     HAPI_AssetLibraryId id;
     godot::Ref<HDAResource> res;
-    std::vector<int> ownedNodeIds;
-    godot::PackedInt32Array get_ownedNodeIds(){
-        godot::PackedInt32Array arr;
-        for(auto a : ownedNodeIds){
+    std::vector<godot::String> ownedNodeOperators;
+    godot::PackedStringArray get_ownedNodeOperators(){
+        godot::PackedStringArray arr;
+        for(auto a : ownedNodeOperators){
             arr.push_back(a);
         }
         return arr;
     }
-    void set_ownedNodeIds(godot::Array){}
+    void set_ownedNodeOperators(godot::Array){}
+
 };
 class HESession: public godot::RefCounted{
     GDCLASS(HESession,godot::RefCounted)

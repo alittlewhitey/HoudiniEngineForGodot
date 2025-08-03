@@ -13,3 +13,10 @@ config_version=5
 config/name="Houdini Engine For Godot"
 config/features=PackedStringArray("4.4", "Forward Plus")
 config/icon="res://icon.svg"
+
+[houdini]
+
+config/useEnvLibPath=false
+config/houdiniRootPath="/Applications/Houdini/Current/Frameworks/Houdini.framework/Resources"
+config/houdiniLibPath="/Applications/Houdini/Current/Frameworks/Houdini.framework/Libraries"
+config/logFilePath="res://log.txt"

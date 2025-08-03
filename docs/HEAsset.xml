@@ -7,7 +7,7 @@
 	<tutorials>
 	</tutorials>
 	<members>
-		<member name="ownedNodeIds" type="PackedInt32Array" setter="set_ownedNodeIds" getter="get_ownedNodeIds" default="PackedInt32Array()">
+		<member name="ownedNodeOperators" type="PackedStringArray" setter="set_ownedNodeOperators" getter="get_ownedNodeOperators" default="PackedStringArray()">
 		</member>
 	</members>
 </class>

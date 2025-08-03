@@ -60,6 +60,9 @@ HAPI_NodeType HENode::getType(){
 void HENode::cook(){
     HECenter::get_singleton()->cookNode(id);
 }
+bool HENode::isCookFinished(){
+    return HECenter::get_singleton()->getCookStatus(id);
+}
 godot::Variant HENode::getParameter(godot::String name){
     auto value = HECenter::get_singleton()->getParameter(id,string_cast(name));
     if(value.size() == 1){

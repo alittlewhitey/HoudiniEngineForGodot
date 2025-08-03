@@ -62,6 +62,10 @@ class HESettings: public godot::Object{
         addSetting("houdini/config/sessionConfig",get_sessionConfig(),godot::Variant::DICTIONARY);
 
         addSetting("houdini/config/cookOptions",default_cookOptions(),godot::Variant::DICTIONARY);
+
+        addSetting("houdini/option/autoCook",false,godot::Variant::BOOL);
+
+        addSetting("houdini/option/useCookingThread",true,godot::Variant::BOOL);
     }
     void _settings_changed(){
         using namespace _houdini_engine_log;
@@ -101,6 +105,12 @@ class HESettings: public godot::Object{
 
         value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/cookOptions");
         set_cookOptions((godot::Dictionary)value);
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/option/autoCook");
+        autoCook = (bool)value;
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/option/useCookingThread");
+        useCookingThread = (bool)value;
     }
     void set_logFilePath(godot::String path){
         using namespace _houdini_engine_log;
@@ -273,7 +283,7 @@ public:
         int newSessionTimeoutSec = DefaultNewSessionTimeoutSec;
     } sessionConfig;
     HAPI_CookOptions cookOptions;
-    bool autoCook = 1;
+    bool autoCook = 0;
     bool useCookingThread = true;
     
 
@@ -323,6 +333,16 @@ public:
         tempDic = get_cookOptions();
         if(tempDic != value){
             godot::ProjectSettings::get_singleton()->set_setting("houdini/config/cookOptions",tempDic);
+        }
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/option/autoCook");
+        if(autoCook != (bool)value){
+            godot::ProjectSettings::get_singleton()->set_setting("houdini/option/autoCook",autoCook);
+        }
+
+        value = godot::ProjectSettings::get_singleton()->get_setting("houdini/option/useCookingThread");
+        if(useCookingThread != (bool)value){
+            godot::ProjectSettings::get_singleton()->set_setting("houdini/option/useCookingThread",useCookingThread);
         }
     }
 };

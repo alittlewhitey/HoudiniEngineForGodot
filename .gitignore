@@ -28,5 +28,6 @@ compile_commands.json
 design.gd 
 TodoList.txt
 test.py
+log.txt
 *.o
 *.obj

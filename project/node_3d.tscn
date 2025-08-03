@@ -6,6 +6,17 @@ extends Node3D
 
 func _enter_tree() -> void:
 	HESession.switchSession(HESession.InProcess)
+	var asset = HESession.getSession().loadHDA(load(\"res://hda/0_he_sop_box.hda\"))
+	for operator in asset.ownedNodeOperators:
+		var node = HESession.getSession().createNode(operator, operator) as HESopNode
+		node.cook()
+		while !node.isCookFinished():
+			await get_tree().create_timer(0.2).timeout
+		print(node)
+		print(operator)
+		print(node.getType(), node.get_class())
+		print(node.getGeometryCount())
+		print((node.getGeometry(0) as HEMesh).bakeAsMesh())
 "
 
 [node name="Node3D" type="Node3D"]
