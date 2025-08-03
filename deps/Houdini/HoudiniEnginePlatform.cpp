@@ -48,31 +48,57 @@ HoudiniEnginePlatform::LoadLibHAPIL(bool useHAPI, std::string libDir)
 {
     void* libHAPI = nullptr;
 #if defined(WIN32) || defined(_WIN32)
-    // Look up the HFS environment variable
+    // // Look up the HFS environment variable
 
-    //Changed for non-msvcr90 environment
-    // char *buf;
-    // size_t len;
-    const char *buf = getenv("HFS");
-    //if (_dupenv_s(&buf, &len, "HFS") == 0 && buf != nullptr)
-    if(buf != nullptr)
+    // //Changed for non-msvcr90 environment
+    // // char *buf;
+    // // size_t len;
+    // const char *buf = getenv("HFS");
+    // //if (_dupenv_s(&buf, &len, "HFS") == 0 && buf != nullptr)
+    // if(buf != nullptr)
+    // {
+    //     std::string libHAPI_dir(buf);
+    //     //free(buf);
+
+    //     libHAPI_dir.append("/bin/");
+    //     if (SetDllDirectory(libHAPI_dir.c_str()))
+    //     {
+    //         if(useHAPI)
+    //         libHAPI = LoadLibrary(HAPI_LIB_OBJECT_WINDOWS);
+    //         else
+    //             libHAPI = LoadLibrary(HAPIL_LIB_OBJECT_WINDOWS);
+    //     }
+    // }
+    // else
+    // {
+    //     std::cerr << "Unable to retrieve the value of the HFS environment variable." << std::endl;
+    //     return nullptr;
+    // }
+    std::string libHAPI_dir = libDir;
+
+    // If libDir is not provided, fall back to HFS environment variable.
+    if (libHAPI_dir.empty())
     {
-        std::string libHAPI_dir(buf);
-        //free(buf);
-
-        libHAPI_dir.append("/bin/");
-        if (SetDllDirectory(libHAPI_dir.c_str()))
+        const char *buf = getenv("HFS");
+        if(buf != nullptr)
         {
-            if(useHAPI)
-            libHAPI = LoadLibrary(HAPI_LIB_OBJECT_WINDOWS);
-            else
-                libHAPI = LoadLibrary(HAPIL_LIB_OBJECT_WINDOWS);
+            libHAPI_dir = std::string(buf) + "/bin";
+        }
+        else
+        {
+            std::cerr << "HoudiniEngine: libDir was not specified and the HFS environment variable could not be found." << std::endl;
+            return nullptr;
         }
     }
-    else
+
+    // Use the modern and safer AddDllDirectory approach.
+    DLL_DIRECTORY_COOKIE cookie = AddDllDirectory(std::wstring(libHAPI_dir.begin(), libHAPI_dir.end()).c_str());
+    if (cookie)
     {
-        std::cerr << "Unable to retrieve the value of the HFS environment variable." << std::endl;
-        return nullptr;
+        const char* lib_name = useHAPI ? HAPI_LIB_OBJECT_WINDOWS : HAPIL_LIB_OBJECT_WINDOWS;
+        libHAPI = LoadLibraryExA(lib_name, NULL, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
+        // We can remove the path from the search list now that we are done.
+        RemoveDllDirectory(cookie);
     }
 #elif __linux__
     // Location of libHAPI on Mac & Linux added to the application's RPATH
