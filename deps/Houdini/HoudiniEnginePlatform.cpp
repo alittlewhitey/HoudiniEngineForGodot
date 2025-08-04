@@ -61,12 +61,12 @@ HoudiniEnginePlatform::LoadLibHAPIL(bool useHAPI, std::string libDir)
         //free(buf);
 
         libHAPI_dir.append("/bin/");
-        if (SetDllDirectory(libHAPI_dir.c_str()))
+        if (SetDllDirectoryA(libHAPI_dir.c_str()))
         {
             if(useHAPI)
-            libHAPI = LoadLibrary(HAPI_LIB_OBJECT_WINDOWS);
+            libHAPI = LoadLibraryA(HAPI_LIB_OBJECT_WINDOWS);
             else
-                libHAPI = LoadLibrary(HAPIL_LIB_OBJECT_WINDOWS);
+                libHAPI = LoadLibraryA(HAPIL_LIB_OBJECT_WINDOWS);
         }
     }
     else
