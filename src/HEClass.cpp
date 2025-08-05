@@ -183,6 +183,10 @@ int HESopNode::getGeometryCount(){
 }
 godot::Ref<HEGeometry> HESopNode::getGeometry(int partId){
     checkSession();
+    if(partId >= getGeometryCount()){
+        printError("Error: Geometry id out of range");
+        return {};
+    }
     auto* core = HECenter::get_singleton();
     switch(core->getPartType(id,partId)){
         case PartType::Mesh:{

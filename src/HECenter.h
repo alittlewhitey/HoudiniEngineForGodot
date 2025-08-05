@@ -411,6 +411,8 @@ public:
         return partType[nodeId].size();
     }
     PartType getPartType(int nodeId, int partId){
+        if(partType[nodeId].find(partId) == partType[nodeId].end())
+            return PartType::Invalid;
         return partType[nodeId][partId];
     }
     godot::Ref<HENode> findNodeRef(int nodeId){
