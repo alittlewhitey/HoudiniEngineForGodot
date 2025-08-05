@@ -89,7 +89,7 @@ class HECenter: public godot::Node{
         get_tree()->connect("node_added",godot::Callable(this,"stopFreeGDNode"));
     }
     void process(){
-        if(sessionOpened){
+        if(getHESession()->valid()){
             if(focused != godot::DisplayServer::get_singleton()->window_is_focused()){
                 focused = !focused;
                 if(focused)
@@ -103,7 +103,7 @@ class HECenter: public godot::Node{
         get_tree()->disconnect("node_added",godot::Callable((godot::Object*)this,"stopFreeGDNode"));
     } 
     void predel(){
-        if(sessionOpened){
+        if(getHESession()->valid()){
             stopSession();
         }
         using namespace std::chrono_literals;
@@ -114,7 +114,6 @@ class HECenter: public godot::Node{
 
 //Configs:
 
-    bool sessionOpened = false;
     bool focused = false;
     std::chrono::milliseconds freeTimeout = HESettings::defaultFreeTimeout;
     SessionType sessionType = SessionType::InProcess;
@@ -167,7 +166,6 @@ class HECenter: public godot::Node{
     std::map<godot::Node*, std::shared_ptr<std::jthread>> freeGDNodeTasks;
 
     void cleanup(){
-        sessionOpened = false;
         nodeIds.clear();
         nodeRefs.clear();
         assetRefs.clear();
@@ -457,7 +455,7 @@ public:
     }
     bool startSession(SessionType type,bool use_cooking_thread = true){
         using namespace _houdini_engine_log;
-        if(sessionOpened){
+        if(getHESession()->valid()){
             printFile("Now session is valid.\n");
             return true;
         }
@@ -580,7 +578,6 @@ public:
             printError("Houdini Engine Session failed to start");
             return false;
         }
-        sessionOpened = true;
         if(HoudiniApi::IsInitialized(get_session()) == HAPI_RESULT_NOT_INITIALIZED){
 
             HAPI_Result Result = HoudiniApi::Initialize(
@@ -608,15 +605,13 @@ public:
         return suc;
     }
     bool stopSession(){
-        if(sessionOpened){
+        if(getHESession()->valid()){
             if(HoudiniApi::Cleanup(get_session()) != HAPI_RESULT_SUCCESS){
                 printError("Failed to stop the Houdini Engine session - Clean up failed.");
-                sessionOpened = false;
                 return false;
             }
             if(HoudiniApi::CloseSession(get_session()) != HAPI_RESULT_SUCCESS){
                 printError("Failed to stop the Houdini Engine session - Close session failed.");
-                sessionOpened = false;
                 return false;
             }
         }else{
@@ -625,11 +620,10 @@ public:
         }
         
         cleanup();
-        sessionOpened = false;
         return true;
     }
     bool loadAsset(std::string path, int& assetId){
-        if(!sessionOpened){
+        if(!getHESession()->valid()){
             printError("Error load Asset with invalid session");
             return false;
         }
@@ -698,7 +692,7 @@ public:
         }
     }
     bool createNode(std::string nodeLabel, std::string operatorName, int& id, int parentId){
-        if(!sessionOpened){
+        if(!getHESession()->valid()){
             printError("Failed to create node: The session is invalid.");
             return false;
         }
@@ -715,7 +709,7 @@ public:
         return true;
     }
     bool connectNode(int nodeId, int inputIndex,int node_to_connect,int outputIndex){
-        if(!sessionOpened){
+        if(!getHESession()->valid()){
             printError("Failed to connect node: The session is invalid.");
             return false;
         }
@@ -731,7 +725,7 @@ public:
         return true;
     }
     bool disconnectNode(int nodeId, int inputIndex){
-        if(!sessionOpened){
+        if(!getHESession()->valid()){
             printError("Failed to disconnect node: The session is invalid.");
             return false;
         }
@@ -748,7 +742,7 @@ public:
     }
     // Return input node id
     int queryConnectedNode(int nodeId, int inputIndex){
-        if(!sessionOpened){
+        if(!getHESession()->valid()){
             printError("Failed to query node input: The session is invalid.");
             return false;
         }
@@ -762,7 +756,7 @@ public:
         return id2;
     }
     bool cookNode(int id){
-        if(!sessionOpened){
+        if(!getHESession()->valid()){
             printError("Failed to cook node: The session is invalid.");
             return false;
         }
@@ -811,14 +805,19 @@ public:
         return true;
     }
     bool deleteNode(int id){
-        if(!sessionOpened){
+        if(!getHESession()->valid()){
             printError("Failed to cook node: The session is invalid.");
             return false;
         }
         if(auto a = HoudiniApi::DeleteNode(get_session(),id);a != HAPI_RESULT_SUCCESS){
             if(a == HAPI_RESULT_NODE_INVALID){
-                _delete_data(id);
-                return true;
+                if(nodeIds.find(id) != nodeIds.end()){
+                    _delete_data(id);
+                    return true;
+                }else{
+                    printWarning("No such node to delete.");
+                    return true;
+                }
             }
             printError("Failed to delete node: ",a," - ",HoudiniEngineUtility::getLastError().c_str());
             return false;
@@ -827,7 +826,7 @@ public:
         return true;
     }
     void getParameters(int id){
-        if(!sessionOpened){
+        if(!getHESession()->valid()){
             printError("Failed to get parameters: The session is invalid.");
             return;
         }
@@ -1430,7 +1429,7 @@ public:
     }
     
     bool createInputNode(std::string nodeLabel, int& id, int parentId, godot::Ref<godot::Mesh> mesh){
-        if(!sessionOpened){
+        if(!getHESession()->valid()){
             printError("Failed to create input node: The session is invalid.");
             return false;
         }
