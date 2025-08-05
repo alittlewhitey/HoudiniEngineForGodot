@@ -56,13 +56,13 @@ void* HoudiniEnginePlatform::LoadLibHAPIL(bool useHAPI, std::string libDir)
         libHAPI_dir.append("/bin/");
     }
     libHAPI_dir = to_windows_path(libHAPI_dir);
-    if (SetDllDirectoryA(libHAPI_dir.c_str()))
-    {
-        if(useHAPI)
-        libHAPI = LoadLibraryA(HAPI_LIB_OBJECT_WINDOWS);
-        else
-            libHAPI = LoadLibraryA(HAPIL_LIB_OBJECT_WINDOWS);
-    }
+    // if (SetDllDirectoryA(libHAPI_dir.c_str()))
+    // {
+    if(useHAPI)
+        libHAPI = LoadLibraryA((libHAPI_dir+HAPI_LIB_OBJECT_WINDOWS).c_str());
+    else
+        libHAPI = LoadLibraryA((libHAPI_dir+HAPIL_LIB_OBJECT_WINDOWS).c_str());
+    //}
 #elif __linux__
     // Location of libHAPI on Mac & Linux added to the application's RPATH
     if(useHAPI)
