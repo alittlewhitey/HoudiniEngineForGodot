@@ -186,7 +186,24 @@ class HECenter: public godot::Node{
         packedPrimData.clear();
         packedPrimMesh.clear();
     }
-
+    void _delete_data(int nodeId){
+        nodeIds.erase(nodeId);
+        nodeRefs.erase(nodeId);
+        cookStatus.erase(nodeId);
+        cookCounts.erase(nodeId);
+        parameters.erase(nodeId);
+        partType.erase(nodeId);
+        meshGeometries.erase(nodeId);
+        meshRefs.erase(nodeId);
+        images.erase(nodeId);
+        imageRefs.erase(nodeId);
+        materials.erase(nodeId);
+        materialIds.erase(nodeId);
+        attributes.erase(nodeId);
+        curveGeometries.erase(nodeId);
+        packedPrimData.erase(nodeId);
+        packedPrimMesh.erase(nodeId);
+    }
 //Functions:
     void _init_hserver(){
         if(!findproc("hserver")){
@@ -751,8 +768,11 @@ public:
             return false;
         if(nodeIds.find(id) == nodeIds.end())
             return false;
-        if(HoudiniApi::CookNode(get_session(),id,&HESettings::get_singleton()->cookOptions) != HAPI_RESULT_SUCCESS){
+        if(auto a = HoudiniApi::CookNode(get_session(),id,&HESettings::get_singleton()->cookOptions);a != HAPI_RESULT_SUCCESS){
             printError("Failed to cook node",HoudiniEngineUtility::getLastCookError().c_str());
+            if(a == HAPI_RESULT_NODE_INVALID){
+                _delete_data(id);
+            }
             return false;
         }
         std::jthread td([this,id](){
@@ -794,19 +814,14 @@ public:
             return false;
         }
         if(auto a = HoudiniApi::DeleteNode(get_session(),id);a != HAPI_RESULT_SUCCESS){
+            if(a == HAPI_RESULT_NODE_INVALID){
+                _delete_data(id);
+                return true;
+            }
             printError("Failed to delete node: ",a," - ",HoudiniEngineUtility::getLastError().c_str());
             return false;
         }
-        nodeIds.erase(id);
-        parameters.erase(id);
-        partType.erase(id);
-        meshGeometries.erase(id);
-        packedPrimData.erase(id);
-        meshRefs.erase(id);
-        materials.erase(id);
-        materialIds.erase(id);
-        attributes.erase(id);
-
+        _delete_data(id);
         return true;
     }
     void getParameters(int id){
@@ -819,6 +834,9 @@ public:
         parm_infos.resize(info.parmCount);
         if(auto a = HoudiniApi::GetParameters(get_session(),id,parm_infos.data(),0,info.parmCount);a != HAPI_RESULT_SUCCESS){
             printFile(HoudiniEngineUtility::getLastError().c_str(), " No parm got.");
+            if(a == HAPI_RESULT_NODE_INVALID){
+                _delete_data(id);
+            }
             return;
         }
         for(int i = 0;i!=info.parmCount;++i){
@@ -865,7 +883,10 @@ public:
     template<typename T>
     bool getAttributeData(int nodeId, int partId, std::string name, HAPI_AttributeOwner owner, std::vector<T>& data){
         HAPI_AttributeInfo info;
-        if(HoudiniApi::GetAttributeInfo(get_session(),nodeId,partId,name.c_str(),owner,&info) != HAPI_RESULT_SUCCESS){
+        if(auto a = HoudiniApi::GetAttributeInfo(get_session(),nodeId,partId,name.c_str(),owner,&info);a != HAPI_RESULT_SUCCESS){
+            if(a == HAPI_RESULT_NODE_INVALID){
+                _delete_data(id);
+            }
             return false;
         }
         if(!info.exists) return false;
