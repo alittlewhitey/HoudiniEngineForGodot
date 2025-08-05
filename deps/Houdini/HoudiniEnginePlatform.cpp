@@ -28,6 +28,7 @@
 
 #if defined(WIN32) || defined(_WIN32)
     #include "Windows.h"
+    #include "../../src/Utility.h"
 #else
     #include <dlfcn.h>
 #endif
@@ -42,7 +43,6 @@ const char* HAPIL_LIB_OBJECT_MAC = "libHAPIL.dylib";
 const char* HAPI_LIB_OBJECT_WINDOWS = "libHAPI.dll";
 const char* HAPI_LIB_OBJECT_LINUX = "libHAPI.so";
 const char* HAPI_LIB_OBJECT_MAC = "libHAPI.dylib";
-std::string to_windows_path(std::string path);
 void* HoudiniEnginePlatform::LoadLibHAPIL(bool useHAPI, std::string libDir)
 {
     void* libHAPI = nullptr;
