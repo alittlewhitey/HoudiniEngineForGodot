@@ -42,9 +42,8 @@ const char* HAPIL_LIB_OBJECT_MAC = "libHAPIL.dylib";
 const char* HAPI_LIB_OBJECT_WINDOWS = "libHAPI.dll";
 const char* HAPI_LIB_OBJECT_LINUX = "libHAPI.so";
 const char* HAPI_LIB_OBJECT_MAC = "libHAPI.dylib";
-
-void*
-HoudiniEnginePlatform::LoadLibHAPIL(bool useHAPI, std::string libDir)
+std::string to_windows_path(std::string path);
+void* HoudiniEnginePlatform::LoadLibHAPIL(bool useHAPI, std::string libDir)
 {
     void* libHAPI = nullptr;
 #if defined(WIN32) || defined(_WIN32)
@@ -61,6 +60,7 @@ HoudiniEnginePlatform::LoadLibHAPIL(bool useHAPI, std::string libDir)
         //free(buf);
 
         libHAPI_dir.append("/bin/");
+        libHAPI_dir = to_windows_path(libHAPI_dir);
         if (SetDllDirectoryA(libHAPI_dir.c_str()))
         {
             if(useHAPI)

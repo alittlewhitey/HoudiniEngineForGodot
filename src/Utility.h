@@ -193,5 +193,28 @@ inline std::string get_current_dylib_path(){
 #else
 #error "Unsupported platform"
 #endif
+inline std::string to_windows_path(std::string path)
+{
+    if (path.empty())
+    {
+        return "";
+    }
 
+    std::string result;
+    result.reserve(path.length());
+
+    for (char c : path)
+    {
+        if (c == '/')
+        {
+            c = '\\';
+        }
+        if (c == '\\' && !result.empty() && result.back() == '\\')
+        {
+            continue;
+        }
+        result += c;
+    }
+    return result;
+}
 #endif//!HOUDINI_ENGINE_UTILITY
