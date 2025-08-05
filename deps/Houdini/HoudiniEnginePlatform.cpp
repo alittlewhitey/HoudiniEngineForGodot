@@ -47,32 +47,21 @@ void* HoudiniEnginePlatform::LoadLibHAPIL(bool useHAPI, std::string libDir)
 {
     void* libHAPI = nullptr;
 #if defined(WIN32) || defined(_WIN32)
-    // Look up the HFS environment variable
-
-    //Changed for non-msvcr90 environment
-    // char *buf;
-    // size_t len;
     const char *buf = getenv("HFS");
-    //if (_dupenv_s(&buf, &len, "HFS") == 0 && buf != nullptr)
-    if(buf != nullptr)
-    {
-        std::string libHAPI_dir(buf);
-        //free(buf);
-
-        libHAPI_dir.append("/bin/");
-        libHAPI_dir = to_windows_path(libHAPI_dir);
-        if (SetDllDirectoryA(libHAPI_dir.c_str()))
-        {
-            if(useHAPI)
-            libHAPI = LoadLibraryA(HAPI_LIB_OBJECT_WINDOWS);
-            else
-                libHAPI = LoadLibraryA(HAPIL_LIB_OBJECT_WINDOWS);
-        }
+    std::string libHAPI_dir;
+    if(!libDir.empty()){
+        libHAPI_dir = libDir;
+    }else{
+        libHAPI_dir = std::string(buf);
     }
-    else
+    libHAPI_dir.append("/bin/");
+    libHAPI_dir = to_windows_path(libHAPI_dir);
+    if (SetDllDirectoryA(libHAPI_dir.c_str()))
     {
-        std::cerr << "Unable to retrieve the value of the HFS environment variable." << std::endl;
-        return nullptr;
+        if(useHAPI)
+        libHAPI = LoadLibraryA(HAPI_LIB_OBJECT_WINDOWS);
+        else
+            libHAPI = LoadLibraryA(HAPIL_LIB_OBJECT_WINDOWS);
     }
 #elif __linux__
     // Location of libHAPI on Mac & Linux added to the application's RPATH
