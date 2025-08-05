@@ -885,7 +885,7 @@ public:
         HAPI_AttributeInfo info;
         if(auto a = HoudiniApi::GetAttributeInfo(get_session(),nodeId,partId,name.c_str(),owner,&info);a != HAPI_RESULT_SUCCESS){
             if(a == HAPI_RESULT_NODE_INVALID){
-                _delete_data(id);
+                _delete_data(nodeId);
             }
             return false;
         }
