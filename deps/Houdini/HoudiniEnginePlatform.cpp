@@ -53,8 +53,8 @@ void* HoudiniEnginePlatform::LoadLibHAPIL(bool useHAPI, std::string libDir)
     }else{
         const char *buf = getenv("HFS");
         libHAPI_dir = std::string(buf);
+        libHAPI_dir.append("/bin/");
     }
-    libHAPI_dir.append("/bin/");
     libHAPI_dir = to_windows_path(libHAPI_dir);
     if (SetDllDirectoryA(libHAPI_dir.c_str()))
     {
