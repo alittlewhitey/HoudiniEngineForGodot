@@ -579,7 +579,6 @@ public:
             return false;
         }
         if(auto a = HoudiniApi::IsInitialized(get_session());a == HAPI_RESULT_NOT_INITIALIZED){
-            std::cerr << "Initial result: " << a << std::endl;
             HAPI_Result Result = HoudiniApi::Initialize(
                 get_session(),&HESettings::get_singleton()->cookOptions,use_cooking_thread,-1,"",nullptr,nullptr,nullptr,nullptr
             );
