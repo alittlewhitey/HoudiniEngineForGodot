@@ -623,7 +623,9 @@ public:
             printError("Failed to stop the Houdini Engine session - Session is invalid.");
             return false;
         }
+        
         cleanup();
+        sessionOpened = false;
         return true;
     }
     bool loadAsset(std::string path, int& assetId){
