@@ -106,7 +106,6 @@ class HECenter: public godot::Node{
         if(sessionOpened){
             stopSession();
         }
-        cleanup();
         using namespace std::chrono_literals;
         freeTimeout = 0ms;
         std::this_thread::sleep_for(HESettings::defaultFreeTimeout<1s?HESettings::defaultFreeTimeout:1000ms);
@@ -168,7 +167,24 @@ class HECenter: public godot::Node{
     std::map<godot::Node*, std::shared_ptr<std::jthread>> freeGDNodeTasks;
 
     void cleanup(){
-
+        sessionOpened = false;
+        nodeIds.clear();
+        nodeRefs.clear();
+        assetRefs.clear();
+        cookStatus.clear();
+        cookCounts.clear();
+        parameters.clear();
+        partType.clear();
+        meshGeometries.clear();
+        meshRefs.clear();
+        images.clear();
+        imageRefs.clear();
+        materials.clear();
+        materialIds.clear();
+        attributes.clear();
+        curveGeometries.clear();
+        packedPrimData.clear();
+        packedPrimMesh.clear();
     }
 
 //Functions:
@@ -588,16 +604,7 @@ public:
             printError("Failed to stop the Houdini Engine session - Session is invalid.");
             return false;
         }
-        sessionOpened = false;
-        nodeIds.clear();
-        assetRefs.clear();
-        parameters.clear();
-        partType.clear();
-        meshGeometries.clear();
-        meshRefs.clear();
-        materials.clear();
-        materialIds.clear();
-        attributes.clear();
+        cleanup();
         return true;
     }
     bool loadAsset(std::string path, int& assetId){

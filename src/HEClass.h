@@ -43,6 +43,8 @@ class HENode: public godot::RefCounted{
     }
     friend class HECenter;
     void setId(int){}
+    void setName(godot::String){}
+    void setType(int){}
 protected:
     HAPI_NodeId id;
     HESession* session = nullptr;
@@ -50,6 +52,7 @@ public:
     int getId(){
         return id;
     }
+    godot::String getName();
     HAPI_NodeType getType();
     void cook();
     bool isCookFinished();
@@ -106,8 +109,8 @@ class HESession: public godot::RefCounted{
 
     // Godot script function
     static godot::Ref<HESession> switchSession(SessionType type);
-    static godot::Ref<HESession> getSession();
 public:
+    static godot::Ref<HESession> getSession();
     HAPI_Session* get_session(){
         return &session;
     }
