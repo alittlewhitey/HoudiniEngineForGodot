@@ -20,6 +20,7 @@
 
 #include "HEBind.h"
 #include "HDAImporter.h"
+#include "CoreMounter.h"
 #include "HECenter.h"
 
 void initialize_module(ModuleInitializationLevel p_level){
@@ -32,8 +33,10 @@ void initialize_module(ModuleInitializationLevel p_level){
     GDREGISTER_CLASS(HDAResource)
     GDREGISTER_CLASS(HDAImporter)
     GDREGISTER_CLASS(HDAImportPlugin)
+    GDREGISTER_CLASS(CoreMountPlugin)
 
     EditorPlugins::add_by_type<HDAImportPlugin>();
+    EditorPlugins::add_by_type<CoreMountPlugin>();
 
     GDREGISTER_CLASS(HECenter)
 
@@ -64,9 +67,6 @@ void initialize_module(ModuleInitializationLevel p_level){
     GDREGISTER_CLASS(HEImage)
     auto center = HECenter::get_singleton();
     auto settings = HESettings::get_singleton();
-    // SceneTree *tree = Object::cast_to<SceneTree>(Engine::get_singleton()->get_main_loop());
-    // tree->get_root()->add_child(center,false,godot::Node::InternalMode::INTERNAL_MODE_BACK);
-    // center->set_owner(tree->get_root());
     Engine::get_singleton()->register_singleton("HECore", center);
     Engine::get_singleton()->register_singleton("HESettings", settings);
 }

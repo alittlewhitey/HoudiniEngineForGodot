@@ -70,7 +70,9 @@ HAPI_NodeType HENode::getType(){
     return info.type;
 }
 void HENode::cook(){
-    HECenter::get_singleton()->cookNode(id);
+    HECenter::get_singleton()->cookNode(id,[this]{
+        emit_signal("cookFinished");
+    });
 }
 bool HENode::isCookFinished(){
     return HECenter::get_singleton()->getCookStatus(id);

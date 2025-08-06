@@ -12,6 +12,8 @@
 #include <godot_cpp/classes/editor_plugin.hpp>
 #include <godot_cpp/classes/project_settings.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
+
+#include "Utility.h"
 class HDAResource : public godot::Resource{
     GDCLASS(HDAResource,godot::Resource)
     static void _bind_methods(){

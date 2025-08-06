@@ -398,10 +398,11 @@ public:
         return res;
     }
     godot::Node* get_scene_root(){
+        godot::SceneTree *tree = Object::cast_to<godot::SceneTree>(godot::Engine::get_singleton()->get_main_loop());
         if(godot::Engine::get_singleton()->is_editor_hint()){
-            return get_tree()->get_edited_scene_root();
+            return tree->get_edited_scene_root();
         }else{
-            return get_tree()->get_current_scene();
+            return tree->get_current_scene();
         }
     }
     HAPI_Session* get_session(){
@@ -755,7 +756,7 @@ public:
         }
         return id2;
     }
-    bool cookNode(int id){
+    bool cookNode(int id,std::function<void()> cookedCallBack = []{}){
         if(!getHESession()->valid()){
             printError("Failed to cook node: The session is invalid.");
             return false;
@@ -771,7 +772,7 @@ public:
             }
             return false;
         }
-        std::jthread td([this,id](){
+        std::jthread td([this,id,cookedCallBack](){
             cookStatus[id] = false;
             int status;
             HAPI_Result result;
@@ -797,6 +798,9 @@ public:
                 }
             }
             cookStatus[id] = true;
+            Contact::add_call([cookedCallBack]{
+                cookedCallBack();
+            });
         });
         if(HESettings::get_singleton()->useCookingThread)
             td.detach();

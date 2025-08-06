@@ -39,7 +39,7 @@ class HENode: public godot::RefCounted{
         godot::ClassDB::bind_method(godot::D_METHOD("getParameter","name"),&HENode::getParameter);
         godot::ClassDB::bind_method(godot::D_METHOD("setParameter","name","value"),&HENode::setParameter);
         godot::ClassDB::bind_method(godot::D_METHOD("getParameterList"),&HENode::getParameterList);
-
+        godot::ClassDB::add_signal("HENode",godot::MethodInfo("cookFinished"));
     }
     friend class HECenter;
     void setId(int){}
