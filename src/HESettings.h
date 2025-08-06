@@ -162,7 +162,8 @@ class HESettings: public godot::Object{
             if(!iss)
                 break;
             std::istringstream iss2(envLine);
-            iss2 >> envKey >> temp >> envValue;
+            iss2 >> envKey >> temp;
+            std::getline(iss2, envValue);
             if(envKey.empty()||envValue.empty())
                 continue;
             if(envValue[0] == '\'')
