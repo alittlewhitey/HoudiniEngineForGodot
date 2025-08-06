@@ -456,10 +456,10 @@ public:
     }
     bool startSession(SessionType type,bool use_cooking_thread = true){
         if(getHESession()->valid()){
-            printFile("Now session is valid.\n");
+            printFile("Now session is valid.");
             return true;
         }
-        
+
         _init_hserver();
 
         HoudiniApi::ClearConnectionError();
@@ -479,7 +479,7 @@ public:
                 get_session(),&sessionInfo
             );
             if(SessionResult == HAPI_RESULT_SUCCESS){
-                printLog("Successful create a HAPI in-process session\n");
+                printLog("Successful create a HAPI in-process session");
             }else{
                 printError("Error create session: ",SessionResult);
             }
@@ -501,7 +501,7 @@ public:
                 std::this_thread::sleep_for(1s); 
             }
             if(SessionResult == HAPI_RESULT_SUCCESS){
-                printLog("Successful create a HAPI named-pipe session\n");
+                printLog("Successful create a HAPI named-pipe session");
             }else{
                 printError("Error create session: ",SessionResult);
             }
@@ -523,7 +523,7 @@ public:
                 std::this_thread::sleep_for(1s);
             }
             if(SessionResult == HAPI_RESULT_SUCCESS){
-                printLog("Successful create a HAPI TCP socket session\n");
+                printLog("Successful create a HAPI TCP socket session");
             }else{
                 printError("Error create session: ",SessionResult);
             }
@@ -534,7 +534,7 @@ public:
                 get_session(),HESettings::get_singleton()->sessionConfig.namedPipe.c_str(),&sessionInfo
             );
             if(SessionResult == HAPI_RESULT_SUCCESS){
-                printLog("Successful connect to an existint HAPI named-pipe session\n");
+                printLog("Successful connect to an existint HAPI named-pipe session");
             }else{
                 printError("Error create session: ",SessionResult);
             }
@@ -545,7 +545,7 @@ public:
                 get_session(),HESettings::get_singleton()->sessionConfig.hostName.c_str(), HESettings::get_singleton()->sessionConfig.tcpPort, &sessionInfo
             );
             if(SessionResult == HAPI_RESULT_SUCCESS){
-                printLog("Successful connect to an existint HAPI TCP socket session\n");
+                printLog("Successful connect to an existint HAPI TCP socket session");
             }else{
                 printError("Error create session: ",SessionResult);
             }
@@ -556,7 +556,7 @@ public:
                 get_session(),HESettings::get_singleton()->sessionConfig.sharedMemoryName.c_str(), &sessionInfo
             );
             if(SessionResult == HAPI_RESULT_SUCCESS){
-                printLog("Successful connect to an existint HAPI shared memory session\n");
+                printLog("Successful connect to an existint HAPI shared memory session");
             }else{
                 printError("Error create session: ",SessionResult);
             }

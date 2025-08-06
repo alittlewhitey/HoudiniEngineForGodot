@@ -41,6 +41,9 @@ class HENode: public godot::RefCounted{
         godot::ClassDB::bind_method(godot::D_METHOD("getParameterList"),&HENode::getParameterList);
         godot::ClassDB::add_signal("HENode",godot::MethodInfo("cookFinished"));
     }
+    virtual godot::String _to_string(){
+        return string_cast(std::format("<{}#{}>",string_cast(get_class()),id));
+    }
     friend class HECenter;
     void setId(int){}
     void setName(godot::String){}
@@ -66,6 +69,9 @@ class HEAsset: public godot::RefCounted{
         godot::ClassDB::bind_method(godot::D_METHOD("get_ownedNodeOperators"),&HEAsset::get_ownedNodeOperators);
         godot::ClassDB::bind_method(godot::D_METHOD("set_ownedNodeOperators","__"),&HEAsset::set_ownedNodeOperators);
         godot::ClassDB::add_property("HEAsset",godot::PropertyInfo(godot::Variant::Type::PACKED_STRING_ARRAY,"ownedNodeOperators"),"set_ownedNodeOperators","get_ownedNodeOperators");
+    }
+    virtual godot::String _to_string(){
+        return string_cast(std::format("<{}#{}>",string_cast(get_class()),id));
     }
     friend class HECenter;
     friend class HESession;
@@ -103,6 +109,9 @@ class HESession: public godot::RefCounted{
         godot::ClassDB::bind_method(godot::D_METHOD("connectNode","connectingNode","inputIdx","connectedNode","connectedOutputIdx"),&HESession::connectNode);
         godot::ClassDB::bind_method(godot::D_METHOD("deleteNode","node"),&HESession::deleteNode);
     }
+    virtual godot::String _to_string(){
+        return string_cast(std::format("<{}#0>",string_cast(get_class())));
+    }
     friend class HECenter;
     HAPI_Session session;
     SessionType type = SessionType::None;
@@ -134,6 +143,9 @@ class HEObjNode: public HENode{
     static void _bind_methods(){
         godot::ClassDB::bind_method(godot::D_METHOD("getType"),&HEObjNode::getType);
     }
+    virtual godot::String _to_string()override{
+        return string_cast(std::format("<{}#{}>",string_cast(get_class()),id));
+    }
     friend class HECenter;
 public:
     HAPI_NodeType getType(){
@@ -147,6 +159,9 @@ class HESopNode: public HENode{
         godot::ClassDB::bind_method(godot::D_METHOD("getType"),&HESopNode::getType);
         godot::ClassDB::bind_method(godot::D_METHOD("getGeometryCount"),&HESopNode::getGeometryCount);
         godot::ClassDB::bind_method(godot::D_METHOD("getGeometry","partId"),&HESopNode::getGeometry);
+    }
+    virtual godot::String _to_string()override{
+        return string_cast(std::format("<{}#{}>",string_cast(get_class()),id));
     }
     friend class HECenter;
 public:
@@ -163,6 +178,9 @@ class HECopNode: public HENode{
         godot::ClassDB::bind_method(godot::D_METHOD("getType"),&HECopNode::getType);
         godot::ClassDB::bind_method(godot::D_METHOD("getPNGImage"),&HECopNode::getPNGImage);
     }
+    virtual godot::String _to_string()override{
+        return string_cast(std::format("<{}#{}>",string_cast(get_class()),id));
+    }
     friend class HECenter;
 public:
     HAPI_NodeType getType(){
@@ -175,6 +193,9 @@ class HEShopNode: public HENode{
     static void _bind_methods(){
         godot::ClassDB::bind_method(godot::D_METHOD("getType"),&HEShopNode::getType);
     }
+    virtual godot::String _to_string()override{
+        return string_cast(std::format("<{}#{}>",string_cast(get_class()),id));
+    }
     friend class HECenter;
 public:
     HAPI_NodeType getType(){
@@ -185,6 +206,9 @@ class HEChopNode: public HENode{
     GDCLASS(HEChopNode, HENode)
     static void _bind_methods(){
         godot::ClassDB::bind_method(godot::D_METHOD("getType"),&HEChopNode::getType);
+    }
+    virtual godot::String _to_string()override{
+        return string_cast(std::format("<{}#{}>",string_cast(get_class()),id));
     }
     friend class HECenter;
 public:
@@ -197,6 +221,9 @@ class HERopNode: public HENode{
     static void _bind_methods(){
         godot::ClassDB::bind_method(godot::D_METHOD("getType"),&HERopNode::getType);
     }
+    virtual godot::String _to_string()override{
+        return string_cast(std::format("<{}#{}>",string_cast(get_class()),id));
+    }
     friend class HECenter;
 public:
     HAPI_NodeType getType(){
@@ -207,6 +234,9 @@ class HEVopNode: public HENode{
     GDCLASS(HEVopNode, HENode)
     static void _bind_methods(){
         godot::ClassDB::bind_method(godot::D_METHOD("getType"),&HEVopNode::getType);
+    }
+    virtual godot::String _to_string()override{
+        return string_cast(std::format("<{}#{}>",string_cast(get_class()),id));
     }
     friend class HECenter;
 public:
@@ -219,6 +249,9 @@ class HEDopNode: public HENode{
     static void _bind_methods(){
         godot::ClassDB::bind_method(godot::D_METHOD("getType"),&HEDopNode::getType);
     }
+    virtual godot::String _to_string()override{
+        return string_cast(std::format("<{}#{}>",string_cast(get_class()),id));
+    }
     friend class HECenter;
 public:
     HAPI_NodeType getType(){
@@ -230,6 +263,9 @@ class HETopNode: public HENode{
     static void _bind_methods(){
         godot::ClassDB::bind_method(godot::D_METHOD("getType"),&HETopNode::getType);
     }
+    virtual godot::String _to_string()override{
+        return string_cast(std::format("<{}#{}>",string_cast(get_class()),id));
+    }
     friend class HECenter;
 public:
     HAPI_NodeType getType(){
@@ -239,12 +275,18 @@ public:
 class HEGeometry: public godot::RefCounted{
     GDCLASS(HEGeometry, godot::RefCounted)
     static void _bind_methods(){}
+    virtual godot::String _to_string(){
+        return string_cast(std::format("<{}#0>",string_cast(get_class())));
+    }
     friend class HECenter;
 };
 class HEMesh: public HEGeometry{
     GDCLASS(HEMesh, HEGeometry)
     static void _bind_methods(){
         godot::ClassDB::bind_method(godot::D_METHOD("bakeAsMesh"),&HEMesh::bakeAsMesh);
+    }
+    virtual godot::String _to_string()override{
+        return string_cast(std::format("<{}#({},{})>",string_cast(get_class()),nodeId,partId));
     }
     friend class HECenter;
     int nodeId;
@@ -265,6 +307,9 @@ class HEMultiMesh: public HEGeometry{
     static void _bind_methods(){
         godot::ClassDB::bind_method(godot::D_METHOD("bakeAsMultiMesh"),&HEMultiMesh::bakeAsMultiMesh);
     }
+    virtual godot::String _to_string()override{
+        return string_cast(std::format("<{}#({},{})>",string_cast(get_class()),nodeId,partId));
+    }
     friend class HECenter;
     int nodeId;
     int partId;
@@ -282,6 +327,9 @@ class HEImage: public godot::RefCounted{
     GDCLASS(HEImage, godot::RefCounted)
     static void _bind_methods(){
         godot::ClassDB::bind_method(godot::D_METHOD("bakeAsImage"),&HEImage::bakeAsImage);
+    }
+    virtual godot::String _to_string(){
+        return string_cast(std::format("<{}#{}>",string_cast(get_class()),nodeId));
     }
     friend class HECenter;
     int nodeId;
