@@ -2,8 +2,30 @@
 import os
 from glob import glob
 from pathlib import Path
+main_env = Environment()
+debug = main_env["debug"]
+if debug == None:
+    debug = False
+godot_cpp_branch = main_env["godot_cpp_branch"]
+if godot_cpp_branch == None:
+    Warning("Use branch 'master' of godot-cpp")
+    Warning("You'd better define branch name like this: \nscons godot_cpp_branch=\"4.4\"")
+    godot_cpp_branch = "master"
+    
+if not os.path.isdir("deps/godot-cpp/include"):
+    main_env.Execute("git submodule update --init --recursive")
+    main_env.Execute(f"cd deps/godot-cpp && git checkout {godot_cpp_branch} && cd ../..")
 
-env = SConscript("deps/godot-cpp/SConstruct")
+options = {
+    "target": "editor",
+    "CC": main_env["CC"],
+    "CXX": main_env["CXX"],
+    "use_mingw": main_env["use_mingw"],
+    "use_llvm": main_env["use_llvm"]
+}
+godot_env = Environment().Clone()
+godot_env.Replace(**options)
+env = SConscript("deps/godot-cpp/SConstruct",exports={"env": godot_env})
 env.Append(CPPPATH=["deps"])
 env.Append(CPPPATH=["deps/Houdini/"])
 env.Append(CPPPATH=["src/"])
@@ -37,13 +59,11 @@ if scons_cache_path != None:
     CacheDir(scons_cache_path)
     print("Scons cache enabled... (path: '" + scons_cache_path + "')")
 
-debug_or_release = "release" if env["target"] == "template_release" else "debug"
-if debug_or_release == "debug":
+if debug:
     if(compiler == "cl"):
-        env.Append(CXXFLAGS=["-Z7"])
+        env.Append(CXXFLAGS=["-DFORCE_DEBUG","-Z7"])
     else:
         env.Append(CXXFLAGS=["-DFORCE_DEBUG","-g"])
-            
 
 platform = env["platform"]
 arch = env["arch"]
@@ -63,7 +83,7 @@ library = env.SharedLibrary(
         addon_path,
         project_name,
         platform,
-        debug_or_release,
+        "debug" if debug else "release",
         arch,
         dylib_suffix,
     ),
