@@ -65,6 +65,9 @@ godot::String HENode::getName(){
     auto res = HECenter::get_singleton()->getString(info.nameSH);
     return string_cast(res);
 }
+void HENode::setName(godot::String name){
+    HECenter::get_singleton()->renameNode(id, string_cast(name));
+}
 HAPI_NodeType HENode::getType(){
     auto info = HECenter::get_singleton()->getNodeInfo(id);
     return info.type;

@@ -33,6 +33,9 @@ class HENode: public godot::RefCounted{
         godot::ClassDB::bind_method(godot::D_METHOD("getId"),&HENode::getId);
         godot::ClassDB::bind_method(godot::D_METHOD("setId","__"),&HENode::setId);
         godot::ClassDB::add_property("HENode",godot::PropertyInfo(godot::Variant::Type::INT,"id"),"setId","getId");
+        godot::ClassDB::bind_method(godot::D_METHOD("getName"),&HENode::getName);
+        godot::ClassDB::bind_method(godot::D_METHOD("setName","name"),&HENode::setName);
+        godot::ClassDB::add_property("HENode",godot::PropertyInfo(godot::Variant::Type::STRING,"name"),"setName","getName");
         godot::ClassDB::bind_method(godot::D_METHOD("getType"),&HENode::getType);
         godot::ClassDB::bind_method(godot::D_METHOD("cook"),&HENode::cook);
         godot::ClassDB::bind_method(godot::D_METHOD("isCookFinished"),&HENode::isCookFinished);
@@ -46,7 +49,6 @@ class HENode: public godot::RefCounted{
     }
     friend class HECenter;
     void setId(int){}
-    void setName(godot::String){}
     void setType(int){}
 protected:
     HAPI_NodeId id;
@@ -56,6 +58,7 @@ public:
         return id;
     }
     godot::String getName();
+    void setName(godot::String name);
     HAPI_NodeType getType();
     void cook();
     bool isCookFinished();

@@ -764,7 +764,7 @@ public:
         if(nodeIds.find(id) == nodeIds.end())
             return false;
         if(auto a = HoudiniApi::CookNode(get_session(),id,&HESettings::get_singleton()->cookOptions);a != HAPI_RESULT_SUCCESS){
-            printError("Failed to cook node",HoudiniEngineUtility::getLastCookError().c_str());
+            printError("Failed to cook node: ",HoudiniEngineUtility::getLastCookError().c_str());
             if(a == HAPI_RESULT_NODE_INVALID){
                 _delete_data(id);
             }
@@ -825,6 +825,26 @@ public:
             return false;
         }
         _delete_data(id);
+        return true;
+    }
+    bool renameNode(int id, std::string name){
+        if(!getHESession()->valid()){
+            printError("Failed to rename node: The session is invalid.");
+            return false;
+        }
+        if(id == -1)
+            return false;
+        if(nodeIds.find(id) == nodeIds.end())
+            return false;
+        if(!getNodeInfo(id).createdPostAssetLoad)
+            return false;
+        if(auto a = HoudiniApi::RenameNode(get_session(),id,name.c_str());a != HAPI_RESULT_SUCCESS){
+            printError("Failed to rename node: ",HoudiniEngineUtility::getLastCookError().c_str());
+            if(a == HAPI_RESULT_NODE_INVALID){
+                _delete_data(id);
+            }
+            return false;
+        }
         return true;
     }
     void getParameters(int id){
