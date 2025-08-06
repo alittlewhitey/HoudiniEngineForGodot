@@ -592,7 +592,7 @@ public:
             }
         }
         emit_signal("SessionStarted");
-
+        getHESession()->active = true;
         return true;
     }
     bool cookSession(){
@@ -619,6 +619,7 @@ public:
         }
         
         cleanup();
+        getHESession()->active = false;
         return true;
     }
     bool loadAsset(std::string path, int& assetId){

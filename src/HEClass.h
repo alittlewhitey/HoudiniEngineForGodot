@@ -106,6 +106,7 @@ class HESession: public godot::RefCounted{
     friend class HECenter;
     HAPI_Session session;
     SessionType type = SessionType::None;
+    bool active = false;
 
     // Godot script function
     static godot::Ref<HESession> switchSession(SessionType type);
@@ -115,9 +116,9 @@ public:
         return &session;
     }
     bool valid(){
-        if(HoudiniApi::IsSessionValid(get_session()) == HAPI_RESULT_SUCCESS)
-            return true;
-        return false;
+        if(!active)
+            return false;
+        return HoudiniApi::IsSessionValid(get_session()) == HAPI_RESULT_SUCCESS;
     }
     std::string getString(HAPI_StringHandle sh);
     godot::Ref<HEAsset> loadHDA(godot::Ref<HDAResource> hda);

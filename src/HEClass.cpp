@@ -2,7 +2,7 @@
 #include "HECenter.h"
 
 godot::Ref<HESession> HESession::switchSession(SessionType type){
-    auto oldSession = getSession();
+    auto oldSession = HECenter::get_singleton()->getHESession();
     if(oldSession.is_valid()&&oldSession->valid()){
         HECenter::get_singleton()->stopSession();
     }
