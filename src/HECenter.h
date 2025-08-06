@@ -455,13 +455,11 @@ public:
         return sh;
     }
     bool startSession(SessionType type,bool use_cooking_thread = true){
-        using namespace _houdini_engine_log;
         if(getHESession()->valid()){
             printFile("Now session is valid.\n");
             return true;
         }
-
-
+        
         _init_hserver();
 
         HoudiniApi::ClearConnectionError();

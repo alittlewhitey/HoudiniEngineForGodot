@@ -17,7 +17,7 @@ class CoreMountPlugin : public godot::EditorPlugin{
     static void _bind_methods(){}
 public:
     void _enter_tree() override {
-        godot::UtilityFunctions::print("[Houdini Engine] EditorPlugin added, init HECenter.");
+        godot::UtilityFunctions::print("[Houdini Engine] EditorPlugin loaded, start to init HECenter.");
 
         auto center = HECenter::get_singleton();
 

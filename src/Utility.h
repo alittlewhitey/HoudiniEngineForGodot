@@ -34,9 +34,11 @@ template <typename ...T>
 void _output_log(T... output){
     using namespace _houdini_engine_log;
     if(!logFilePath.empty()){
+        logFile.open(logFilePath,std::ios::app|std::ios::out);
         logFile << std::format("### {0:%F} {0:%R%z} ###\n",std::chrono::system_clock::now());
         int _[] = {((logFile << output),0)...};
         logFile << std::endl;
+        logFile.close();
     }
 }
 template <typename ...T>

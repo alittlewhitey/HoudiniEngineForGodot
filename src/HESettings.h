@@ -117,13 +117,10 @@ class HESettings: public godot::Object{
         path = godot::ProjectSettings::get_singleton()->globalize_path(path);
         if(path.is_absolute_path()){
             if(!logFilePath.empty()){
-                logFile.close();
                 logFile.clear();
             }
-            logFile.open(string_cast(path),std::ios::app|std::ios::out);
             logFilePath = string_cast(path);
         }else if(path.is_empty()){
-            logFile.close();
             logFile.clear();
             logFilePath.clear();
         }
