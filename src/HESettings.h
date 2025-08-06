@@ -135,43 +135,43 @@ class HESettings: public godot::Object{
             return;
         }
         std::string houdiniPath = string_cast(path);
-        std::string hconfigPath = houdiniPath+"/bin/hconfig";
-        if(!std::filesystem::exists(hconfigPath)){
-            hconfigPath += ".exe";
-            if(!std::filesystem::exists(hconfigPath)){
-                printError("Invalid houdini root path. Make sure \"${HoudiniRootPath}/bin/hconfig\" is exist.");
-                return;
-            }
-        }
-        if(findenv("HFS")){
-            houdiniRootPath = houdiniPath;
-            if(useEnvLibPath)
-                initHoudini();
-            return;
-        }
+        // std::string hconfigPath = houdiniPath+"/bin/hconfig";
+        // if(!std::filesystem::exists(hconfigPath)){
+        //     hconfigPath += ".exe";
+        //     if(!std::filesystem::exists(hconfigPath)){
+        //         printError("Invalid houdini root path. Make sure \"${HoudiniRootPath}/bin/hconfig\" is exist.");
+        //         return;
+        //     }
+        // }
+        // if(findenv("HFS")){
+        //     houdiniRootPath = houdiniPath;
+        //     if(useEnvLibPath)
+        //         initHoudini();
+        //     return;
+        // }
         // Add Environment
-        std::string cmd = "\"" + hconfigPath + "\"";
-        std::string output = exec_output(cmd);
-        if(output.empty()){
-            printError("Houdini environment is null");
-            return;
-        }
-        std::istringstream iss(output);
-        std::string envLine,envKey,envValue,temp;
-        while(std::getline(iss,envLine)){
-            if(!iss)
-                break;
-            std::istringstream iss2(envLine);
-            iss2 >> envKey >> temp;
-            std::getline(iss2, envValue);
-            if(envKey.empty()||envValue.empty())
-                continue;
-            if(envValue[0] == '\'')
-                envValue.erase(0,1);
-            if(envValue[envValue.size()-1] == '\'')
-                envValue.erase(envValue.size()-1,1);
-            addenv(envKey,envValue);
-        }
+        // std::string cmd = "\"" + hconfigPath + "\"";
+        // std::string output = exec_output(cmd);
+        // if(output.empty()){
+        //     printError("Houdini environment is null");
+        //     return;
+        // }
+        // std::istringstream iss(output);
+        // std::string envLine,envKey,envValue,temp;
+        // while(std::getline(iss,envLine)){
+        //     if(!iss)
+        //         break;
+        //     std::istringstream iss2(envLine);
+        //     iss2 >> envKey >> temp;
+        //     std::getline(iss2, envValue);
+        //     if(envKey.empty()||envValue.empty())
+        //         continue;
+        //     if(envValue[0] == '\'')
+        //         envValue.erase(0,1);
+        //     if(envValue[envValue.size()-1] == '\'')
+        //         envValue.erase(envValue.size()-1,1);
+        //     addenv(envKey,envValue);
+        // }
         houdiniRootPath = houdiniPath;
         if(useEnvLibPath)
             initHoudini();
