@@ -31,3 +31,5 @@ test.py
 log.txt
 *.o
 *.obj
+*.import
+*.pdb

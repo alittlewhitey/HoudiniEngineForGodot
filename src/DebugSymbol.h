@@ -8,12 +8,20 @@
     #error "Force debug and force release can't coexist"
 #endif
 #if defined(FORCE_DEBUG)
+#ifndef _DEBUG
 #define _DEBUG
+#endif
+#ifdef NDEBUG
 #undef NDEBUG
 #endif
+#endif
 #if defined(FORCE_RELEASE)
+#ifndef NDEBUG
 #define NDEBUG
+#endif
+#ifdef _DEBUG
 #undef _DEBUG
+#endif
 #endif
 #if defined(_DEBUG) || !defined(NDEBUG)
 #define HE_DEBUG_MODE

@@ -17,9 +17,8 @@ config/icon="res://icon.svg"
 [houdini]
 
 config/useEnvLibPath=false
-config/houdiniRootPath="/Applications/Houdini/Current/Frameworks/Houdini.framework/Resources"
-config/houdiniLibPath="/Applications/Houdini/Current/Frameworks/Houdini.framework/Libraries"
-config/logFilePath="/Users/littlewhite/Root/Clones/HoudiniEngineForGodot/project/log.txt"
+config/houdiniRootPath="E:/Programs/Houdini"
+config/houdiniLibPath="E:/Programs/Houdini/bin"
 config/cookOptions={
 "cacheMeshTopology": false,
 "checkPartChanges": false,

@@ -3,29 +3,39 @@ import os
 from glob import glob
 from pathlib import Path
 main_env = Environment()
-debug = main_env["debug"]
+debug = ARGUMENTS.get("debug", "no").lower() in ("yes", "true", "1")
 if debug == None:
     debug = False
-godot_cpp_branch = main_env["godot_cpp_branch"]
+godot_cpp_branch = ARGUMENTS.get("godot_cpp_branch", None)
 if godot_cpp_branch == None:
     Warning("Use branch 'master' of godot-cpp")
     Warning("You'd better define branch name like this: \nscons godot_cpp_branch=\"4.4\"")
     godot_cpp_branch = "master"
-    
+else:
+    print(f"Use branch ${godot_cpp_branch} of godot-cpp.")
 if not os.path.isdir("deps/godot-cpp/include"):
     main_env.Execute("git submodule update --init --recursive")
     main_env.Execute(f"cd deps/godot-cpp && git checkout {godot_cpp_branch} && cd ../..")
+filtered_args = {}
+custom_args = {"godot_cpp_branch", "debug"}
+for key, value in ARGUMENTS.items():
+    if key not in custom_args:
+        filtered_args[key] = value
+original_args = ARGUMENTS.copy()
+ARGUMENTS.clear()
+ARGUMENTS.update(filtered_args)
+ARGUMENTS['target'] = 'editor'
+if debug:
+    ARGUMENTS['dev_build'] = "yes"
+    import platform as py_platform
+    if py_platform.system() == "Windows":
+        ARGUMENTS['debug_crt'] = "yes"
+else: 
+    ARGUMENTS['production'] = "yes"
+env = SConscript("deps/godot-cpp/SConstruct")
+ARGUMENTS.clear()
+ARGUMENTS.update(original_args)
 
-options = {
-    "target": "editor",
-    "CC": main_env["CC"],
-    "CXX": main_env["CXX"],
-    "use_mingw": main_env["use_mingw"],
-    "use_llvm": main_env["use_llvm"]
-}
-godot_env = Environment().Clone()
-godot_env.Replace(**options)
-env = SConscript("deps/godot-cpp/SConstruct",exports={"env": godot_env})
 env.Append(CPPPATH=["deps"])
 env.Append(CPPPATH=["deps/Houdini/"])
 env.Append(CPPPATH=["src/"])
@@ -33,7 +43,7 @@ env.Append(CPPPATH=["src/"])
 compiler = env['CXX']
 if compiler == "$CC":
     compiler = env['CC']
-print(compiler)
+print(f"Use compiler: {compiler}")
 if(compiler == "clang++"):
         env.Append(CXXFLAGS=['-pthread', '-fexperimental-library', '-std=c++20', '-fexceptions'], LINKFLAGS=['-pthread', '-fexperimental-library'])
 elif(compiler == "g++"):
@@ -61,7 +71,8 @@ if scons_cache_path != None:
 
 if debug:
     if(compiler == "cl"):
-        env.Append(CXXFLAGS=["-DFORCE_DEBUG","-Z7"])
+        env.Append(CXXFLAGS=["-DFORCE_DEBUG","-Zi", "-MDd"])
+        env.Append(LINKFLAGS=["-DEBUG"])
     else:
         env.Append(CXXFLAGS=["-DFORCE_DEBUG","-g"])
 
