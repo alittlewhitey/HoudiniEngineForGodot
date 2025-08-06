@@ -26,7 +26,8 @@
 
 #pragma once
 
-#include <HAPI/HAPI.h>
+//#include <HAPI/HAPI.h>
+#include "HoudiniStruct.h"
 
 #include <string>
 

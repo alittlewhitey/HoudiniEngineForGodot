@@ -33,3 +33,5 @@ log.txt
 *.obj
 *.import
 *.pdb
+*.bak
+extract.py
