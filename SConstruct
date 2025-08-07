@@ -16,6 +16,20 @@ else:
 if not os.path.isdir("deps/godot-cpp/include"):
     main_env.Execute("git submodule update --init --recursive")
     main_env.Execute(f"cd deps/godot-cpp && git checkout {godot_cpp_branch} && cd ../..")
+rewrite_branch_name = 0
+try:
+    with open(".godot_cpp_branch.txt", "r", encoding="utf-8") as f:
+        branch_name = f.read()
+        if branch_name != godot_cpp_branch:
+            rewrite_branch_name = main_env.Execute(f"cd deps/godot-cpp && git checkout {godot_cpp_branch} && cd ../..")
+except Exception as e:
+    pass
+if rewrite_branch_name == 0:
+    try:
+        with open(".godot_cpp_branch.txt", "w", encoding="utf-8") as f:
+            f.write(godot_cpp_branch)
+    except Exception as e:
+        pass
 filtered_args = {}
 custom_args = {"godot_cpp_branch", "debug"}
 for key, value in ARGUMENTS.items():
