@@ -28,11 +28,14 @@ endif()
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-
+if(${DEBUG} MATCHES yes)
+    set(BuildType "debug") 
+else()
 if(${CMAKE_BUILD_TYPE} MATCHES "Release")
     set(BuildType "release") 
 else()
     set(BuildType "debug") 
+endif()
 endif()
 message("Build for platform: ${CMAKE_SYSTEM_NAME}.")
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
@@ -89,23 +92,58 @@ if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp/include")
     )
 endif()
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp/bin/libgodot-cpp.${Platform}.editor.${Arch}.a")
-    if(${Platform} MATCHES "windows")
-        if(${USE_LLVM} MATCHES yes)
-            execute_process(
-                WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp"
-                COMMAND scons target=editor platform=${Platform} arch=${Arch} use_mingw=yes use_llvm=yes
-            ) 
+    if(${BuildType} MATCHES "debug")
+        if(${Platform} MATCHES "windows")
+            if(${USE_MINGW} MATCHES yes)
+                if(${USE_LLVM} MATCHES yes)
+                    execute_process(
+                        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp"
+                        COMMAND scons target=editor platform=${Platform} arch=${Arch} use_mingw=yes use_llvm=yes dev_build=yes
+                    ) 
+                else()
+                    execute_process(
+                        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp"
+                        COMMAND scons target=editor platform=${Platform} arch=${Arch} use_mingw=yes dev_build=yes
+                    ) 
+                endif()
+            else()
+                execute_process(
+                    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp"
+                    COMMAND scons target=editor platform=${Platform} arch=${Arch} debug_crt=yes dev_build=yes 
+                ) 
+            endif()
         else()
             execute_process(
                 WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp"
-                COMMAND scons target=editor platform=${Platform} arch=${Arch} use_mingw=yes
+                COMMAND scons target=editor platform=${Platform} arch=${Arch} dev_build=yes
             ) 
         endif()
     else()
-        execute_process(
-            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp"
-            COMMAND scons target=editor platform=${Platform} arch=${Arch} 
-        ) 
+        if(${Platform} MATCHES "windows")
+            if(${USE_MINGW} MATCHES yes)
+                if(${USE_LLVM} MATCHES yes)
+                    execute_process(
+                        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp"
+                        COMMAND scons target=editor platform=${Platform} arch=${Arch} use_mingw=yes use_llvm=yes production=yes
+                    ) 
+                else()
+                    execute_process(
+                        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp"
+                        COMMAND scons target=editor platform=${Platform} arch=${Arch} use_mingw=yes production=yes
+                    ) 
+                endif()
+            else()
+                execute_process(
+                    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp"
+                    COMMAND scons target=editor platform=${Platform} arch=${Arch} production=yes
+                ) 
+            endif()
+        else()
+            execute_process(
+                WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp"
+                COMMAND scons target=editor platform=${Platform} arch=${Arch} production=yes
+            ) 
+        endif()
     endif()
 endif()
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/gen/doc_data.gen.cpp")

@@ -2,7 +2,7 @@
 import os
 from glob import glob
 from pathlib import Path
-main_env = Environment()
+main_env = Environment(ENV=os.environ)
 debug = ARGUMENTS.get("debug", "no").lower() in ("yes", "true", "1")
 if debug == None:
     debug = False
