@@ -35,3 +35,4 @@ log.txt
 *.pdb
 *.bak
 extract.py
+.godot_cpp_branch
