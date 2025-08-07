@@ -827,6 +827,38 @@ public:
         _delete_data(id);
         return true;
     }
+    std::vector<int> getChildNodes(int nodeId, std::vector<HAPI_NodeType> typeFilter, std::vector<HAPI_NodeFlags> flagFilter,bool recursive = false){
+        if(!getHESession()->valid()){
+            printError("Failed to rename node: The session is invalid.");
+            return {};
+        }
+        HAPI_NodeTypeBits types = 0;
+        for(auto a : typeFilter){
+            types |= a;
+        }
+        HAPI_NodeFlagsBits flags = 0;
+        for(auto a : flagFilter){
+            flags |= a;
+        }
+        int count = 0;
+        if(auto a = HoudiniApi::ComposeChildNodeList(get_session(),nodeId,types,flags,recursive,&count);a != HAPI_RESULT_SUCCESS){
+            printError("Failed to get child nodes: ",HoudiniEngineUtility::getLastCookError().c_str());
+            if(a == HAPI_RESULT_NODE_INVALID){
+                _delete_data(nodeId);
+            }
+            return {};
+        }
+        std::vector<int> res;
+        res.resize(count);
+        if(auto a = HoudiniApi::GetComposedChildNodeList(get_session(),nodeId,res.data(),count);a != HAPI_RESULT_SUCCESS){
+            printError("Failed to get child nodes: ",HoudiniEngineUtility::getLastCookError().c_str());
+            if(a == HAPI_RESULT_NODE_INVALID){
+                _delete_data(nodeId);
+            }
+            return {};
+        }
+        return res;
+    }
     bool renameNode(int id, std::string name){
         if(!getHESession()->valid()){
             printError("Failed to rename node: The session is invalid.");

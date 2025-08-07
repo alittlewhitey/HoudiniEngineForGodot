@@ -42,6 +42,7 @@ class HENode: public godot::RefCounted{
         godot::ClassDB::bind_method(godot::D_METHOD("getParameter","name"),&HENode::getParameter);
         godot::ClassDB::bind_method(godot::D_METHOD("setParameter","name","value"),&HENode::setParameter);
         godot::ClassDB::bind_method(godot::D_METHOD("getParameterList"),&HENode::getParameterList);
+        godot::ClassDB::bind_method(godot::D_METHOD("getChildList","types","flags","recursive"),&HENode::getChildList,godot::PackedInt32Array{HAPI_NODETYPE_ANY},godot::PackedInt32Array{HAPI_NODEFLAGS_ANY},false);
         godot::ClassDB::add_signal("HENode",godot::MethodInfo("cookFinished"));
     }
     virtual godot::String _to_string(){
@@ -65,6 +66,7 @@ public:
     godot::Variant getParameter(godot::String name);
     void setParameter(godot::String name, godot::Variant value);
     godot::PackedStringArray getParameterList();
+    godot::PackedInt32Array getChildList(godot::PackedInt32Array types = {HAPI_NODETYPE_ANY}, godot::PackedInt32Array = {HAPI_NODEFLAGS_ANY}, bool recursive = false);
 };
 class HEAsset: public godot::RefCounted{
     GDCLASS(HEAsset,godot::RefCounted)

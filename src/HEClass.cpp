@@ -153,6 +153,25 @@ godot::PackedStringArray HENode::getParameterList(){
     }
     return arr;
 }
+godot::PackedInt32Array HENode::getChildList(godot::PackedInt32Array types, godot::PackedInt32Array flags, bool recursive){
+    int64_t type_size = types.size();
+    std::vector<HAPI_NodeType> v_types(type_size);
+    for(int64_t i = 0;i!=type_size;++i){
+        v_types[i] = (HAPI_NodeType)types[i];
+    }
+    int64_t flag_size = flags.size();
+    std::vector<HAPI_NodeFlags> v_flags(type_size);
+    for(int64_t i = 0;i!=flag_size;++i){
+        v_flags[i] = (HAPI_NodeFlags)flags[i];
+    }
+    std::vector<int> children = HECenter::get_singleton()->getChildNodes(id,std::move(v_types),std::move(v_flags), recursive);
+    godot::PackedInt32Array res;
+    res.resize(children.size());
+    for(int i = 0,size = children.size();i!=size;++i){
+        res[i] = children[i];
+    }
+    return res;
+}
 godot::Ref<godot::Mesh> HEMesh::bakeAsMesh(){
     return HECenter::get_singleton()->getMeshRef(nodeId,partId)->duplicate(true);
 }
