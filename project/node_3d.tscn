@@ -33,6 +33,10 @@ var test2 := func():
 		print(node)
 		node.cook()
 		await node.cookFinished
+		var node2 = HESession.getSession().createNode(operator+\"2\", operator)
+		print(node2)
+		node2.cook()
+		await node2.cookFinished
 		var _node
 		for n2 in node.getChildList():
 			print(n2)
@@ -48,15 +52,12 @@ var test2 := func():
 				print(\"No such node\")
 		HESession.getSession().deleteNode(node)
 		print(node.cook())
-		print(_node.cook())
-		await _node.cookFinished
+		if _node.cook():
+			await _node.cookFinished
 		print(_node.getGeometryCount())
 		var curveArr = (_node.getGeometry(0) as HECurve).bakeAsCurve()
 		print(curveArr)
-		$Path3D2.curve = curveArr[0]
-	#var operator = asset.ownedNodeOperators[0]
-	#var node = HESession.getSession().createNode(operator, operator) as HESopNode
-	#node.cook()
+		HESession.getSession().deleteNode(node2)
 
 @export_tool_button(\"Test3\")
 var test3 := func():
@@ -89,10 +90,6 @@ _surfaces = [{
 script = SubResource("GDScript_4xowi")
 
 [node name="Path3D" type="Path3D" parent="."]
-curve = SubResource("Curve3D_4xowi")
-
-[node name="Path3D2" type="Path3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.51369, 0)
 curve = SubResource("Curve3D_4xowi")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="."]

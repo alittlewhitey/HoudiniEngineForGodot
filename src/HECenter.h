@@ -188,6 +188,7 @@ class HECenter: public godot::Node{
         materialIds.clear();
         attributes.clear();
         curveGeometries.clear();
+        curveRefs.clear();
         packedPrimData.clear();
         packedPrimMesh.clear();
     }
@@ -206,6 +207,7 @@ class HECenter: public godot::Node{
         materialIds.erase(nodeId);
         attributes.erase(nodeId);
         curveGeometries.erase(nodeId);
+        curveRefs.erase(nodeId);
         packedPrimData.erase(nodeId);
         packedPrimMesh.erase(nodeId);
     }
@@ -784,6 +786,7 @@ public:
         if(auto a = HoudiniApi::CookNode(get_session(),id,&HESettings::get_singleton()->cookOptions);a != HAPI_RESULT_SUCCESS){
             printError("Failed to cook node: ",HoudiniEngineUtility::getLastCookError().c_str());
             if(a == HAPI_RESULT_NODE_INVALID){
+                printError("Failed to cook node: The node is invalid.");
                 _delete_data(id);
             }
             return false;
@@ -798,6 +801,9 @@ public:
             }while(status > HAPI_STATE_MAX_READY_STATE && result == HAPI_RESULT_SUCCESS);
             if(status != HAPI_STATE_READY || result != HAPI_RESULT_SUCCESS){
                 printError("Cook failed: ",HoudiniEngineUtility::getLastCookError().c_str());
+                if(result == HAPI_RESULT_NODE_INVALID){
+                    _delete_data(id);
+                }
             }else{
                 cookCounts[id]++;
                 HAPI_NodeInfo info = getNodeInfo(id);
@@ -829,6 +835,18 @@ public:
             printError("Failed to delete node: The session is invalid.");
             return false;
         }
+        std::list<int> queue,temp_queue;
+        temp_queue.push_back(id);
+        while(!temp_queue.empty()){
+            int _id = temp_queue.front();
+            temp_queue.pop_front();
+            auto info = getNodeInfo(_id);
+            if(info.childNodeCount > 0)
+                for(int id2 : getChildNodes(_id,{HAPI_NODETYPE_ANY},{HAPI_NODEFLAGS_ANY})){
+                    temp_queue.push_back(id2);
+                }
+            queue.push_back(_id);
+        }
         if(auto a = HoudiniApi::DeleteNode(get_session(),id);a != HAPI_RESULT_SUCCESS){
             if(a == HAPI_RESULT_NODE_INVALID){
                 if(nodeIds.find(id) != nodeIds.end()){
@@ -842,7 +860,8 @@ public:
             printError("Failed to delete node: ",a," - ",HoudiniEngineUtility::getLastError().c_str());
             return false;
         }
-        _delete_data(id);
+        for(int _id : queue)
+            _delete_data(_id);
         return true;
     }
     std::vector<int> getChildNodes(int nodeId, std::vector<HAPI_NodeType> typeFilter, std::vector<HAPI_NodeFlags> flagFilter,bool recursive = false){
