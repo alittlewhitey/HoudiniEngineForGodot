@@ -35,10 +35,10 @@ void initialize_module(ModuleInitializationLevel p_level){
     GDREGISTER_CLASS(HDAImportPlugin)
     GDREGISTER_CLASS(CoreMountPlugin)
 
+    GDREGISTER_CLASS(HECenter)
+
     EditorPlugins::add_by_type<HDAImportPlugin>();
     EditorPlugins::add_by_type<CoreMountPlugin>();
-
-    GDREGISTER_CLASS(HECenter)
 
     GDREGISTER_CLASS(Bool)
     GDREGISTER_CLASS(Int)
@@ -48,6 +48,7 @@ void initialize_module(ModuleInitializationLevel p_level){
     GDREGISTER_CLASS(HAPI)
     GDREGISTER_CLASS(HEBindEnum)
     GDREGISTER_CLASS(HESettings)
+    GDREGISTER_CLASS(HEUtil)
 
     GDREGISTER_ABSTRACT_CLASS(HENode)
     GDREGISTER_CLASS(HEAsset)

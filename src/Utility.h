@@ -23,13 +23,45 @@
 #elif defined (__linux__) || (defined (__APPLE__) && defined (__MACH__))
 #include <dlfcn.h>
 #endif
-
 inline godot::String string_cast(std::string s){
     return godot::String::utf8(s.c_str());
 }
 inline std::string string_cast(godot::String s){
     return s.utf8().get_data();
 }
+inline std::ostream& operator<<(std::ostream& os, godot::String s){
+    os << s.utf8().get_data();
+    return os;
+}
+template<>
+class std::formatter<godot::String>{
+public:
+    constexpr auto parse(format_parse_context& ctx){
+        return ctx.begin();
+    }
+    auto format(const godot::String& value, format_context& ctx) const{
+        return std::format_to(ctx.out(), "{}", value.utf8().get_data());
+    }
+};
+#define _enum_formatter(m_enum)                                             \
+inline std::ostream& operator<<(std::ostream& os, m_enum value){            \
+    os << (uint64_t)value;                                                  \
+    return os;                                                              \
+}                                                                           \
+template<>                                                                  \
+class std::formatter<m_enum>{                                               \
+public:                                                                     \
+    constexpr auto parse(format_parse_context& ctx){                        \
+        return ctx.begin();                                                 \
+    }                                                                       \
+    auto format(m_enum value, format_context& ctx) const{                   \
+        return std::format_to(ctx.out(), "{}", (uint64_t)value);            \
+    }                                                                       \
+};
+
+#define HE_ENUM_CAST(m_enum)    \
+_enum_formatter(m_enum)         \
+VARIANT_ENUM_CAST(m_enum)
 
 namespace _houdini_engine_log{
     inline std::string logFilePath = "";
@@ -56,8 +88,7 @@ void _output_log(std::source_location source_loc, T... output){
 }
 template <typename ...T>
 void _print_godot_msg(std::source_location source_loc, _godot_msg_type type, T... output){
-    switch (type)
-    {
+    switch (type){
     case _godot_msg_type::log:
         godot::UtilityFunctions::print("[Houdini Engine] ",output...);
         break;
@@ -106,16 +137,26 @@ void _print_godot_msg(_godot_msg_type type, T... output){
         break;
     }
 }
+inline static std::string _houdini_engine_last_error;
+template <typename ...T>
+void _make_last_error(T... output){
+    std::string res;
+    int _[] = {((res += std::format("{}",output)),0)...};
+    _houdini_engine_last_error = std::move(res);
+}
+inline std::string _get_last_error(){
+    return _houdini_engine_last_error;
+}
 #ifdef HE_DEBUG_MODE
 #define printFile(...) do{std::source_location _houdini_engine_source_loc = std::source_location::current();_output_log(_houdini_engine_source_loc,__VA_ARGS__);}while(0)
 #define printLog(...) do{std::source_location _houdini_engine_source_loc = std::source_location::current();_output_log(_houdini_engine_source_loc,__VA_ARGS__);_print_godot_msg(_houdini_engine_source_loc,_godot_msg_type::log,__VA_ARGS__);}while(0)
 #define printWarning(...) do{std::source_location _houdini_engine_source_loc = std::source_location::current();_output_log(_houdini_engine_source_loc,__VA_ARGS__);_print_godot_msg(_houdini_engine_source_loc,_godot_msg_type::warning,__VA_ARGS__);}while(0)
-#define printError(...) do{std::source_location _houdini_engine_source_loc = std::source_location::current();_output_log(_houdini_engine_source_loc,__VA_ARGS__);_print_godot_msg(_houdini_engine_source_loc,_godot_msg_type::error,__VA_ARGS__);}while(0)
+#define printError(...) do{std::source_location _houdini_engine_source_loc = std::source_location::current();_output_log(_houdini_engine_source_loc,__VA_ARGS__);_print_godot_msg(_houdini_engine_source_loc,_godot_msg_type::error,__VA_ARGS__);_make_last_error(__VA_ARGS__);}while(0)
 #else
 #define printFile(...) do{std::source_location _houdini_engine_source_loc = std::source_location::current();_output_log(_houdini_engine_source_loc,__VA_ARGS__);}while(0)
 #define printLog(...) do{std::source_location _houdini_engine_source_loc = std::source_location::current();_output_log(_houdini_engine_source_loc,__VA_ARGS__);_print_godot_msg(_godot_msg_type::log,__VA_ARGS__);}while(0)
 #define printWarning(...) do{std::source_location _houdini_engine_source_loc = std::source_location::current();_output_log(_houdini_engine_source_loc,__VA_ARGS__);_print_godot_msg(_godot_msg_type::warning,__VA_ARGS__);}while(0)
-#define printError(...) do{std::source_location _houdini_engine_source_loc = std::source_location::current();_output_log(_houdini_engine_source_loc,__VA_ARGS__);_print_godot_msg(_godot_msg_type::error,__VA_ARGS__);}while(0)
+#define printError(...) do{std::source_location _houdini_engine_source_loc = std::source_location::current();_output_log(_houdini_engine_source_loc,__VA_ARGS__);_print_godot_msg(_godot_msg_type::error,__VA_ARGS__);_make_last_error(__VA_ARGS__);}while(0)
 #endif
 
 static inline std::set<std::string> _houdini_endine_string_buffer;
@@ -237,26 +278,16 @@ inline std::string get_current_dylib_path(){
 #else
 #error "Unsupported platform"
 #endif
-inline std::string to_windows_path(std::string path)
-{
+inline std::string to_windows_path(std::string path){
     if (path.empty())
-    {
         return "";
-    }
-
     std::string result;
     result.reserve(path.length());
-
-    for (char c : path)
-    {
+    for (char c : path){
         if (c == '/')
-        {
             c = '\\';
-        }
         if (c == '\\' && !result.empty() && result.back() == '\\')
-        {
             continue;
-        }
         result += c;
     }
     return result;

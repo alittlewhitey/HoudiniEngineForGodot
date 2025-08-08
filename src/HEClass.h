@@ -25,8 +25,17 @@ enum SessionType
     ExistingTCPSocket = 5,
     ExistingSharedMemory = 6
 };
-VARIANT_ENUM_CAST(SessionType)
+HE_ENUM_CAST(SessionType)
 class HESession;
+class HEUtil: public godot::RefCounted{
+    GDCLASS(HEUtil,godot::RefCounted)
+    static void _bind_methods(){
+        godot::ClassDB::bind_static_method("HEUtil", godot::D_METHOD("getLastError"), &HEUtil::getLastError);
+    }
+    static godot::String getLastError(){
+        return string_cast(_get_last_error());
+    }
+};
 class HENode: public godot::RefCounted{
     GDCLASS(HENode,godot::RefCounted)
     static void _bind_methods(){

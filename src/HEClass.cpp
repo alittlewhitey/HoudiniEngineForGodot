@@ -3,10 +3,10 @@
 
 godot::Ref<HESession> HESession::switchSession(SessionType type){
     auto oldSession = HECenter::get_singleton()->getHESession();
-    if(oldSession.is_valid()&&oldSession->valid()){
+    if(oldSession.is_valid()&&oldSession->valid())
         HECenter::get_singleton()->stopSession();
-    }
-    HECenter::get_singleton()->startSession((::SessionType)type);
+    if(type != SessionType::None)
+        HECenter::get_singleton()->startSession((::SessionType)type);
     return getSession();
 }
 godot::Ref<HESession> HESession::getSession(){

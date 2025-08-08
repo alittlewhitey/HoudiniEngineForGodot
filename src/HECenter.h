@@ -808,7 +808,7 @@ public:
     }
     bool deleteNode(int id){
         if(!getHESession()->valid()){
-            printError("Failed to cook node: The session is invalid.");
+            printError("Failed to delete node: The session is invalid.");
             return false;
         }
         if(auto a = HoudiniApi::DeleteNode(get_session(),id);a != HAPI_RESULT_SUCCESS){
