@@ -165,7 +165,7 @@ execute_process(
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/cmake_docgen.py
 )
-set(TARGET_NAME "HoudiniEngineForGodot.${Platform}.${BuildType}.${Arch}")
+set(TARGET_NAME "HoudiniEngineForGodot.${Platform}.${Arch}")
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/deps)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/deps/Houdini)

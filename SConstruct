@@ -104,11 +104,10 @@ if platform == "macos":
         arch = "arm64"
 
 library = env.SharedLibrary(
-    "{}/bin/lib{}.{}.{}.{}{}".format(
+    "{}/bin/lib{}.{}.{}{}".format(
         addon_path,
         project_name,
         platform,
-        "debug" if debug else "release",
         arch,
         dylib_suffix,
     ),
