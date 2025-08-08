@@ -44,7 +44,6 @@ inline std::string get_temp_dir(){
 inline std::string generate_random_string(size_t length, const std::string& charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789") {
     if (length == 0) return "";
     
-    // 使用随机设备和 Mersenne Twister 生成器
     static thread_local std::random_device rd;
     static thread_local std::mt19937 gen(rd());
     
