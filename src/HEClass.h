@@ -8,7 +8,9 @@
 #include <godot_cpp/classes/ref_counted.hpp>
 #include <godot_cpp/classes/mesh.hpp>
 #include <godot_cpp/classes/multi_mesh.hpp>
+#include <godot_cpp/classes/curve3d.hpp>
 #include <godot_cpp/classes/image.hpp>
+#include <godot_cpp/variant/typed_dictionary.hpp>
 #include <HoudiniApi.h>
 #include <HoudiniEngineUtility.h>
 #include <HoudiniEnginePlatform.h>
@@ -62,7 +64,6 @@ class HENode: public godot::RefCounted{
     void setType(int){}
 protected:
     HAPI_NodeId id;
-    HESession* session = nullptr;
 public:
     int getId(){
         return id;
@@ -70,12 +71,12 @@ public:
     godot::String getName();
     void setName(godot::String name);
     HAPI_NodeType getType();
-    void cook();
+    bool cook();
     bool isCookFinished();
     godot::Variant getParameter(godot::String name);
     void setParameter(godot::String name, godot::Variant value);
     godot::PackedStringArray getParameterList();
-    godot::PackedInt32Array getChildList(godot::PackedInt32Array types = {HAPI_NODETYPE_ANY}, godot::PackedInt32Array = {HAPI_NODEFLAGS_ANY}, bool recursive = false);
+    godot::Array getChildList(godot::PackedInt32Array types = {HAPI_NODETYPE_ANY}, godot::PackedInt32Array = {HAPI_NODEFLAGS_ANY}, bool recursive = false);
 };
 class HEAsset: public godot::RefCounted{
     GDCLASS(HEAsset,godot::RefCounted)
@@ -336,6 +337,28 @@ public:
         return multimesh;
     }
     godot::Dictionary bakeAsMultiMesh();
+};
+
+class HECurve: public HEGeometry{
+    GDCLASS(HECurve, HEGeometry)
+    static void _bind_methods(){
+        godot::ClassDB::bind_method(godot::D_METHOD("bakeAsCurve"),&HECurve::bakeAsCurve);
+    }
+    virtual godot::String _to_string()override{
+        return string_cast(std::format("<{}#({},{})>",string_cast(get_class()),nodeId,partId));
+    }
+    friend class HECenter;
+    int nodeId;
+    int partId;
+public:
+    static godot::Ref<HECurve> make_curve(int nodeId, int partId){
+        godot::Ref<HECurve> curve;
+        curve.instantiate();
+        curve->nodeId = nodeId;
+        curve->partId = partId;
+        return curve;
+    }
+    godot::Array bakeAsCurve();
 };
 class HEImage: public godot::RefCounted{
     GDCLASS(HEImage, godot::RefCounted)

@@ -65,6 +65,7 @@ void initialize_module(ModuleInitializationLevel p_level){
     GDREGISTER_CLASS(HEGeometry)
     GDREGISTER_CLASS(HEMesh)
     GDREGISTER_CLASS(HEMultiMesh)
+    GDREGISTER_CLASS(HECurve)
     GDREGISTER_CLASS(HEImage)
     auto center = HECenter::get_singleton();
     auto settings = HESettings::get_singleton();

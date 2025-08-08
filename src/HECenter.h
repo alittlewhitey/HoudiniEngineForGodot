@@ -59,22 +59,26 @@ class HECenter: public godot::Node{
         godot::ClassDB::add_signal("HECenter", godot::MethodInfo("SessionStarted"));
     }
     void _notification(int what){
-        switch(what){
-        case NOTIFICATION_ENTER_TREE:{
-            init();
-            set_process(1);
-            HESettings::get_singleton();
-        }break;
-        case NOTIFICATION_PROCESS:{
-            Contact::process_call();
-            process();
-        }break;
-        case NOTIFICATION_EXIT_TREE:{
-            term();
-        }break;
-        case NOTIFICATION_PREDELETE:{
-            predel();
-        }break;
+        try{
+            switch(what){
+            case NOTIFICATION_ENTER_TREE:{
+                init();
+                set_process(1);
+                HESettings::get_singleton();
+            }break;
+            case NOTIFICATION_PROCESS:{
+                Contact::process_call();
+                process();
+            }break;
+            case NOTIFICATION_EXIT_TREE:{
+                term();
+            }break;
+            case NOTIFICATION_PREDELETE:{
+                predel();
+            }break;
+            }
+        }catch(const std::exception& e){
+            printError(e.what());
         }
     }
     void init(){
@@ -109,6 +113,7 @@ class HECenter: public godot::Node{
         using namespace std::chrono_literals;
         freeTimeout = 0ms;
         std::this_thread::sleep_for(HESettings::defaultFreeTimeout<1s?HESettings::defaultFreeTimeout:1000ms);
+        std::filesystem::remove_all(get_temp_dir());
     }
 //Class
 
@@ -137,8 +142,8 @@ class HECenter: public godot::Node{
     std::map<int,std::map<int,PartType>> partType;
     //      nodeId    meshPartId                    faces            P            vertexs                          Cd                                      N                                           uv                                  uv2
     std::map<int,std::map<int,std::tuple<std::vector<int>,std::vector<float>,std::vector<int>,std::pair<AttribOwner,std::vector<float>>,std::pair<AttribOwner,std::vector<float>>,std::pair<AttribOwner,std::vector<float>>,std::pair<AttribOwner,std::vector<float>>>>> meshGeometries;
-    //      nodeId    curvePartId          type  isRational,isPeriodic,order   curveCounts       controlPoints       weights         knots
-    std::map<int,std::map<int,std::tuple<HAPI_CurveType,bool,bool,int,std::vector<int>,std::vector<float>,std::vector<float>,std::vector<float>>>> curveGeometries;
+    //      nodeId    curvePartId          info             curveCounts       controlPoints       weights         knots
+    std::map<int,std::map<int,std::tuple<HAPI_CurveInfo,std::vector<int>,std::vector<float>,std::vector<float>,std::vector<float>>>> curveGeometries;
     //      nodeId  instancerPartId       instancedPartIds          transform
     std::map<int,std::map<int,std::tuple<std::vector<int>,std::vector<HAPI_Transform>>>> packedPrimData;
     //Must fill from data directly rather than from other mesh.
@@ -146,6 +151,8 @@ class HECenter: public godot::Node{
     std::map<int,std::map<int,std::map<int,godot::Ref<godot::MultiMesh>>>> packedPrimMesh;
     //      nodeId      partId      sharedMesh
     std::map<int,std::map<int,godot::Ref<godot::ArrayMesh>>> meshRefs;
+    //      nodeId      partId      curveMesh
+    std::map<int,std::map<int,std::vector<godot::Ref<godot::Curve3D>>>> curveRefs;
     //      nodeId       partId                 Point-Attrib                Vertex-Attrib               Prim-Attrib                     Detail-Attrib    
     std::map<int,std::map<int,std::tuple<std::vector<HAPI_AttributeInfo>,std::vector<HAPI_AttributeInfo>,std::vector<HAPI_AttributeInfo>,std::vector<HAPI_AttributeInfo>>>> attributes;
     //      nodeId      partId      materialResPath
@@ -701,10 +708,21 @@ public:
         }else{
             printFile("Success create node, ID: ",id);
         }
-        nodeIds.insert(id);
-        auto info = getNodeInfo(id);
-        godot::Ref<HENode> nodeRef = makeTypeNode(info.type);
-        nodeRefs.insert({id,nodeRef});
+        std::list<int> queue;
+        queue.push_back(id);
+        while(!queue.empty()){
+            int _id = queue.front();
+            queue.pop_front();
+            auto info = getNodeInfo(_id);
+            if(info.childNodeCount > 0)
+                for(int id2 : getChildNodes(_id,{HAPI_NODETYPE_ANY},{HAPI_NODEFLAGS_ANY})){
+                    queue.push_back(id2);
+                }
+            nodeIds.insert(_id);
+            godot::Ref<HENode> nodeRef = makeTypeNode(info.type);
+            nodeRef->id = _id;
+            nodeRefs.insert({_id,nodeRef});
+        }
         return true;
     }
     bool connectNode(int nodeId, int inputIndex,int node_to_connect,int outputIndex){
@@ -842,7 +860,7 @@ public:
         }
         int count = 0;
         if(auto a = HoudiniApi::ComposeChildNodeList(get_session(),nodeId,types,flags,recursive,&count);a != HAPI_RESULT_SUCCESS){
-            printError("Failed to get child nodes: ",HoudiniEngineUtility::getLastCookError().c_str());
+            printError("Failed to get child nodes: ",HoudiniEngineUtility::getLastError().c_str());
             if(a == HAPI_RESULT_NODE_INVALID){
                 _delete_data(nodeId);
             }
@@ -924,6 +942,7 @@ public:
             }else if(HoudiniApi::ParmInfo_IsString(&parm_infos[i])){
                 int parm_string_count = HoudiniApi::ParmInfo_GetStringValueCount(&parm_infos[i]);
                 std::vector<HAPI_StringHandle> parmSH_values;
+                parmSH_values.resize(parm_string_count);
                 if(HoudiniApi::GetParmStringValues(get_session(),id,true,parmSH_values.data(),parm_infos[i].stringValuesIndex,parm_string_count)!=HAPI_RESULT_SUCCESS){
                     printFile(HoudiniEngineUtility::getLastError().c_str());
                     continue;
@@ -955,6 +974,12 @@ public:
             if(HoudiniApi::GetAttributeFloatData(get_session(),nodeId,partId,name.c_str(),&info,-1,data.data(),0,info.count) != HAPI_RESULT_SUCCESS){
                 return false;
             }
+        }else if constexpr (std::is_same_v<T, std::string>){
+            if(HoudiniApi::GetAttributeStringData(get_session(),nodeId,partId,name.c_str(),&info, data.data(),0,info.count) != HAPI_RESULT_SUCCESS){
+                return false;
+            }
+        }else{
+            return false;
         }
         return true;
     };
@@ -970,6 +995,9 @@ public:
                     break;
                 case PartType::Instancer:
                     createMultiMeshRes(nodeId,a.first);
+                    break;
+                case PartType::Curve:
+                    createCurveRes(nodeId,a.first);
                     break;
                 default:
                     printWarning("Unsupported part type: ",(int)a.second);
@@ -1115,7 +1143,7 @@ public:
                     knots = std::vector<float>(info.knotCount);
                     HoudiniApi::GetCurveKnots(get_session(),id,partId,knots.data(),0,info.knotCount);
                 }
-                curveGeometries[id][partId] = {info.curveType,info.isRational,info.isClosed||info.isPeriodic,info.order,std::move(curveCounts),std::move(controlPoints),std::move(weights),std::move(knots)};
+                curveGeometries[id][partId] = {info,std::move(curveCounts),std::move(controlPoints),std::move(weights),std::move(knots)};
             }break;
             case PartType::Box:{
                 HAPI_BoxInfo info;
@@ -1428,36 +1456,111 @@ public:
     std::map<int,godot::Ref<godot::MultiMesh>> getMultiMeshRef(int nodeId, int partId){
         return packedPrimMesh[nodeId][partId];
     }
+    std::vector<godot::Ref<godot::Curve3D>> createCurveRes(int nodeId, int partId){
+        if (curveGeometries.find(nodeId) == curveGeometries.end() || curveGeometries.at(nodeId).find(partId) == curveGeometries.at(nodeId).end()){
+            return {};
+        }
+
+        auto& curveData = curveGeometries.at(nodeId).at(partId);
+        auto& info = std::get<0>(curveData);
+        auto& curveCounts = std::get<1>(curveData);
+        auto& controlPoints = std::get<2>(curveData);
+        // auto& weights = std::get<3>(curveData);
+        // auto& knots = std::get<4>(curveData);
+
+        auto& vec = curveRefs[nodeId][partId];
+        vec.clear();
+        vec.resize(info.curveCount);
+        int point_offset = 0;
+        for (int i = 0; i < info.curveCount; ++i){
+            auto& ref = vec[i];
+            if (ref.is_null())
+                ref.instantiate();
+            
+            ref->clear_points();
+            int num_points_in_curve = curveCounts[i];
+            switch (info.curveType)
+            {
+                case HAPI_CURVETYPE_LINEAR:
+                case HAPI_CURVETYPE_NURBS:
+                {
+                    for (int j = 0; j < num_points_in_curve; ++j)
+                    {
+                        int current_point_idx = point_offset + j;
+                        godot::Vector3 pos(
+                            controlPoints[current_point_idx * 3],
+                            controlPoints[current_point_idx * 3 + 1],
+                            controlPoints[current_point_idx * 3 + 2]
+                        );
+                        ref->add_point(pos, godot::Vector3(), godot::Vector3());
+                    }
+                    break;
+                }
+                case HAPI_CURVETYPE_BEZIER:
+                {
+                    if (num_points_in_curve < 4 || (num_points_in_curve - 1) % 3 != 0)
+                    {
+                        printWarning("Unsupported Bezier curve vertex count. Treating as linear.");
+                        for (int j = 0; j < num_points_in_curve; ++j)
+                        {
+                            int current_point_idx = point_offset + j;
+                            godot::Vector3 pos(controlPoints[current_point_idx * 3], controlPoints[current_point_idx * 3 + 1], controlPoints[current_point_idx * 3 + 2]);
+                            ref->add_point(pos);
+                        }
+                        break;
+                    }
+                    godot::Vector3 p1(controlPoints[point_offset * 3], controlPoints[point_offset * 3 + 1], controlPoints[point_offset * 3 + 2]);
+                    godot::Vector3 c1(controlPoints[(point_offset + 1) * 3], controlPoints[(point_offset + 1) * 3 + 1], controlPoints[(point_offset + 1) * 3 + 2]);
+                    ref->add_point(p1, godot::Vector3(), c1 - p1);
+                    for (int j = 1; j < num_points_in_curve; j += 3)
+                    {
+                        int base_idx = point_offset + j;
+                        godot::Vector3 c2(controlPoints[base_idx * 3], controlPoints[base_idx * 3 + 1], controlPoints[base_idx * 3 + 2]);
+                        godot::Vector3 p2(controlPoints[(base_idx + 1) * 3], controlPoints[(base_idx + 1) * 3 + 1], controlPoints[(base_idx + 1) * 3 + 2]);
+                        godot::Vector3 c3 = (base_idx + 2 < point_offset + num_points_in_curve) ?
+                            godot::Vector3(controlPoints[(base_idx + 2) * 3], controlPoints[(base_idx + 2) * 3 + 1], controlPoints[(base_idx + 2) * 3 + 2]) : p2;
+
+                        ref->add_point(p2, c2 - p2, c3 - p2);
+                    }
+                    break;
+                }
+                default:
+                    printError("Unsupported curve type.");
+                    break;
+            }
+            point_offset += num_points_in_curve;
+        }
+        
+        return vec;
+    }
+    std::vector<godot::Ref<godot::Curve3D>> getCurveRef(int nodeId, int partId){
+        return curveRefs[nodeId][partId];
+    }
     void getImageData(int nodeId){
-        if (HoudiniApi::RenderCOPToImage(get_session(), nodeId) != HAPI_RESULT_SUCCESS)
-        {
+        if (HoudiniApi::RenderCOPToImage(get_session(), nodeId) != HAPI_RESULT_SUCCESS){
             printError("Failed to render COP node: ", HoudiniEngineUtility::getLastError().c_str());
             return;
         }
         HAPI_ImageInfo imageInfo;
-        if (HoudiniApi::GetImageInfo(get_session(), nodeId, &imageInfo) != HAPI_RESULT_SUCCESS)
-        {
+        if (HoudiniApi::GetImageInfo(get_session(), nodeId, &imageInfo) != HAPI_RESULT_SUCCESS){
             printError("Failed to get image info from COP node: ", HoudiniEngineUtility::getLastError().c_str());
             return;
         }
         int bufSize = 0;
-        if (HoudiniApi::ExtractImageToMemory(get_session(),nodeId,"png","C A", &bufSize) != HAPI_RESULT_SUCCESS)
-        {
+        if (HoudiniApi::ExtractImageToMemory(get_session(),nodeId,"png","C A", &bufSize) != HAPI_RESULT_SUCCESS){
             printError("Failed to extract image from COP node: ", HoudiniEngineUtility::getLastError().c_str());
             return;
         }
         godot::PackedByteArray buf;
         buf.resize(bufSize);
-        if(HoudiniApi::GetImageMemoryBuffer(get_session(),nodeId, (char*)buf.ptrw(), bufSize) != HAPI_RESULT_SUCCESS)
-        {
+        if(HoudiniApi::GetImageMemoryBuffer(get_session(),nodeId, (char*)buf.ptrw(), bufSize) != HAPI_RESULT_SUCCESS){
             printError("Failed to get image data from memory: ", HoudiniEngineUtility::getLastError().c_str());
             return;
         }
         images[nodeId] = {std::move(imageInfo), std::move(buf)};
     }
     godot::Ref<godot::Image> createImageRes(int nodeId){
-        if (images.find(nodeId) == images.end())
-        {
+        if (images.find(nodeId) == images.end()){
             getImageData(nodeId);
             if (images.find(nodeId) == images.end())
                 return {};
@@ -1469,12 +1572,10 @@ public:
         godot::Ref<godot::Image> image;
         image.instantiate();
 
-        if (image->load_png_from_buffer(buffer) != godot::Error::OK)
-        {
+        if (image->load_png_from_buffer(buffer) != godot::Error::OK){
             printError("Failed to load image from buffer for node: ", nodeId);
             return {};
         }
-
         imageRefs[nodeId] = image;
         return image;
     }
@@ -1482,7 +1583,7 @@ public:
         return imageRefs[nodeId];
     }
     
-    bool createInputNode(std::string nodeLabel, int& id, int parentId, godot::Ref<godot::Mesh> mesh){
+    bool createInputMeshNode(std::string nodeLabel, int& id, int parentId, godot::Ref<godot::Mesh> mesh){
         if(!getHESession()->valid()){
             printError("Failed to create input node: The session is invalid.");
             return false;
@@ -1493,7 +1594,7 @@ public:
         }else{
             printFile("Success create input node, ID: ",id);
         }
-        if(initInputNode(id,mesh) != -1){
+        if(initInputMeshNode(id,mesh) != -1){
             nodeIds.insert(id);
             auto info = getNodeInfo(id);
             godot::Ref<HENode> nodeRef = makeTypeNode(info.type);
@@ -1506,7 +1607,7 @@ public:
         }
         return true;
     }
-    int initInputNode(int id,godot::Ref<godot::Mesh> mesh){
+    int initInputMeshNode(int id,godot::Ref<godot::Mesh> mesh){
         auto geoInfo = getGeoInfo(id);
         if(geoInfo.isTemplated)
             return -1;
@@ -1833,6 +1934,11 @@ public:
             return -1;
         }
         return id;
+    }
+    bool createInputCopNode(std::string nodeLabel, int& id, int parentId, godot::Ref<godot::Image> img){
+        std::string filepath = get_temp_dir()+'/'+generate_random_string(8);
+        img->save_png(string_cast(filepath));
+        return false;
     }
 };
 

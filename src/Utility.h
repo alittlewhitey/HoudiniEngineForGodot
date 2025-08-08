@@ -15,8 +15,10 @@
 #include <array>
 #include <set>
 #include <filesystem>
+#include <random>
 #include <source_location>
 #include <godot_cpp/variant/utility_functions.hpp>
+#include <godot_cpp/classes/project_settings.hpp>
 #if defined (_WIN32) || defined (WIN32)
 #include <windows.h>
 #undef GetGeoInfo
@@ -28,6 +30,49 @@ inline godot::String string_cast(std::string s){
 }
 inline std::string string_cast(godot::String s){
     return s.utf8().get_data();
+}
+inline std::string globalize_path(godot::String path){
+    path = godot::ProjectSettings::get_singleton()->globalize_path(path);
+    return string_cast(path);
+}
+inline std::string get_temp_dir(){
+    std::string path = globalize_path("user://he_tmp_dir");
+    if(!std::filesystem::exists(path))
+        std::filesystem::create_directory(path);
+    return path;
+}
+inline std::string generate_random_string(size_t length, const std::string& charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789") {
+    if (length == 0) return "";
+    
+    // 使用随机设备和 Mersenne Twister 生成器
+    static thread_local std::random_device rd;
+    static thread_local std::mt19937 gen(rd());
+    
+    std::uniform_int_distribution<size_t> dist(0, charset.size() - 1);
+    
+    std::string result;
+    result.reserve(length);
+    
+    for (size_t i = 0; i < length; ++i) {
+        result += charset[dist(gen)];
+    }
+    
+    return result;
+}
+inline std::string generate_random_numeric_string(size_t length) {
+    return generate_random_string(length, "0123456789");
+}
+inline std::string generate_random_alpha_string(size_t length, bool uppercase_only = false) {
+    if (uppercase_only) {
+        return generate_random_string(length, "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+    }
+    return generate_random_string(length, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
+}
+inline std::string generate_random_hex_string(size_t length, bool uppercase = false) {
+    if (uppercase) {
+        return generate_random_string(length, "0123456789ABCDEF");
+    }
+    return generate_random_string(length, "0123456789abcdef");
 }
 inline std::ostream& operator<<(std::ostream& os, godot::String s){
     os << s.utf8().get_data();
