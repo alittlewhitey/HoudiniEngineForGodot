@@ -14,6 +14,7 @@
 #include <string>
 #include <array>
 #include <set>
+#include <algorithm>
 #include <filesystem>
 #include <random>
 #include <source_location>
@@ -186,6 +187,9 @@ template <typename ...T>
 void _make_last_error(T... output){
     std::string res;
     int _[] = {((res += std::format("{}",output)),0)...};
+    if(std::all_of(res.begin(),res.end(),[](char c){
+        return std::isspace(c);
+    })) return;
     _houdini_engine_last_error = std::move(res);
 }
 inline std::string _get_last_error(){

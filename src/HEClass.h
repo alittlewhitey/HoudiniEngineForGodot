@@ -49,12 +49,17 @@ class HENode: public godot::RefCounted{
         godot::ClassDB::add_property("HENode",godot::PropertyInfo(godot::Variant::Type::STRING,"name"),"setName","getName");
         godot::ClassDB::bind_method(godot::D_METHOD("getType"),&HENode::getType);
         godot::ClassDB::bind_method(godot::D_METHOD("cook"),&HENode::cook);
+        godot::ClassDB::bind_method(godot::D_METHOD("connectNodeTo","resNode","resInputIdx","outputIdx"),&HENode::connectNodeTo,0);
+        godot::ClassDB::bind_method(godot::D_METHOD("disconnectNode","inputIdx"),&HENode::disconnectNode);
+        godot::ClassDB::bind_method(godot::D_METHOD("queryConnect","inputIdx"),&HENode::queryConnect);
+        godot::ClassDB::bind_method(godot::D_METHOD("deleteNode"),&HENode::deleteNode);
         godot::ClassDB::bind_method(godot::D_METHOD("isCookFinished"),&HENode::isCookFinished);
         godot::ClassDB::bind_method(godot::D_METHOD("getParameter","name"),&HENode::getParameter);
         godot::ClassDB::bind_method(godot::D_METHOD("setParameter","name","value"),&HENode::setParameter);
         godot::ClassDB::bind_method(godot::D_METHOD("getParameterList"),&HENode::getParameterList);
         godot::ClassDB::bind_method(godot::D_METHOD("getChildList","types","flags","recursive"),&HENode::getChildList,godot::PackedInt32Array{HAPI_NODETYPE_ANY},godot::PackedInt32Array{HAPI_NODEFLAGS_ANY},false);
-        godot::ClassDB::add_signal("HENode",godot::MethodInfo("cookFinished"));
+        godot::ClassDB::bind_static_method(get_class_static(),godot::D_METHOD("createNode","label","operatorName","parentNode"),&HENode::createNode,godot::Ref<HENode>());
+        godot::ClassDB::add_signal("HENode",godot::MethodInfo("cookFinished",godot::PropertyInfo(godot::Variant::Type::BOOL,"success")));
     }
     virtual godot::String _to_string(){
         return string_cast(std::format("<{}#{}>",string_cast(get_class()),id));
@@ -72,11 +77,16 @@ public:
     void setName(godot::String name);
     HAPI_NodeType getType();
     bool cook();
+    bool connectNodeTo(godot::Ref<HENode> resNode, int resInputIdx, int outputIdx = 0);
+    bool disconnectNode(int inputIdx);
+    godot::Ref<HENode> queryConnect(int inputIdx);
+    void deleteNode();
     bool isCookFinished();
     godot::Variant getParameter(godot::String name);
     void setParameter(godot::String name, godot::Variant value);
     godot::PackedStringArray getParameterList();
     godot::Array getChildList(godot::PackedInt32Array types = {HAPI_NODETYPE_ANY}, godot::PackedInt32Array = {HAPI_NODEFLAGS_ANY}, bool recursive = false);
+    static godot::Ref<HENode> createNode(godot::String label, godot::String operatorName, godot::Ref<HENode> parentNode = {});
 };
 class HEAsset: public godot::RefCounted{
     GDCLASS(HEAsset,godot::RefCounted)
@@ -120,9 +130,6 @@ class HESession: public godot::RefCounted{
         godot::ClassDB::bind_method(godot::D_METHOD("valid"),&HESession::valid);
         godot::ClassDB::bind_method(godot::D_METHOD("loadHDA","hda"),&HESession::loadHDA);
         godot::ClassDB::bind_method(godot::D_METHOD("loadHDAExternal","hdaPath"),&HESession::loadHDAExternal);
-        godot::ClassDB::bind_method(godot::D_METHOD("createNode","label","operatorName","parentNode"),&HESession::createNode,godot::Ref<HENode>());
-        godot::ClassDB::bind_method(godot::D_METHOD("connectNode","connectingNode","inputIdx","connectedNode","connectedOutputIdx"),&HESession::connectNode);
-        godot::ClassDB::bind_method(godot::D_METHOD("deleteNode","node"),&HESession::deleteNode);
     }
     virtual godot::String _to_string(){
         return string_cast(std::format("<{}#0>",string_cast(get_class())));
@@ -147,10 +154,6 @@ public:
     std::string getString(HAPI_StringHandle sh);
     godot::Ref<HEAsset> loadHDA(godot::Ref<HDAResource> hda);
     godot::Ref<HEAsset> loadHDAExternal(godot::String hdaPath);
-    godot::Ref<HENode> createNode(godot::String label, godot::String operatorName, godot::Ref<HENode> parentNode = {});
-    godot::Ref<HENode> inputMeshNode(godot::String nodeLabel, godot::Ref<godot::Mesh> mesh, godot::Ref<HENode> parentId = godot::Ref<HENode>());
-    bool connectNode(godot::Ref<HENode> connectingNode, int inputIdx, godot::Ref<HENode> connectedNode, int connectedOutputIdx);
-    void deleteNode(godot::Ref<HENode> node);
 };
 class HEGeometry;
 class HEObjNode: public HENode{
@@ -174,6 +177,8 @@ class HESopNode: public HENode{
         godot::ClassDB::bind_method(godot::D_METHOD("getType"),&HESopNode::getType);
         godot::ClassDB::bind_method(godot::D_METHOD("getGeometryCount"),&HESopNode::getGeometryCount);
         godot::ClassDB::bind_method(godot::D_METHOD("getGeometry","partId"),&HESopNode::getGeometry);
+        godot::ClassDB::bind_static_method(get_class_static(),godot::D_METHOD("inputMeshNode","label","mesh","parentId"),&HESopNode::inputMeshNode,godot::Ref<HENode>());
+        godot::ClassDB::bind_static_method(get_class_static(),godot::D_METHOD("inputCurveNode","label","curve","parentId"),&HESopNode::inputCurveNode,godot::Ref<HENode>());
     }
     virtual godot::String _to_string()override{
         return string_cast(std::format("<{}#{}>",string_cast(get_class()),id));
@@ -185,6 +190,8 @@ public:
     }
     int getGeometryCount();
     godot::Ref<HEGeometry> getGeometry(int partId);
+    static godot::Ref<HESopNode> inputMeshNode(godot::String label, godot::Ref<godot::Mesh> mesh, godot::Ref<HENode> parentId = godot::Ref<HENode>());
+    static godot::Ref<HESopNode> inputCurveNode(godot::String label, godot::Ref<godot::Curve3D> curve, godot::Ref<HENode> parentId = godot::Ref<HENode>());
 };
 class HEImage;
 class HECopNode: public HENode{

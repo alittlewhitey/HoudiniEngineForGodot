@@ -441,9 +441,13 @@ public:
         return partType[nodeId][partId];
     }
     godot::Ref<HENode> findNodeRef(int nodeId){
+        if(nodeRefs.find(nodeId) == nodeRefs.end())
+            return {};
         return nodeRefs[nodeId];
     }
     godot::Ref<HEAsset> findAssetRef(int assetId){
+        if(assetRefs.find(assetId) == assetRefs.end())
+            return {};
         return assetRefs[assetId];
     }
     std::string getString(HAPI_StringHandle sh){
@@ -727,20 +731,20 @@ public:
         }
         return true;
     }
-    bool connectNode(int nodeId, int inputIndex,int node_to_connect,int outputIndex){
+    bool connectNode(int resNode, int inputIndex,int srcNode,int outputIndex){
         if(!getHESession()->valid()){
             printError("Failed to connect node: The session is invalid.");
             return false;
         }
-        if(HoudiniApi::ConnectNodeInput(get_session(),nodeId,inputIndex,node_to_connect,outputIndex) != HAPI_RESULT_SUCCESS){
+        if(HoudiniApi::ConnectNodeInput(get_session(),resNode,inputIndex,srcNode,outputIndex) != HAPI_RESULT_SUCCESS){
             printError("Error connect node: ",HoudiniEngineUtility::getLastError().c_str());
             return false;
         }else{
-            printFile("Success connect node ",nodeId," with ",node_to_connect);
+            printFile("Success connect node ",resNode," with ",srcNode);
         }
 
         if(HESettings::get_singleton()->autoCook)
-            cookNode(nodeId);
+            cookNode(resNode);
         return true;
     }
     bool disconnectNode(int nodeId, int inputIndex){
@@ -774,21 +778,35 @@ public:
         }
         return id2;
     }
-    bool cookNode(int id,std::function<void()> cookedCallBack = []{}){
+    bool cookNode(int id,std::function<void(bool)> cookedCallBack = [](bool){}){
         if(!getHESession()->valid()){
             printError("Failed to cook node: The session is invalid.");
+            Contact::add_call([cookedCallBack]{
+                cookedCallBack(false);
+            });
             return false;
         }
-        if(id == -1)
+        if(id == -1){
+            Contact::add_call([cookedCallBack]{
+                cookedCallBack(false);
+            });
             return false;
-        if(nodeIds.find(id) == nodeIds.end())
+        }
+        if(nodeIds.find(id) == nodeIds.end()){
+            Contact::add_call([cookedCallBack]{
+                cookedCallBack(false);
+            });
             return false;
+        }
         if(auto a = HoudiniApi::CookNode(get_session(),id,&HESettings::get_singleton()->cookOptions);a != HAPI_RESULT_SUCCESS){
             printError("Failed to cook node: ",HoudiniEngineUtility::getLastCookError().c_str());
             if(a == HAPI_RESULT_NODE_INVALID){
                 printError("Failed to cook node: The node is invalid.");
                 _delete_data(id);
             }
+            Contact::add_call([cookedCallBack]{
+                cookedCallBack(false);
+            });
             return false;
         }
         std::jthread td([this,id,cookedCallBack](){
@@ -821,7 +839,7 @@ public:
             }
             cookStatus[id] = true;
             Contact::add_call([cookedCallBack]{
-                cookedCallBack();
+                cookedCallBack(true);
             });
         });
         if(HESettings::get_singleton()->useCookingThread)
@@ -1004,7 +1022,10 @@ public:
     };
 
     void updateSopData(int nodeId){
+        HAPI_GeoInfo info = getGeoInfo(nodeId);
         getParameters(nodeId);
+        if(!info.isDisplayGeo)
+            return;
         getGeometry(nodeId);
         getMaterial(nodeId);
         for(auto& a : partType[nodeId]){
@@ -1953,6 +1974,120 @@ public:
             return -1;
         }
         return id;
+    }
+    bool createInputCurveNode(std::string nodeLabel, int& id, int parentId, godot::Ref<godot::Curve3D> curve){
+        if(!getHESession()->valid()){
+            printError("Failed to create input node: The session is invalid.");
+            return false;
+        }
+        if (curve.is_null() || curve->get_point_count() < 2){
+            printError("Input curve is invalid or has less than 2 points.");
+            return -1;
+        }
+        if(HoudiniApi::CreateInputCurveNode(get_session(),parentId,&id, nodeLabel.c_str()) != HAPI_RESULT_SUCCESS){
+            printError("Error create input node: ",HoudiniEngineUtility::getLastError().c_str());
+            return false;
+        }else{
+            printFile("Success create input node, ID: ",id);
+        }
+        if(initInputCurveNode(id,curve) != -1){
+            nodeIds.insert(id);
+            auto info = getNodeInfo(id);
+            godot::Ref<HENode> nodeRef = makeTypeNode(info.type);
+            nodeRefs.insert({id,nodeRef});
+            if(HESettings::get_singleton()->autoCook)
+                cookNode(id);
+        }else{
+            deleteNode(id);
+            printError("Failed to init input node.");
+        }
+        return true;
+    }
+    int initInputCurveNode(int nodeId, godot::Ref<godot::Curve3D> curve){
+        int point_count = curve->get_point_count();
+        int segment_count = point_count - 1;
+        int total_vertices = segment_count * 3 + 1;
+
+        std::vector<float> allPositions;
+        allPositions.reserve(total_vertices * 3);
+
+        godot::Vector3 pos = curve->get_point_position(0);
+        allPositions.push_back(pos.x);
+        allPositions.push_back(pos.y);
+        allPositions.push_back(pos.z);
+
+        for (int i = 0; i < segment_count; ++i){
+            godot::Vector3 out_handle = curve->get_point_position(i) + curve->get_point_out(i);
+            allPositions.push_back(out_handle.x);
+            allPositions.push_back(out_handle.y);
+            allPositions.push_back(out_handle.z);
+
+            godot::Vector3 in_handle = curve->get_point_position(i + 1) + curve->get_point_in(i + 1);
+            allPositions.push_back(in_handle.x);
+            allPositions.push_back(in_handle.y);
+            allPositions.push_back(in_handle.z);
+
+            godot::Vector3 next_pos = curve->get_point_position(i + 1);
+            allPositions.push_back(next_pos.x);
+            allPositions.push_back(next_pos.y);
+            allPositions.push_back(next_pos.z);
+        }
+
+        HAPI_PartInfo part_info = HoudiniApi::PartInfo_Create();
+        part_info.id = 0;
+        part_info.nameSH = 0;
+        part_info.type = HAPI_PARTTYPE_CURVE;
+        part_info.faceCount = 0;
+        part_info.vertexCount = 0;
+        part_info.pointCount = total_vertices;
+        part_info.hasChanged = true;
+        if (HoudiniApi::SetPartInfo(get_session(), nodeId, 0, &part_info) != HAPI_RESULT_SUCCESS){
+            printError("Failed to set part info for curve node: ", HoudiniEngineUtility::getLastError().c_str());
+            return -1;
+        }
+
+        HAPI_CurveInfo curve_info = HoudiniApi::CurveInfo_Create();
+        curve_info.curveCount = 1;
+        curve_info.vertexCount = total_vertices;
+        curve_info.knotCount = 0;
+        curve_info.isPeriodic = false;
+        curve_info.isRational = false;
+        curve_info.order = 4;
+        curve_info.hasKnots = false;
+        curve_info.curveType = HAPI_CURVETYPE_BEZIER;
+
+        if (HoudiniApi::SetCurveInfo(get_session(), nodeId, 0, &curve_info) != HAPI_RESULT_SUCCESS){
+            printError("Failed to set curve info: ", HoudiniEngineUtility::getLastError().c_str());
+            return -1;
+        }
+
+        int curve_count_val = total_vertices;
+        if (HoudiniApi::SetCurveCounts(get_session(), nodeId, 0, &curve_count_val, 0, 1) != HAPI_RESULT_SUCCESS){
+            printError("Failed to set curve counts: ", HoudiniEngineUtility::getLastError().c_str());
+            return -1;
+        }
+        HAPI_AttributeInfo attr_info_p = HoudiniApi::AttributeInfo_Create();
+        attr_info_p.count = total_vertices;
+        attr_info_p.tupleSize = 3;
+        attr_info_p.exists = true;
+        attr_info_p.storage = HAPI_STORAGETYPE_FLOAT;
+        attr_info_p.owner = HAPI_ATTROWNER_POINT;
+
+        if (HoudiniApi::AddAttribute(get_session(), nodeId, 0, "P", &attr_info_p) != HAPI_RESULT_SUCCESS){
+            printError("Failed to add P attribute: ", HoudiniEngineUtility::getLastError().c_str());
+            return -1;
+        }
+
+        if (HoudiniApi::SetAttributeFloatData(get_session(), nodeId, 0, "P", &attr_info_p, allPositions.data(), 0, attr_info_p.count) != HAPI_RESULT_SUCCESS){
+            printError("Failed to set P attribute data: ", HoudiniEngineUtility::getLastError().c_str());
+            return -1;
+        }
+
+        if (HoudiniApi::CommitGeo(get_session(), nodeId) != HAPI_RESULT_SUCCESS){
+            printError("Failed to commit curve geo: ", HoudiniEngineUtility::getLastError().c_str());
+            return -1;
+        }
+        return nodeId;
     }
     bool createInputCopNode(std::string nodeLabel, int& id, int parentId, godot::Ref<godot::Image> img){
         std::string filepath = get_temp_dir()+'/'+generate_random_string(8);

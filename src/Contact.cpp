@@ -25,16 +25,17 @@ void Contact::process_call() {
         std::this_thread::sleep_for(1ms);
     }
     is_changing.store(1);
-    while(!call_pool.empty()){
-        auto a = call_pool.front().second;
-        call_pool.erase(call_pool.begin());
+    auto internal_call_pool = std::move(call_pool);
+    is_changing.store(0);
+    while(!internal_call_pool.empty()){
+        auto a = internal_call_pool.front().second;
+        internal_call_pool.pop_front();
         try{
             a();
         }catch(std::exception& e){
             std::cerr << e.what() << std::endl;
         }
     }
-    is_changing.store(0);
 }
 bool Contact::find_if(Contact::TaskID id){
     for(auto& a : call_pool){

@@ -61,7 +61,7 @@ godot::Ref<HEAsset> HESession::loadHDAExternal(godot::String hdaPath){
         return {};
     }
 }
-godot::Ref<HENode> HESession::createNode(godot::String label, godot::String operatorName, godot::Ref<HENode> parentNode){
+godot::Ref<HENode> HENode::createNode(godot::String label, godot::String operatorName, godot::Ref<HENode> parentNode){
     try{
         int parentId = -1;
         if(parentNode.is_valid())
@@ -75,22 +75,39 @@ godot::Ref<HENode> HESession::createNode(godot::String label, godot::String oper
         return {};
     }
 }
-bool HESession::connectNode(godot::Ref<HENode> connectingNode, int inputIdx, godot::Ref<HENode> connectedNode, int connectedOutputIdx){
+bool HENode::connectNodeTo(godot::Ref<HENode> resNode, int resInputIdx, int outputIdx){
     try{
-        return HECenter::get_singleton()->connectNode(connectingNode->getId(), inputIdx, connectedNode->getId(), connectedOutputIdx);
+        return HECenter::get_singleton()->connectNode(resNode->getId(), resInputIdx, id, outputIdx);
     }catch(const std::exception& e){
         printError(e.what());
         return false;
     }
 }
-void HESession::deleteNode(godot::Ref<HENode> node){
+bool HENode::disconnectNode(int inputIdx){
     try{
-        HECenter::get_singleton()->deleteNode(node->getId());
+        return HECenter::get_singleton()->disconnectNode(id,inputIdx);
+    }catch(const std::exception& e){
+        printError(e.what());
+        return false;
+    }
+}
+godot::Ref<HENode> HENode::queryConnect(int inputIdx){
+    try{
+        int resId = HECenter::get_singleton()->queryConnectedNode(id,inputIdx);
+        return HECenter::get_singleton()->findNodeRef(resId);
+    }catch(const std::exception& e){
+        printError(e.what());
+        return {};
+    }
+}
+void HENode::deleteNode(){
+    try{
+        HECenter::get_singleton()->deleteNode(id);
     }catch(const std::exception& e){
         printError(e.what());
     }
 }
-godot::Ref<HENode> HESession::inputMeshNode(godot::String nodeLabel, godot::Ref<godot::Mesh> mesh, godot::Ref<HENode> parentId){
+godot::Ref<HESopNode> HESopNode::inputMeshNode(godot::String label, godot::Ref<godot::Mesh> mesh, godot::Ref<HENode> parentId){
     try{
         int id,pId;
         if(parentId.is_null()){
@@ -98,7 +115,22 @@ godot::Ref<HENode> HESession::inputMeshNode(godot::String nodeLabel, godot::Ref<
         }else{
             pId = parentId->getId();
         }
-        HECenter::get_singleton()->createInputMeshNode(string_cast(nodeLabel),id,pId,mesh);
+        HECenter::get_singleton()->createInputMeshNode(string_cast(label),id,pId,mesh);
+        return HECenter::get_singleton()->findNodeRef(id);
+    }catch(const std::exception& e){
+        printError(e.what());
+        return {};
+    }
+}
+godot::Ref<HESopNode> HESopNode::inputCurveNode(godot::String label, godot::Ref<godot::Curve3D> curve, godot::Ref<HENode> parentId){
+    try{
+        int id,pId;
+        if(parentId.is_null()){
+            pId = -1;
+        }else{
+            pId = parentId->getId();
+        }
+        HECenter::get_singleton()->createInputCurveNode(string_cast(label),id,pId,curve);
         return HECenter::get_singleton()->findNodeRef(id);
     }catch(const std::exception& e){
         printError(e.what());
@@ -133,8 +165,8 @@ HAPI_NodeType HENode::getType(){
 }
 bool HENode::cook(){
     try{
-        return HECenter::get_singleton()->cookNode(id,[this]{
-            emit_signal("cookFinished");
+        return HECenter::get_singleton()->cookNode(id,[this](bool success){
+            emit_signal("cookFinished",success);
         });
     }catch(const std::exception& e){
         printError(e.what());
