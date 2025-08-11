@@ -32,7 +32,7 @@
 
 #include "Utility.h"
 #include "Contact.h"
-#include "HDAImporter.h"
+#include "HEImporter.h"
 #include "HEClass.h"
 #include "HESettings.h"
 enum class AttribOwner{
@@ -634,6 +634,71 @@ public:
         getHESession()->active = false;
         return true;
     }
+    bool restartSession(){
+        auto session = getHESession();
+        auto type = session->type;
+        if(!session->valid()){
+            printError("Can't restart session with a invalid session");
+            return false;
+        }
+        if(!stopSession())
+            return false;
+        if(!startSession(type))
+            return false;
+        return true;
+    }
+    bool loadHIP(std::string path, bool append = false, bool cook = true){
+        std::vector<int> newNodeIds;
+        if(append){
+            HAPI_HIPFileId fileId;
+            if(HoudiniApi::MergeHIPFile(get_session(),path.c_str(),cook,&fileId) != HAPI_RESULT_SUCCESS){
+                printError("Failed to load hip file");
+                return false;
+            }
+            int count = 0;
+            if(HoudiniApi::GetHIPFileNodeCount(get_session(),fileId,&count) != HAPI_RESULT_SUCCESS){
+                printError("Can't get append node'id count");
+                return false;
+            }
+            std::vector<int> nodeIds(count);
+            if(HoudiniApi::GetHIPFileNodeIds(get_session(),fileId,nodeIds.data(),count) !=HAPI_RESULT_SUCCESS){
+                printError("Can't get append node'ids");
+                return false;
+            }
+            newNodeIds = std::move(nodeIds);
+        }else{
+            restartSession();
+            if(HoudiniApi::LoadHIPFile(get_session(),path.c_str(),cook) != HAPI_RESULT_SUCCESS){
+                printError("Failed to load hip file\n\t"
+                    "WIP! Last session is clear because append mode is false");
+                return false;
+            }
+            newNodeIds = getChildNodes(-1, {HAPI_NODETYPE_ANY}, {HAPI_NODEFLAGS_ANY}, true);
+        }
+        if(cook){
+            for(auto id : newNodeIds){
+                std::jthread td([this,id]{
+                    cookThread(id);
+                });
+                if(HESettings::get_singleton()->useCookingThread)
+                    td.detach();
+                else
+                    td.join();
+            }
+        }
+        return true;
+    }
+    bool saveHIP(std::string path, bool lock = true){
+        if(!getHESession()->valid()){
+            printError("Error load Asset with invalid session");
+            return false;
+        }
+        if(HoudiniApi::SaveHIPFile(get_session(),path.c_str(),lock) != HAPI_RESULT_SUCCESS){
+            printError("Failed to save session to hip file");
+            return false;
+        }
+        return true;
+    }
     bool loadAsset(std::string path, int& assetId){
         if(!getHESession()->valid()){
             printError("Error load Asset with invalid session");
@@ -809,44 +874,47 @@ public:
             });
             return false;
         }
-        std::jthread td([this,id,cookedCallBack](){
-            cookStatus[id] = false;
-            int status;
-            HAPI_Result result;
-            do{
-                result = HoudiniApi::GetStatus(get_session(),HAPI_STATUS_COOK_STATE,&status);
-                std::this_thread::sleep_for(std::chrono::microseconds(1));
-            }while(status > HAPI_STATE_MAX_READY_STATE && result == HAPI_RESULT_SUCCESS);
-            if(status != HAPI_STATE_READY || result != HAPI_RESULT_SUCCESS){
-                printError("Cook failed: ",HoudiniEngineUtility::getLastCookError().c_str());
-                if(result == HAPI_RESULT_NODE_INVALID){
-                    _delete_data(id);
-                }
-            }else{
-                cookCounts[id]++;
-                HAPI_NodeInfo info = getNodeInfo(id);
-                switch(info.type){
-                    case HAPI_NODETYPE_SOP:
-                        updateSopData(id);
-                        break;
-                    case HAPI_NODETYPE_COP:
-                        updateCopData(id);
-                        break;
-                    default:
-                        getParameters(id);
-                        break;
-                }
-            }
-            cookStatus[id] = true;
-            Contact::add_call([cookedCallBack]{
-                cookedCallBack(true);
-            });
+        std::jthread td([this,id,cookedCallBack]{
+            cookThread(id,cookedCallBack);
         });
         if(HESettings::get_singleton()->useCookingThread)
             td.detach();
         else
             td.join();
         return true;
+    }
+    void cookThread(int id, std::function<void(bool)> cookedCallBack = [](bool){}){
+        cookStatus[id] = false;
+        int status;
+        HAPI_Result result;
+        do{
+            result = HoudiniApi::GetStatus(get_session(),HAPI_STATUS_COOK_STATE,&status);
+            std::this_thread::sleep_for(std::chrono::microseconds(1));
+        }while(status > HAPI_STATE_MAX_READY_STATE && result == HAPI_RESULT_SUCCESS);
+        if(status != HAPI_STATE_READY || result != HAPI_RESULT_SUCCESS){
+            printError("Cook failed: ",HoudiniEngineUtility::getLastCookError().c_str());
+            if(result == HAPI_RESULT_NODE_INVALID){
+                _delete_data(id);
+            }
+        }else{
+            cookCounts[id]++;
+            HAPI_NodeInfo info = getNodeInfo(id);
+            switch(info.type){
+                case HAPI_NODETYPE_SOP:
+                    updateSopData(id);
+                    break;
+                case HAPI_NODETYPE_COP:
+                    updateCopData(id);
+                    break;
+                default:
+                    getParameters(id);
+                    break;
+            }
+        }
+        cookStatus[id] = true;
+        Contact::add_call([cookedCallBack]{
+            cookedCallBack(true);
+        });
     }
     bool deleteNode(int id){
         if(!getHESession()->valid()){

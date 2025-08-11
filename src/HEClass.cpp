@@ -1,6 +1,8 @@
 #include "HEClass.h"
 #include "HECenter.h"
 #include <exception>
+#include <godot_cpp/classes/editor_interface.hpp>
+#include <godot_cpp/classes/editor_file_system.hpp>
 
 godot::Ref<HESession> HESession::switchSession(SessionType type){
     try{
@@ -60,6 +62,21 @@ godot::Ref<HEAsset> HESession::loadHDAExternal(godot::String hdaPath){
         printError(e.what());
         return {};
     }
+}
+bool HESession::saveHIP(godot::String hipPath, bool lock){
+    auto res = HECenter::get_singleton()->saveHIP(globalize_path(hipPath), lock);
+    auto fs = godot::EditorInterface::get_singleton()->get_resource_filesystem();
+    if(std::filesystem::exists(globalize_path(hipPath))){
+        fs->update_file(hipPath);
+        fs->reimport_files({hipPath});
+    }
+    return res;
+}
+bool HESession::loadHIP(godot::Ref<HIPResource> hip, bool append, bool cook){
+    return HECenter::get_singleton()->loadHIP(hip->path, append, cook);
+}
+bool HESession::loadHIPExternal(godot::String hipPath, bool append, bool cook){
+    return HECenter::get_singleton()->loadHIP(globalize_path(hipPath), append, cook);
 }
 godot::Ref<HENode> HENode::createNode(godot::String label, godot::String operatorName, godot::Ref<HENode> parentNode){
     try{

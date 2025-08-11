@@ -1,8 +1,4 @@
-
-#ifndef REGISTER_PARTITION_SRC
-#define REGISTER_PARTITION_SRC
-
-#include "register_types.h"
+#include "HERegister.h"
 
 #include <iostream>
 #include <cstring>
@@ -19,7 +15,7 @@
 #include <godot_cpp/classes/editor_plugin_registration.hpp>
 
 #include "HEBind.h"
-#include "HDAImporter.h"
+#include "HEImporter.h"
 #include "CoreMounter.h"
 #include "HECenter.h"
 
@@ -32,12 +28,14 @@ void initialize_module(ModuleInitializationLevel p_level){
     }
     GDREGISTER_CLASS(HDAResource)
     GDREGISTER_CLASS(HDAImporter)
-    GDREGISTER_CLASS(HDAImportPlugin)
+    GDREGISTER_CLASS(HIPResource)
+    GDREGISTER_CLASS(HIPImporter)
+    GDREGISTER_CLASS(HEImportPlugin)
     GDREGISTER_CLASS(CoreMountPlugin)
 
     GDREGISTER_CLASS(HECenter)
 
-    EditorPlugins::add_by_type<HDAImportPlugin>();
+    EditorPlugins::add_by_type<HEImportPlugin>();
     EditorPlugins::add_by_type<CoreMountPlugin>();
 
     GDREGISTER_CLASS(Bool)
@@ -96,5 +94,3 @@ GDExtensionBool GDE_EXPORT init_library(GDExtensionInterfaceGetProcAddress p_get
     return init_obj.init();
 }
 }
-
-#endif //REGISTER_PARTITION_SRC

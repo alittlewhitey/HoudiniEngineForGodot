@@ -14,7 +14,7 @@
 #include <HoudiniApi.h>
 #include <HoudiniEngineUtility.h>
 #include <HoudiniEnginePlatform.h>
-#include "HDAImporter.h"
+#include "HEImporter.h"
 #include "HEBindEnum.h"
 
 enum SessionType
@@ -130,6 +130,10 @@ class HESession: public godot::RefCounted{
         godot::ClassDB::bind_method(godot::D_METHOD("valid"),&HESession::valid);
         godot::ClassDB::bind_method(godot::D_METHOD("loadHDA","hda"),&HESession::loadHDA);
         godot::ClassDB::bind_method(godot::D_METHOD("loadHDAExternal","hdaPath"),&HESession::loadHDAExternal);
+        godot::ClassDB::bind_method(godot::D_METHOD("saveHIP","hipPath","lock"),&HESession::saveHIP,true);
+        godot::ClassDB::bind_method(godot::D_METHOD("loadHIP","hip","append","cook"),&HESession::loadHIP,false,true);
+        godot::ClassDB::bind_method(godot::D_METHOD("loadHIPExternal","hipPath","append","cook"),&HESession::loadHIPExternal,false,true);
+
     }
     virtual godot::String _to_string(){
         return string_cast(std::format("<{}#0>",string_cast(get_class())));
@@ -154,6 +158,9 @@ public:
     std::string getString(HAPI_StringHandle sh);
     godot::Ref<HEAsset> loadHDA(godot::Ref<HDAResource> hda);
     godot::Ref<HEAsset> loadHDAExternal(godot::String hdaPath);
+    bool saveHIP(godot::String hipPath, bool lock = true);
+    bool loadHIP(godot::Ref<HIPResource> hip, bool append = false, bool cook = true);
+    bool loadHIPExternal(godot::String hipPath, bool append = false, bool cook = true);
 };
 class HEGeometry;
 class HEObjNode: public HENode{
