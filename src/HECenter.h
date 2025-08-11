@@ -675,6 +675,11 @@ public:
             }
             newNodeIds = getChildNodes(-1, {HAPI_NODETYPE_ANY}, {HAPI_NODEFLAGS_ANY}, true);
         }
+        for(auto a : newNodeIds){
+            if(findNodeRef(a).is_null()){
+                _registe_node(a);
+            }
+        }
         if(cook){
             for(auto id : newNodeIds){
                 std::jthread td([this,id]{
@@ -768,6 +773,13 @@ public:
                 return genRes.operator()<HENode>();
         }
     }
+    void _registe_node(int id){
+        auto info = getNodeInfo(id);
+        nodeIds.insert(id);
+        godot::Ref<HENode> nodeRef = makeTypeNode(info.type);
+        nodeRef->id = id;
+        nodeRefs.insert({id,nodeRef});
+    }
     bool createNode(std::string nodeLabel, std::string operatorName, int& id, int parentId){
         if(!getHESession()->valid()){
             printError("Failed to create node: The session is invalid.");
@@ -789,10 +801,7 @@ public:
                 for(int id2 : getChildNodes(_id,{HAPI_NODETYPE_ANY},{HAPI_NODEFLAGS_ANY})){
                     queue.push_back(id2);
                 }
-            nodeIds.insert(_id);
-            godot::Ref<HENode> nodeRef = makeTypeNode(info.type);
-            nodeRef->id = _id;
-            nodeRefs.insert({_id,nodeRef});
+            _registe_node(_id);
         }
         return true;
     }
@@ -980,6 +989,7 @@ public:
             }
             return {};
         }
+
         return res;
     }
     bool renameNode(int id, std::string name){
@@ -1703,10 +1713,7 @@ public:
             printFile("Success create input node, ID: ",id);
         }
         if(initInputMeshNode(id,mesh) != -1){
-            nodeIds.insert(id);
-            auto info = getNodeInfo(id);
-            godot::Ref<HENode> nodeRef = makeTypeNode(info.type);
-            nodeRefs.insert({id,nodeRef});
+            _registe_node(id);
             if(HESettings::get_singleton()->autoCook)
                 cookNode(id);
         }else{
@@ -2059,10 +2066,7 @@ public:
             printFile("Success create input node, ID: ",id);
         }
         if(initInputCurveNode(id,curve) != -1){
-            nodeIds.insert(id);
-            auto info = getNodeInfo(id);
-            godot::Ref<HENode> nodeRef = makeTypeNode(info.type);
-            nodeRefs.insert({id,nodeRef});
+            _registe_node(id);
             if(HESettings::get_singleton()->autoCook)
                 cookNode(id);
         }else{
