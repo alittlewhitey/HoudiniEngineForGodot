@@ -19,8 +19,8 @@
 #include "CoreMounter.h"
 #include "HECenter.h"
 
-void initialize_module(ModuleInitializationLevel p_level){
-    if (p_level != MODULE_INITIALIZATION_LEVEL_EDITOR) {
+void initialize_module(godot::ModuleInitializationLevel p_level){
+    if (p_level != godot::MODULE_INITIALIZATION_LEVEL_EDITOR) {
         return;
     }
     if(!godot::Engine::get_singleton()->is_editor_hint()){
@@ -35,8 +35,8 @@ void initialize_module(ModuleInitializationLevel p_level){
 
     GDREGISTER_CLASS(HECenter)
 
-    EditorPlugins::add_by_type<HEImportPlugin>();
-    EditorPlugins::add_by_type<CoreMountPlugin>();
+    godot::EditorPlugins::add_by_type<HEImportPlugin>();
+    godot::EditorPlugins::add_by_type<CoreMountPlugin>();
 
     GDREGISTER_CLASS(Bool)
     GDREGISTER_CLASS(Int)
@@ -67,18 +67,18 @@ void initialize_module(ModuleInitializationLevel p_level){
     GDREGISTER_CLASS(HEImage)
     auto center = HECenter::get_singleton();
     auto settings = HESettings::get_singleton();
-    Engine::get_singleton()->register_singleton("HECore", center);
-    Engine::get_singleton()->register_singleton("HESettings", settings);
+    godot::Engine::get_singleton()->register_singleton("HECore", center);
+    godot::Engine::get_singleton()->register_singleton("HESettings", settings);
 }
-void uninitialize_module(ModuleInitializationLevel p_level){
-    if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
+void uninitialize_module(godot::ModuleInitializationLevel p_level){
+    if (p_level != godot::MODULE_INITIALIZATION_LEVEL_SCENE) {
         return;
     }
     if(!godot::Engine::get_singleton()->is_editor_hint()){
         return;
     }
-    Engine::get_singleton()->unregister_singleton("HECore");
-    Engine::get_singleton()->unregister_singleton("HESettings");
+    godot::Engine::get_singleton()->unregister_singleton("HECore");
+    godot::Engine::get_singleton()->unregister_singleton("HESettings");
 }
 extern "C" {
 // Initialization.
@@ -89,7 +89,7 @@ GDExtensionBool GDE_EXPORT init_library(GDExtensionInterfaceGetProcAddress p_get
 
     init_obj.register_initializer(initialize_module);
     init_obj.register_terminator(uninitialize_module);
-    init_obj.set_minimum_library_initialization_level(MODULE_INITIALIZATION_LEVEL_EDITOR);
+    init_obj.set_minimum_library_initialization_level(godot::MODULE_INITIALIZATION_LEVEL_EDITOR);
     
     return init_obj.init();
 }

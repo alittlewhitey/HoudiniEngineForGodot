@@ -157,7 +157,7 @@ class HAPI: public godot::Object{
         godot::ClassDB::bind_static_method("HAPI",godot::D_METHOD("GetInstancerPartTransforms", "session", "nodeId", "partId","rst_order","transforms","start","length"),&HAPI::GetInstancerPartTransforms);
         godot::ClassDB::bind_static_method("HAPI",godot::D_METHOD("GetLastCookError","session"),&HAPI::GetLastCookError);
         godot::ClassDB::bind_static_method("HAPI",godot::D_METHOD("GetLastError","session"),&HAPI::GetLastError);
-        godot::ClassDB::bind_static_method("HAPI",godot::D_METHOD("GetNodeCookResult","session","stringValue", "length"),&HAPI::GetNodeCookResult);
+        godot::ClassDB::bind_static_method("HAPI",godot::D_METHOD("GetNodeCookResult","session","nodeId","verbosity"),&HAPI::GetNodeCookResult);
         godot::ClassDB::bind_static_method("HAPI",godot::D_METHOD("GetNodeCookResultLength","session","nodeId","verbosity","length"),&HAPI::GetNodeCookResultLength);
         godot::ClassDB::bind_static_method("HAPI",godot::D_METHOD("GetNodeFromPath","session","parentId","path","nodeId"),&HAPI::GetNodeFromPath);
         godot::ClassDB::bind_static_method("HAPI",godot::D_METHOD("GetNodeInputName","session","nodeId","inputIndex","nameHandle"),&HAPI::GetNodeInputName);
@@ -290,7 +290,7 @@ public:
     static HAPI_Result GetInstancerPartTransforms(godot::Ref<HESession> session, int nodeId, int partId, HAPI_RSTOrder rst_order, godot::Ref<RefArray> transforms, int start, int length);
     static godot::String GetLastCookError(godot::Ref<HESession> session = nullptr);
     static godot::String GetLastError(godot::Ref<HESession> session = nullptr);
-    static HAPI_Result GetNodeCookResult(godot::Ref<HESession> session, godot::String stringValue, int length);
+    static godot::String GetNodeCookResult(godot::Ref<HESession> session, int nodeId, HAPI_StatusVerbosity verbosity);
     static HAPI_Result GetNodeCookResultLength(godot::Ref<HESession> session, int nodeId, HAPI_StatusVerbosity verbosity, godot::Ref<Int> length);
     static HAPI_Result GetNodeFromPath(godot::Ref<HESession> session, int parentId, godot::String path, godot::Ref<Int> nodeId);
     static HAPI_Result GetNodeInputName(godot::Ref<HESession> session, int nodeId, int inputIndex, godot::Ref<Int> nameHandle);

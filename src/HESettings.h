@@ -90,7 +90,7 @@ class HESettings: public godot::Object{
 
         value = godot::ProjectSettings::get_singleton()->get_setting("houdini/config/houdiniLibPath");
         tempStr = string_cast((godot::String)value);
-        if(tempStr != houdiniRootPath){
+        if(tempStr != houdiniLibPath){
             set_houdiniLibPath((godot::String)value);
         }
 

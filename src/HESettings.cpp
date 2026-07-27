@@ -15,7 +15,7 @@ void HESettings::_notification(int what){
 }
 godot::Dictionary HESettings::get_cookOptions(){
     HECenter* core = HECenter::get_singleton();
-    if(core->getHESession().is_null() || !core->getHESession()->valid()){
+    if(!core->ensureSession()){
         return {};
     }
     godot::Dictionary dic;
@@ -39,7 +39,7 @@ godot::Dictionary HESettings::get_cookOptions(){
 }
 void HESettings::set_cookOptions(godot::Dictionary options){
     HECenter* core = HECenter::get_singleton();
-    if(core->getHESession().is_null() || !core->getHESession()->valid()){
+    if(!core->ensureSession()){
         return;
     }
     if(options.has("splitGeosByGroup")){

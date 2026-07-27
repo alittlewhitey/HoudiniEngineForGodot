@@ -7,7 +7,8 @@ HAPI_SessionInfo HAPI::DictToSessionInfo(godot::Dictionary objectInfo){
     info.minPort = objectInfo["minPort"];
     info.maxPort = objectInfo["maxPort"];
     godot::Array ports = objectInfo["ports"];
-    for(int i = 0; i < ports.size(); i++){
+    int portCount = std::min((int)ports.size(), HAPI_MAX_NUM_CONNECTIONS);
+    for(int i = 0; i < portCount; i++){
         info.ports[i] = ports[i];
     }
     info.sharedMemoryBufferType = (HAPI_ThriftSharedMemoryBufferType)(int)objectInfo["sharedMemoryBufferType"];
@@ -313,7 +314,10 @@ godot::Dictionary HAPI::GetParmInfo(godot::Ref<HESession> session,int nodeId,int
         printError(HoudiniEngineUtility::getLastError().c_str());
         return {};
     }
-    return ParmInfoToDict(info);
+    auto dict = ParmInfoToDict(info);
+    if(parmInfo.is_valid())
+        parmInfo->value = dict;
+    return dict;
 }
 HAPI_ParmInfo HAPI::DictToParmInfo(godot::Dictionary parmInfo){
     HAPI_ParmInfo info;
@@ -410,7 +414,7 @@ godot::Dictionary HAPI::ParmInfoToDict(HAPI_ParmInfo info){
     return dic;
 }
 HAPI_CookOptions HAPI::DictToCookOptions(godot::Dictionary options){
-    HAPI_CookOptions cookOptions;
+    HAPI_CookOptions cookOptions = HoudiniApi::CookOptions_Create();
 
     if(options.has("curveRefineLOD")){
         cookOptions.curveRefineLOD = (float)options["curveRefineLOD"];
@@ -644,13 +648,15 @@ HAPI_Result HAPI::CreateInProcessSession(godot::Ref<HESession> session,godot::Re
 HAPI_Result HAPI::CreateInputNode(godot::Ref<HESession> session, int parentId, godot::Ref<Int> nodeId,godot::String name){
     int temp;
     auto res = HoudiniApi::CreateInputNode(session->get_session(),parentId, &temp, name.utf8().get_data());
-    nodeId->value = temp;
+    if(res == HAPI_RESULT_SUCCESS)
+        nodeId->value = temp;
     return res;
 }
 HAPI_Result HAPI::CreateNode(godot::Ref<HESession> session, int parentId, godot::String operatorName, godot::String nodeLabel, bool cookOnCreation, godot::Ref<Int> nodeId){
     int temp;
     auto res = HoudiniApi::CreateNode(session->get_session(),parentId,operatorName.utf8().get_data(),nodeLabel.utf8().get_data(),cookOnCreation,&temp);
-    nodeId->value = temp;
+    if(res == HAPI_RESULT_SUCCESS)
+        nodeId->value = temp;
     return res;
 }
 HAPI_Result HAPI::CreateThriftNamedPipeSession(godot::Ref<HESession> session, godot::String pipeName, godot::Ref<RefDictionary> sessionInfo){
@@ -798,37 +804,50 @@ godot::String HAPI::GetLastCookError(godot::Ref<HESession> session){
 godot::String HAPI::GetLastError(godot::Ref<HESession> session){
     return string_cast(HoudiniEngineUtility::getLastError(session.is_valid()?session->get_session():nullptr));
 }
-HAPI_Result HAPI::GetNodeCookResult(godot::Ref<HESession> session, godot::String stringValue, int length){
-    return HoudiniApi::GetNodeCookResult(session->get_session(),(char*)stringValue.utf8().get_data(),length);
+godot::String HAPI::GetNodeCookResult(godot::Ref<HESession> session, int nodeId, HAPI_StatusVerbosity verbosity){
+    int length = 0;
+    auto lenRes = HoudiniApi::GetNodeCookResultLength(session->get_session(), nodeId, verbosity, &length);
+    if(lenRes != HAPI_RESULT_SUCCESS || length <= 0)
+        return {};
+    std::string buf(length, '\0');
+    auto res = HoudiniApi::GetNodeCookResult(session->get_session(), buf.data(), length);
+    if(res != HAPI_RESULT_SUCCESS)
+        return {};
+    return string_cast(buf);
 }
 HAPI_Result HAPI::GetNodeCookResultLength(godot::Ref<HESession> session, int nodeId, HAPI_StatusVerbosity verbosity, godot::Ref<Int> length){
     int temp;
     auto res = HoudiniApi::GetNodeCookResultLength(session->get_session(),nodeId,verbosity,&temp);
-    length->value = temp;
+    if(res == HAPI_RESULT_SUCCESS)
+        length->value = temp;
     return res;
 }
 HAPI_Result HAPI::GetNodeFromPath(godot::Ref<HESession> session, int parentId, godot::String path, godot::Ref<Int> nodeId){
     int temp;
     auto res = HoudiniApi::GetNodeFromPath(session->get_session(),parentId,path.utf8().get_data(),&temp);
-    nodeId->value = temp;
+    if(res == HAPI_RESULT_SUCCESS)
+        nodeId->value = temp;
     return res;
 }
 HAPI_Result HAPI::GetNodeInputName(godot::Ref<HESession> session, int nodeId, int inputIndex, godot::Ref<Int> nameHandle){
     int temp;
     auto res = HoudiniApi::GetNodeInputName(session->get_session(),nodeId,inputIndex,&temp);
-    nameHandle->value = temp;
+    if(res == HAPI_RESULT_SUCCESS)
+        nameHandle->value = temp;
     return res;
 }
 HAPI_Result HAPI::GetNodeOutputName(godot::Ref<HESession> session, int nodeId, int outputIndex, godot::Ref<Int> nameHandle){
     int temp;
     auto res = HoudiniApi::GetNodeOutputName(session->get_session(),nodeId,outputIndex,&temp);
-    nameHandle->value = temp;
+    if(res == HAPI_RESULT_SUCCESS)
+        nameHandle->value = temp;
     return res;
 }
 HAPI_Result HAPI::GetNodePath(godot::Ref<HESession> session, int nodeId, int relativeToNodeId, godot::Ref<Int> pathHandle){
     int temp;
     auto res = HoudiniApi::GetNodePath(session->get_session(),nodeId,relativeToNodeId,&temp);
-    pathHandle->value = temp;
+    if(res == HAPI_RESULT_SUCCESS)
+        pathHandle->value = temp;
     return res;
 }
 HAPI_Result HAPI::GetObjectTransform(godot::Ref<HESession> session, int nodeId, int relativeToNodeId, HAPI_RSTOrder rst_order, godot::Ref<RefDictionary> transform){
@@ -840,7 +859,8 @@ HAPI_Result HAPI::GetObjectTransform(godot::Ref<HESession> session, int nodeId, 
 HAPI_Result HAPI::GetOutputGeoCount(godot::Ref<HESession> session, int nodeId, godot::Ref<Int> count){
     int temp;
     auto res = HoudiniApi::GetOutputGeoCount(session->get_session(),nodeId,&temp);
-    count->value = temp;
+    if(res == HAPI_RESULT_SUCCESS)
+        count->value = temp;
     return res;
 }
 HAPI_Result HAPI::GetOutputGeoInfos(godot::Ref<HESession> session, int nodeId, godot::Ref<RefArray> geoInfos, int count){
@@ -855,16 +875,18 @@ HAPI_Result HAPI::GetOutputGeoInfos(godot::Ref<HESession> session, int nodeId, g
 HAPI_Result HAPI::GetOutputNodeId(godot::Ref<HESession> session, int nodeId, int output, godot::Ref<Int> outputNodeId){
     int temp;
     auto res = HoudiniApi::GetOutputNodeId(session->get_session(),nodeId,output,&temp);
-    outputNodeId->value = temp;
+    if(res == HAPI_RESULT_SUCCESS)
+        outputNodeId->value = temp;
     return res;
 }
 HAPI_Result HAPI::GetParameters(godot::Ref<HESession> session, int nodeId, godot::Ref<RefArray> parameters, int start, int length){
     std::vector<HAPI_ParmInfo> data(length-start);
-    for(int i = 0,sz = parameters->value.size();i!=sz;++i){
+    int count = std::min((int)parameters->value.size(), length - start);
+    for(int i = 0; i != count; ++i){
         data[i] = DictToParmInfo(parameters->value[i]);
     }
     auto res = HoudiniApi::GetParameters(session->get_session(),nodeId,data.data(),start,length);
-    for(int i = 0,sz = parameters->value.size();i!=sz;++i){
+    for(int i = 0; i != count; ++i){
         parameters->value[i] = ParmInfoToDict(data[i]);
     }
     return res;
@@ -872,37 +894,43 @@ HAPI_Result HAPI::GetParameters(godot::Ref<HESession> session, int nodeId, godot
 HAPI_Result HAPI::GetParmFloatValue(godot::Ref<HESession> session, int nodeId, godot::String parmName, int index, godot::Ref<Float> value){
     float temp;
     auto res = HoudiniApi::GetParmFloatValue(session->get_session(),nodeId,parmName.utf8().get_data(),index,&temp);
-    value->value = temp;
+    if(res == HAPI_RESULT_SUCCESS)
+        value->value = temp;
     return res;
 }
 HAPI_Result HAPI::GetParmIdFromName(godot::Ref<HESession> session, int nodeId, godot::String parmName, godot::Ref<Int> parmId){
     int temp;
     auto res = HoudiniApi::GetParmIdFromName(session->get_session(),nodeId,parmName.utf8().get_data(),&temp);
-    parmId->value = temp;
+    if(res == HAPI_RESULT_SUCCESS)
+        parmId->value = temp;
     return res;
 }
 HAPI_Result HAPI::GetParmIntValue(godot::Ref<HESession> session, int nodeId, godot::String parmName, int index, godot::Ref<Int> value){
     int temp;
     auto res = HoudiniApi::GetParmIntValue(session->get_session(),nodeId,parmName.utf8().get_data(),index,&temp);
-    value->value = temp;
+    if(res == HAPI_RESULT_SUCCESS)
+        value->value = temp;
     return res;
 }
 HAPI_Result HAPI::GetParmNodeValue(godot::Ref<HESession> session, int nodeId, godot::String parmName, godot::Ref<Int> value){
     int temp;
     auto res = HoudiniApi::GetParmNodeValue(session->get_session(),nodeId,parmName.utf8().get_data(),&temp);
-    value->value = temp;
+    if(res == HAPI_RESULT_SUCCESS)
+        value->value = temp;
     return res;
 }
 HAPI_Result HAPI::GetParmStringValue(godot::Ref<HESession> session, int nodeId, godot::String parmName, int index, bool evaluate, godot::Ref<Int> value){
     int temp;
     auto res = HoudiniApi::GetParmStringValue(session->get_session(),nodeId,parmName.utf8().get_data(),index,evaluate,&temp);
-    value->value = temp;
+    if(res == HAPI_RESULT_SUCCESS)
+        value->value = temp;
     return res;
 }
 HAPI_Result HAPI::GetStatus(godot::Ref<HESession> session, HAPI_StatusType statusType, godot::Ref<Int> status){
     int temp;
     auto res = HoudiniApi::GetStatus(session->get_session(),statusType,&temp);
-    status->value = temp;
+    if(res == HAPI_RESULT_SUCCESS)
+        status->value = temp;
     return res;
 }
 godot::String HAPI::GetStatusString(godot::Ref<HESession> session, HAPI_StatusType status_type){
@@ -916,11 +944,16 @@ godot::String HAPI::GetString(godot::Ref<HESession> session, int stringHandle){
 }
 HAPI_Result HAPI::Initialize(godot::Ref<HESession> session, godot::Dictionary cookOptions, bool useCookingThread, int cookingThreadStackSize, godot::String houdiniEnvironmentFiles, godot::String otlSearchPath, godot::String dsoSearchPath, godot::String imageDsoSearchPath, godot::String audioDsoSearchPath){
     HAPI_CookOptions options = DictToCookOptions(cookOptions);
-    auto otlSearch = otlSearchPath.is_empty()?nullptr:otlSearchPath.utf8().get_data();
-    auto dsoSearch = dsoSearchPath.is_empty()?nullptr:dsoSearchPath.utf8().get_data();
-    auto imageDsoSearch = imageDsoSearchPath.is_empty()?nullptr:imageDsoSearchPath.utf8().get_data();
-    auto audioDsoSearch = audioDsoSearchPath.is_empty()?nullptr:audioDsoSearchPath.utf8().get_data();
-    auto res = HoudiniApi::Initialize(session->get_session(),&options,useCookingThread,cookingThreadStackSize,houdiniEnvironmentFiles.utf8().get_data(),otlSearch,dsoSearch,imageDsoSearch,audioDsoSearch);
+    auto otlSearchUtf8 = otlSearchPath.utf8();
+    auto dsoSearchUtf8 = dsoSearchPath.utf8();
+    auto imageDsoSearchUtf8 = imageDsoSearchPath.utf8();
+    auto audioDsoSearchUtf8 = audioDsoSearchPath.utf8();
+    auto houdiniEnvUtf8 = houdiniEnvironmentFiles.utf8();
+    auto otlSearch = otlSearchPath.is_empty() ? nullptr : otlSearchUtf8.get_data();
+    auto dsoSearch = dsoSearchPath.is_empty() ? nullptr : dsoSearchUtf8.get_data();
+    auto imageDsoSearch = imageDsoSearchPath.is_empty() ? nullptr : imageDsoSearchUtf8.get_data();
+    auto audioDsoSearch = audioDsoSearchPath.is_empty() ? nullptr : audioDsoSearchUtf8.get_data();
+    auto res = HoudiniApi::Initialize(session->get_session(), &options, useCookingThread, cookingThreadStackSize, houdiniEnvUtf8.get_data(), otlSearch, dsoSearch, imageDsoSearch, audioDsoSearch);
     return res;
 }
 HAPI_Result HAPI::Interrupt(godot::Ref<HESession> session){
@@ -935,34 +968,31 @@ HAPI_Result HAPI::IsSessionValid(godot::Ref<HESession> session){
 HAPI_Result HAPI::IsNodeValid(godot::Ref<HESession> session, int nodeId, int uniqueNodeId, godot::Ref<Bool> answer){
     bool temp;
     auto res = HoudiniApi::IsNodeValid(session->get_session(),nodeId,uniqueNodeId,&temp);
-    answer->value = temp;
+    if(res == HAPI_RESULT_SUCCESS)
+        answer->value = temp;
     return res;
 }
 HAPI_Result HAPI::LoadAssetLibraryFromFile(godot::Ref<HESession> session, godot::String filePath, bool allowOverwrite, godot::Ref<Int> assetId){
     int temp;
     auto res = HoudiniApi::LoadAssetLibraryFromFile(session->get_session(),filePath.utf8().get_data(),allowOverwrite,&temp);
-    assetId->value = temp;
+    if(res == HAPI_RESULT_SUCCESS)
+        assetId->value = temp;
     return res;
 }
 HAPI_Result HAPI::LoadAssetLibraryFromMemory(godot::Ref<HESession> session, godot::String buffer, bool allowOverwrite, godot::Ref<Int> assetId){
     int temp;
-    std::string buf;
-    for(int i = 0,sz = buffer.length();i!=sz;++i){
-        buf.push_back((int8_t)buffer[i]);
-    }
-    auto res = HoudiniApi::LoadAssetLibraryFromMemory(session->get_session(),buf.data(),buf.size(),allowOverwrite,&temp);
-    assetId->value = temp;
+    auto utf8 = buffer.utf8();
+    auto res = HoudiniApi::LoadAssetLibraryFromMemory(session->get_session(), utf8.get_data(), utf8.length(), allowOverwrite, &temp);
+    if(res == HAPI_RESULT_SUCCESS)
+        assetId->value = temp;
     return res;
 }
 HAPI_Result HAPI::LoadGeoFromFile(godot::Ref<HESession> session, int nodeId, godot::String filePath){
     return HoudiniApi::LoadGeoFromFile(session->get_session(),nodeId,filePath.utf8().get_data());
 }
 HAPI_Result HAPI::LoadGeoFromMemory(godot::Ref<HESession> session, int nodeId, godot::String format, godot::String buffer){
-    std::string buf;
-    for(int i = 0,sz = buffer.length();i!=sz;++i){
-        buf.push_back((int8_t)buffer[i]);
-    }
-    return HoudiniApi::LoadGeoFromMemory(session->get_session(),nodeId,format.utf8().get_data(),buf.data(),buf.size());
+    auto utf8 = buffer.utf8();
+    return HoudiniApi::LoadGeoFromMemory(session->get_session(), nodeId, format.utf8().get_data(), utf8.get_data(), utf8.length());
 }
 HAPI_Result HAPI::LoadHIPFile(godot::Ref<HESession> session, godot::String fileName, bool cookOnLoad){
     return HoudiniApi::LoadHIPFile(session->get_session(),fileName.utf8().get_data(),cookOnLoad);
@@ -970,7 +1000,8 @@ HAPI_Result HAPI::LoadHIPFile(godot::Ref<HESession> session, godot::String fileN
 HAPI_Result HAPI::LoadNodeFromFile(godot::Ref<HESession> session, godot::String fileName, int parentId, godot::String nodeLabel, bool cookOnLoad, godot::Ref<Int> newNodeId){
     int temp;
     auto res = HoudiniApi::LoadNodeFromFile(session->get_session(),fileName.utf8().get_data(),parentId,nodeLabel.utf8().get_data(),cookOnLoad,&temp);
-    newNodeId->value = temp;
+    if(res == HAPI_RESULT_SUCCESS)
+        newNodeId->value = temp;
     return res;
 }
 godot::Dictionary HAPI::MaterialInfo_Create(){
@@ -1090,7 +1121,8 @@ HAPI_Result HAPI::SetCurveOrders(godot::Ref<HESession> session, int nodeId, int 
 HAPI_Result HAPI::SetCustomString(godot::Ref<HESession> session, godot::String string_value, godot::Ref<Int> handle_value){
     int temp;
     auto res = HoudiniApi::SetCustomString(session->get_session(),keep_alive_string(string_value.utf8().get_data()),&temp);
-    handle_value->value = temp;
+    if(res == HAPI_RESULT_SUCCESS)
+        handle_value->value = temp;
     return res;
 }
 HAPI_Result HAPI::SetFaceCounts(godot::Ref<HESession> session, int nodeId, int partId, godot::Array faceCounts, int start, int length){

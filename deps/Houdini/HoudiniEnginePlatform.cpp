@@ -52,7 +52,8 @@ void* HoudiniEnginePlatform::LoadLibHAPIL(bool useHAPI, std::string libDir)
         libHAPI_dir = libDir;
     }else{
         const char *buf = getenv("HFS");
-        libHAPI_dir = std::string(buf);
+        if(buf)
+            libHAPI_dir = std::string(buf);
         libHAPI_dir.append("/bin/");
     }
     libHAPI_dir = to_windows_path(libHAPI_dir);
@@ -84,6 +85,7 @@ void* HoudiniEnginePlatform::LoadLibHAPIL(bool useHAPI, std::string libDir)
 bool
 HoudiniEnginePlatform::FreeLibHAPIL(void* libHAPIL)
 {
+    if(!libHAPIL) return false;
 #if defined(WIN32) || defined(_WIN32)
     return FreeLibrary((HMODULE)libHAPIL) && SetDllDirectory(nullptr);
 #else
@@ -94,6 +96,7 @@ HoudiniEnginePlatform::FreeLibHAPIL(void* libHAPIL)
 void*
 HoudiniEnginePlatform::GetDllExport(void* LibraryHandle, const char* ExportName)
 {
+    if(!LibraryHandle) return nullptr;
 #if defined(WIN32) || defined(_WIN32)
     return (void*)GetProcAddress((HMODULE)LibraryHandle, ExportName);
 #else

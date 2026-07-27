@@ -1,4 +1,11 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.20)
+if(EXISTS "/opt/homebrew/opt/llvm/bin/clang")
+    set(CMAKE_C_COMPILER "/opt/homebrew/opt/llvm/bin/clang")
+    set(CMAKE_CXX_COMPILER "/opt/homebrew/opt/llvm/bin/clang++")
+elseif(EXISTS "/usr/local/opt/llvm/bin/clang")
+    set(CMAKE_C_COMPILER "/usr/local/opt/llvm/bin/clang")
+    set(CMAKE_CXX_COMPILER "/usr/local/opt/llvm/bin/clang++")
+endif()
 project(HoudiniEngineForGodot)
 find_package(Python3 REQUIRED)
 if(NOT DEFINED GODOT_CPP_BRANCH)
@@ -75,6 +82,7 @@ if(${CMAKE_CXX_COMPILER_ID} MATCHES "MSVC")
     endif()
 else()
     if(${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
+        message("Use experimental library")
         add_compile_options("-fexperimental-library")
     endif()
     if(${BuildType} MATCHES "debug")
@@ -98,6 +106,10 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.godot_cpp_branch")
     file(READ "${CMAKE_CURRENT_SOURCE_DIR}/.godot_cpp_branch" OLD_BRANCH_NAME)
     if(NOT ${OLD_BRANCH_NAME} STREQUAL ${GODOT_CPP_BRANCH})
+        execute_process(
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp"
+            COMMAND git pull
+        )
         execute_process(
             WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp"
             COMMAND git checkout ${GODOT_CPP_BRANCH}

@@ -211,6 +211,9 @@ static inline std::set<std::string> _houdini_endine_string_buffer;
 inline const char* keep_alive_string(std::string s){
     return _houdini_endine_string_buffer.insert(std::move(s)).first->c_str();
 }
+inline void clear_keep_alive_strings(){
+    _houdini_endine_string_buffer.clear();
+}
 inline const char* keep_alive_string(const char* s){
     return keep_alive_string(std::string(s));
 }

@@ -35,42 +35,40 @@ std::string
 HoudiniEngineUtility::getLastError(HAPI_Session* session)
 {
     int buffer_length = 0;
-    HoudiniApi::GetStatusStringBufLength(
+    if(HoudiniApi::GetStatusStringBufLength(
         session,
         HAPI_STATUS_CALL_RESULT,
         HAPI_STATUSVERBOSITY_ERRORS,
-        &buffer_length);
+        &buffer_length) != HAPI_RESULT_SUCCESS)
+        return {};
 
     if (buffer_length <= 0)
-        return std::string("");
+        return {};
 
-    char * buffer = new char[buffer_length];
-    HoudiniApi::GetStatusString(session, HAPI_STATUS_CALL_RESULT, buffer, buffer_length);
-    std::string result(buffer);
-    delete[] buffer;
-
-    return result;
+    std::vector<char> buffer(buffer_length);
+    if(HoudiniApi::GetStatusString(session, HAPI_STATUS_CALL_RESULT, buffer.data(), buffer_length) != HAPI_RESULT_SUCCESS)
+        return {};
+    return std::string(buffer.data());
 }
 
 std::string 
 HoudiniEngineUtility::getLastCookError(HAPI_Session* session)
 {
     int buffer_length = 0;
-    HoudiniApi::GetStatusStringBufLength(
+    if(HoudiniApi::GetStatusStringBufLength(
         session,
         HAPI_STATUS_COOK_RESULT,
         HAPI_STATUSVERBOSITY_ERRORS,
-        &buffer_length);
+        &buffer_length) != HAPI_RESULT_SUCCESS)
+        return {};
 
     if (buffer_length <= 0)
-        return std::string("");
+        return {};
 
-    char * buffer = new char[buffer_length];
-    HoudiniApi::GetStatusString(session, HAPI_STATUS_COOK_RESULT, buffer, buffer_length);
-    std::string result(buffer);
-    delete[] buffer;
-    
-    return result;
+    std::vector<char> buffer(buffer_length);
+    if(HoudiniApi::GetStatusString(session, HAPI_STATUS_COOK_RESULT, buffer.data(), buffer_length) != HAPI_RESULT_SUCCESS)
+        return {};
+    return std::string(buffer.data());
 }
 
 
@@ -78,32 +76,29 @@ std::string
 HoudiniEngineUtility::getConnectionError()
 {
     int buffer_length = 0;
-    HoudiniApi::GetConnectionErrorLength(&buffer_length);
+    if(HoudiniApi::GetConnectionErrorLength(&buffer_length) != HAPI_RESULT_SUCCESS)
+        return {};
 
     if (buffer_length <= 0)
-        return std::string("");
+        return {};
 
-    char* buffer = new char[buffer_length];
-    HoudiniApi::GetConnectionError(buffer, buffer_length, true);
-
-    std::string result(buffer);
-    delete[] buffer;
-
-    return result;
+    std::vector<char> buffer(buffer_length);
+    if(HoudiniApi::GetConnectionError(buffer.data(), buffer_length, true) != HAPI_RESULT_SUCCESS)
+        return {};
+    return std::string(buffer.data());
 }
 
 std::string 
 HoudiniEngineUtility::getString(const HAPI_Session * session, HAPI_StringHandle string_handle)
 {
     int length = 0;
-    HoudiniApi::GetStringBufLength(session, string_handle, &length);
+    if(HoudiniApi::GetStringBufLength(session, string_handle, &length) != HAPI_RESULT_SUCCESS)
+        return {};
 
-    char * buffer = new char[length + 1];
-    HoudiniApi::GetString(session, string_handle, buffer, length);
-
-    std::string result(buffer);
-    delete [] buffer;
-    return result;
+    std::vector<char> buffer(length + 1);
+    if(HoudiniApi::GetString(session, string_handle, buffer.data(), length) != HAPI_RESULT_SUCCESS)
+        return {};
+    return std::string(buffer.data());
 }
 
 

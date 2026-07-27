@@ -2,11 +2,13 @@
 #define HOUDINI_ENGINE_CERTER
 #include "DebugSymbol.h"
 
-#include <map>
+#include <unordered_map>
+#include <unordered_set>
 #include <chrono>
 #include <variant>
 #include <filesystem>
 #include <concepts>
+#include <thread>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/classes/os.hpp>
 #include <godot_cpp/classes/ref.hpp>
@@ -51,6 +53,32 @@ enum class PartType{
     Box = HAPI_PARTTYPE_BOX,
     Sphere = HAPI_PARTTYPE_SPHERE,
 };
+struct MeshPartData {
+    std::vector<int> faceCounts;
+    std::vector<float> positions;
+    std::vector<int> vertexList;
+    std::pair<AttribOwner, std::vector<float>> colors;
+    std::pair<AttribOwner, std::vector<float>> normals;
+    std::pair<AttribOwner, std::vector<float>> uvs;
+    std::pair<AttribOwner, std::vector<float>> uv2s;
+};
+struct CurvePartData {
+    HAPI_CurveInfo info;
+    std::vector<int> curveCounts;
+    std::vector<float> controlPoints;
+    std::vector<float> weights;
+    std::vector<float> knots;
+};
+struct InstancerPartData {
+    std::vector<int> instancedPartIds;
+    std::vector<HAPI_Transform> transforms;
+};
+struct AttributesData {
+    std::vector<HAPI_AttributeInfo> pointAttribs;
+    std::vector<HAPI_AttributeInfo> vertexAttribs;
+    std::vector<HAPI_AttributeInfo> primAttribs;
+    std::vector<HAPI_AttributeInfo> detailAttribs;
+};
 class HECenter: public godot::Node{
     GDCLASS(HECenter, godot::Node)
     static void _bind_methods(){
@@ -93,7 +121,7 @@ class HECenter: public godot::Node{
         get_tree()->connect("node_added",godot::Callable(this,"stopFreeGDNode"));
     }
     void process(){
-        if(getHESession()->valid()){
+        if(ensureSession()){
             if(focused != godot::DisplayServer::get_singleton()->window_is_focused()){
                 focused = !focused;
                 if(focused)
@@ -112,7 +140,14 @@ class HECenter: public godot::Node{
         }
         using namespace std::chrono_literals;
         freeTimeout = 0ms;
-        std::this_thread::sleep_for(HESettings::defaultFreeTimeout<1s?HESettings::defaultFreeTimeout:1000ms);
+        for(auto& [node, threadPtr] : freeGDNodeTasks){
+            threadPtr->request_stop();
+        }
+        for(auto& [node, threadPtr] : freeGDNodeTasks){
+            if(threadPtr->joinable())
+                threadPtr->join();
+        }
+        freeGDNodeTasks.clear();
         std::filesystem::remove_all(get_temp_dir());
     }
 //Class
@@ -124,53 +159,57 @@ class HECenter: public godot::Node{
     SessionType sessionType = SessionType::InProcess;
     //TODO:
     bool syncViewport = 0;
+    int maxSessionRetries = 3;
+    int sessionRetryCooldownSec = 5;
+    int _retryCount = 0;
+    std::chrono::steady_clock::time_point _lastRetryTime;
 
 //Datas:
 
     godot::Ref<HESession> session;
 
-    std::set<int> nodeIds;
+    std::unordered_set<int> nodeIds;
     //      NodeId          NodeRef
-    std::map<int,godot::Ref<HENode>> nodeRefs;
+    std::unordered_map<int,godot::Ref<HENode>> nodeRefs;
     //      AssetId         AssetRef
-    std::map<int,godot::Ref<HEAsset>> assetRefs;
-    //      NodeId, CookFinished
-    std::map<int, bool> cookStatus;
+    std::unordered_map<int,godot::Ref<HEAsset>> assetRefs;
+    //      NodeId, CookState (0=None,1=Cooking,2=Success,3=Failed,4=NodeInvalid)
+    std::unordered_map<int, int> cookStatus;
     //      NodeId          ParamName            ParamValues
-    std::map<int,std::map<std::string,std::vector<std::variant<int64_t,double,std::string>>>> parameters;
+    std::unordered_map<int,std::unordered_map<std::string,std::vector<std::variant<int64_t,double,std::string>>>> parameters;
     //      nodeId      partId  type
-    std::map<int,std::map<int,PartType>> partType;
+    std::unordered_map<int,std::unordered_map<int,PartType>> partType;
     //      nodeId    meshPartId                    faces            P            vertexs                          Cd                                      N                                           uv                                  uv2
-    std::map<int,std::map<int,std::tuple<std::vector<int>,std::vector<float>,std::vector<int>,std::pair<AttribOwner,std::vector<float>>,std::pair<AttribOwner,std::vector<float>>,std::pair<AttribOwner,std::vector<float>>,std::pair<AttribOwner,std::vector<float>>>>> meshGeometries;
+    std::unordered_map<int,std::unordered_map<int,MeshPartData>> meshGeometries;
     //      nodeId    curvePartId          info             curveCounts       controlPoints       weights         knots
-    std::map<int,std::map<int,std::tuple<HAPI_CurveInfo,std::vector<int>,std::vector<float>,std::vector<float>,std::vector<float>>>> curveGeometries;
+    std::unordered_map<int,std::unordered_map<int,CurvePartData>> curveGeometries;
     //      nodeId  instancerPartId       instancedPartIds          transform
-    std::map<int,std::map<int,std::tuple<std::vector<int>,std::vector<HAPI_Transform>>>> packedPrimData;
+    std::unordered_map<int,std::unordered_map<int,InstancerPartData>> packedPrimData;
     //Must fill from data directly rather than from other mesh.
     //      nodeId  instancerPartId   instancedPartId     multiMesh
-    std::map<int,std::map<int,std::map<int,godot::Ref<godot::MultiMesh>>>> packedPrimMesh;
+    std::unordered_map<int,std::unordered_map<int,std::unordered_map<int,godot::Ref<godot::MultiMesh>>>> packedPrimMesh;
     //      nodeId      partId      sharedMesh
-    std::map<int,std::map<int,godot::Ref<godot::ArrayMesh>>> meshRefs;
+    std::unordered_map<int,std::unordered_map<int,godot::Ref<godot::ArrayMesh>>> meshRefs;
     //      nodeId      partId      curveMesh
-    std::map<int,std::map<int,std::vector<godot::Ref<godot::Curve3D>>>> curveRefs;
+    std::unordered_map<int,std::unordered_map<int,std::vector<godot::Ref<godot::Curve3D>>>> curveRefs;
     //      nodeId       partId                 Point-Attrib                Vertex-Attrib               Prim-Attrib                     Detail-Attrib    
-    std::map<int,std::map<int,std::tuple<std::vector<HAPI_AttributeInfo>,std::vector<HAPI_AttributeInfo>,std::vector<HAPI_AttributeInfo>,std::vector<HAPI_AttributeInfo>>>> attributes;
+    std::unordered_map<int,std::unordered_map<int,AttributesData>> attributes;
     //      nodeId      partId      materialResPath
-    std::map<int,std::map<int,std::vector<std::string>>> materials;
+    std::unordered_map<int,std::unordered_map<int,std::vector<std::string>>> materials;
     //      nodeId      partId       if-allSame     material-nodeIds
-    std::map<int,std::map<int,std::pair<bool,std::vector<int>>>> materialIds;
+    std::unordered_map<int,std::unordered_map<int,std::pair<bool,std::vector<int>>>> materialIds;
     //      nodeId      info                imageData
-    std::map<int,std::pair<HAPI_ImageInfo,godot::PackedByteArray>> images;
-    //
-    std::map<int, godot::Ref<godot::Image>> imageRefs;
+    std::unordered_map<int,std::pair<HAPI_ImageInfo,godot::PackedByteArray>> images;
+    //      nodeId      image
+    std::unordered_map<int, godot::Ref<godot::Image>> imageRefs;
     //      nodeId  cookCount
-    std::map<int,int> cookCounts;
+    std::unordered_map<int,int> cookCounts;
     // made by user
     //      godot path          Material instance
-    std::map<std::string,godot::Ref<godot::Material>> materialRes;
+    std::unordered_map<std::string,godot::Ref<godot::Material>> materialRes;
     // for `freeGDNode` and `stopFreeGDNode`
-    std::set<godot::Node*> createdGDNodes;
-    std::map<godot::Node*, std::shared_ptr<std::jthread>> freeGDNodeTasks;
+    std::unordered_set<godot::Node*> createdGDNodes;
+    std::unordered_map<godot::Node*, std::shared_ptr<std::jthread>> freeGDNodeTasks;
 
     void cleanup(){
         nodeIds.clear();
@@ -191,6 +230,7 @@ class HECenter: public godot::Node{
         curveRefs.clear();
         packedPrimData.clear();
         packedPrimMesh.clear();
+        createdGDNodes.clear();
     }
     void _delete_data(int nodeId){
         nodeIds.erase(nodeId);
@@ -226,17 +266,20 @@ class HECenter: public godot::Node{
     }
     bool freeGDNode(godot::Node* node){
         if(createdGDNodes.find(node) != createdGDNodes.end()){
-            freeGDNodeTasks[node] = std::make_shared<std::jthread>([this,node](std::stop_token st){
-                std::shared_ptr<std::jthread> nowThread = freeGDNodeTasks[node];
+            auto threadPtr = std::make_shared<std::jthread>([this,node](std::stop_token st){
                 std::this_thread::sleep_for(freeTimeout);
-                freeGDNodeTasks.erase(node);
+                {
+                    auto it = freeGDNodeTasks.find(node);
+                    if(it != freeGDNodeTasks.end())
+                        freeGDNodeTasks.erase(node);
+                }
                 if(st.stop_requested())
                     return;
                 Contact::add_call([=]{
                     node->queue_free();
                 });
             });
-            freeGDNodeTasks[node]->detach();
+            freeGDNodeTasks[node] = threadPtr;
             return true;
         }
         return false;
@@ -252,7 +295,12 @@ class HECenter: public godot::Node{
     void syncCamera(){
         if(!syncViewport)
             return;
-        godot::Camera3D* camera = godot::EditorInterface::get_singleton()->get_editor_viewport_3d()->get_camera_3d();
+        auto* viewport3d = godot::EditorInterface::get_singleton()->get_editor_viewport_3d();
+        if(!viewport3d)
+            return;
+        godot::Camera3D* camera = viewport3d->get_camera_3d();
+        if(!camera)
+            return;
         auto trans = camera->get_transform();
         auto pos = trans.get_origin();
         auto rot = trans.get_basis().get_rotation_quaternion();
@@ -311,6 +359,39 @@ class HECenter: public godot::Node{
     }
 public:
 
+    bool ensureSession(){
+        if(getHESession()->valid())
+            return true;
+
+        if(getHESession()->type == SessionType::None)
+            return false;
+
+        auto now = std::chrono::steady_clock::now();
+        if(now - _lastRetryTime < std::chrono::seconds(sessionRetryCooldownSec))
+            return false;
+
+        _lastRetryTime = now;
+
+        if(_retryCount >= maxSessionRetries){
+            printError("Session recovery failed after ", maxSessionRetries, " attempts");
+            return false;
+        }
+
+        auto type = sessionType;
+        if(type == SessionType::None)
+            type = SessionType::InProcess;
+
+        printWarning("Session lost, attempting recovery (", _retryCount+1, "/", maxSessionRetries, ")...");
+        stopSession();
+        if(!startSession(type)){
+            _retryCount++;
+            return false;
+        }
+
+        _retryCount = 0;
+        return true;
+    }
+
 //Datas:
 
 //Functions:
@@ -360,8 +441,11 @@ public:
         }
         return ids;
     }
-    bool getCookStatus(int nodeId){
-        return cookStatus[nodeId];
+    int getCookStatus(int nodeId){
+        auto it = cookStatus.find(nodeId);
+        if(it == cookStatus.end())
+            return 0;
+        return it->second;
     }
     std::vector<std::variant<int64_t,double,std::string>> getParameter(int nodeId, std::string name){
         return parameters[nodeId][name];
@@ -605,6 +689,8 @@ public:
         }
         emit_signal("SessionStarted");
         getHESession()->active = true;
+        getHESession()->type = type;
+        _retryCount = 0;
         return true;
     }
     bool cookSession(){
@@ -625,45 +711,37 @@ public:
                 printError("Failed to stop the Houdini Engine session - Close session failed.");
                 return false;
             }
-        }else{
-            printError("Failed to stop the Houdini Engine session - Session is invalid.");
-            return false;
         }
         
         cleanup();
         getHESession()->active = false;
+        getHESession()->type = SessionType::None;
         return true;
     }
     bool restartSession(){
-        auto session = getHESession();
-        auto type = session->type;
-        if(!session->valid()){
-            printError("Can't restart session with a invalid session");
-            return false;
-        }
-        if(!stopSession())
-            return false;
-        if(!startSession(type))
-            return false;
-        return true;
+        auto type = getHESession()->type;
+        if(type == SessionType::None)
+            type = SessionType::InProcess;
+        stopSession();
+        return startSession(type);
     }
-    bool loadHIP(std::string path, bool append = false, bool cook = true){
+    std::vector<int> loadHIP(std::string path, bool append = false, bool cook = true){
         std::vector<int> newNodeIds;
         if(append){
             HAPI_HIPFileId fileId;
             if(HoudiniApi::MergeHIPFile(get_session(),path.c_str(),cook,&fileId) != HAPI_RESULT_SUCCESS){
                 printError("Failed to load hip file");
-                return false;
+                return {};
             }
             int count = 0;
             if(HoudiniApi::GetHIPFileNodeCount(get_session(),fileId,&count) != HAPI_RESULT_SUCCESS){
                 printError("Can't get append node'id count");
-                return false;
+                return {};
             }
             std::vector<int> nodeIds(count);
             if(HoudiniApi::GetHIPFileNodeIds(get_session(),fileId,nodeIds.data(),count) !=HAPI_RESULT_SUCCESS){
                 printError("Can't get append node'ids");
-                return false;
+                return {};
             }
             newNodeIds = std::move(nodeIds);
         }else{
@@ -671,9 +749,10 @@ public:
             if(HoudiniApi::LoadHIPFile(get_session(),path.c_str(),cook) != HAPI_RESULT_SUCCESS){
                 printError("Failed to load hip file\n\t"
                     "WIP! Last session is clear because append mode is false");
-                return false;
+                return {};
             }
-            newNodeIds = getChildNodes(-1, {HAPI_NODETYPE_ANY}, {HAPI_NODEFLAGS_ANY}, true);
+            newNodeIds.push_back(0);
+            newNodeIds = getChildNodes(0, {HAPI_NODETYPE_ANY}, {HAPI_NODEFLAGS_ANY}, true);
         }
         for(auto a : newNodeIds){
             if(findNodeRef(a).is_null()){
@@ -691,10 +770,10 @@ public:
                     td.join();
             }
         }
-        return true;
+        return newNodeIds;
     }
     bool saveHIP(std::string path, bool lock = true){
-        if(!getHESession()->valid()){
+        if(!ensureSession()){
             printError("Error load Asset with invalid session");
             return false;
         }
@@ -705,7 +784,7 @@ public:
         return true;
     }
     bool loadAsset(std::string path, int& assetId){
-        if(!getHESession()->valid()){
+        if(!ensureSession()){
             printError("Error load Asset with invalid session");
             return false;
         }
@@ -781,7 +860,7 @@ public:
         nodeRefs.insert({id,nodeRef});
     }
     bool createNode(std::string nodeLabel, std::string operatorName, int& id, int parentId){
-        if(!getHESession()->valid()){
+        if(!ensureSession()){
             printError("Failed to create node: The session is invalid.");
             return false;
         }
@@ -806,7 +885,7 @@ public:
         return true;
     }
     bool connectNode(int resNode, int inputIndex,int srcNode,int outputIndex){
-        if(!getHESession()->valid()){
+        if(!ensureSession()){
             printError("Failed to connect node: The session is invalid.");
             return false;
         }
@@ -822,7 +901,7 @@ public:
         return true;
     }
     bool disconnectNode(int nodeId, int inputIndex){
-        if(!getHESession()->valid()){
+        if(!ensureSession()){
             printError("Failed to disconnect node: The session is invalid.");
             return false;
         }
@@ -839,21 +918,21 @@ public:
     }
     // Return input node id
     int queryConnectedNode(int nodeId, int inputIndex){
-        if(!getHESession()->valid()){
+        if(!ensureSession()){
             printError("Failed to query node input: The session is invalid.");
-            return false;
+            return -1;
         }
         int id2;
         if(HoudiniApi::QueryNodeInput(get_session(),nodeId,inputIndex,&id2) != HAPI_RESULT_SUCCESS){
             printError("Error query node input: ",HoudiniEngineUtility::getLastError().c_str());
-            return false;
+            return -1;
         }else{
             printFile("Success query node ",nodeId,"'s port ",inputIndex);
         }
         return id2;
     }
     bool cookNode(int id,std::function<void(bool)> cookedCallBack = [](bool){}){
-        if(!getHESession()->valid()){
+        if(!ensureSession()){
             printError("Failed to cook node: The session is invalid.");
             Contact::add_call([cookedCallBack]{
                 cookedCallBack(false);
@@ -876,6 +955,7 @@ public:
             printError("Failed to cook node: ",HoudiniEngineUtility::getLastCookError().c_str());
             if(a == HAPI_RESULT_NODE_INVALID){
                 printError("Failed to cook node: The node is invalid.");
+                cookStatus[id] = 4;
                 _delete_data(id);
             }
             Contact::add_call([cookedCallBack]{
@@ -893,7 +973,7 @@ public:
         return true;
     }
     void cookThread(int id, std::function<void(bool)> cookedCallBack = [](bool){}){
-        cookStatus[id] = false;
+        cookStatus[id] = 1;
         int status;
         HAPI_Result result;
         do{
@@ -903,30 +983,35 @@ public:
         if(status != HAPI_STATE_READY || result != HAPI_RESULT_SUCCESS){
             printError("Cook failed: ",HoudiniEngineUtility::getLastCookError().c_str());
             if(result == HAPI_RESULT_NODE_INVALID){
+                cookStatus[id] = 4;
                 _delete_data(id);
+                Contact::add_call([cookedCallBack]{ cookedCallBack(false); });
+                return;
             }
-        }else{
-            cookCounts[id]++;
-            HAPI_NodeInfo info = getNodeInfo(id);
-            switch(info.type){
-                case HAPI_NODETYPE_SOP:
-                    updateSopData(id);
-                    break;
-                case HAPI_NODETYPE_COP:
-                    updateCopData(id);
-                    break;
-                default:
-                    getParameters(id);
-                    break;
-            }
+            cookStatus[id] = 3;
+            Contact::add_call([cookedCallBack]{ cookedCallBack(false); });
+            return;
         }
-        cookStatus[id] = true;
+        cookCounts[id]++;
+        HAPI_NodeInfo info = getNodeInfo(id);
+        switch(info.type){
+            case HAPI_NODETYPE_SOP:
+                updateSopData(id);
+                break;
+            case HAPI_NODETYPE_COP:
+                updateCopData(id);
+                break;
+            default:
+                getParameters(id);
+                break;
+        }
+        cookStatus[id] = 2;
         Contact::add_call([cookedCallBack]{
             cookedCallBack(true);
         });
     }
     bool deleteNode(int id){
-        if(!getHESession()->valid()){
+        if(!ensureSession()){
             printError("Failed to delete node: The session is invalid.");
             return false;
         }
@@ -960,7 +1045,7 @@ public:
         return true;
     }
     std::vector<int> getChildNodes(int nodeId, std::vector<HAPI_NodeType> typeFilter, std::vector<HAPI_NodeFlags> flagFilter,bool recursive = false){
-        if(!getHESession()->valid()){
+        if(!ensureSession()){
             printError("Failed to rename node: The session is invalid.");
             return {};
         }
@@ -974,6 +1059,8 @@ public:
         }
         int count = 0;
         if(auto a = HoudiniApi::ComposeChildNodeList(get_session(),nodeId,types,flags,recursive,&count);a != HAPI_RESULT_SUCCESS){
+            if(a == HAPI_RESULT_INVALID_ARGUMENT)
+                return {};
             printError("Failed to get child nodes: ",HoudiniEngineUtility::getLastError().c_str());
             if(a == HAPI_RESULT_NODE_INVALID){
                 _delete_data(nodeId);
@@ -983,6 +1070,8 @@ public:
         std::vector<int> res;
         res.resize(count);
         if(auto a = HoudiniApi::GetComposedChildNodeList(get_session(),nodeId,res.data(),count);a != HAPI_RESULT_SUCCESS){
+            if(a == HAPI_RESULT_INVALID_ARGUMENT)
+                return {};
             printError("Failed to get child nodes: ",HoudiniEngineUtility::getLastCookError().c_str());
             if(a == HAPI_RESULT_NODE_INVALID){
                 _delete_data(nodeId);
@@ -993,7 +1082,7 @@ public:
         return res;
     }
     bool renameNode(int id, std::string name){
-        if(!getHESession()->valid()){
+        if(!ensureSession()){
             printError("Failed to rename node: The session is invalid.");
             return false;
         }
@@ -1013,7 +1102,7 @@ public:
         return true;
     }
     void getParameters(int id){
-        if(!getHESession()->valid()){
+        if(!ensureSession()){
             printError("Failed to get parameters: The session is invalid.");
             return;
         }
@@ -1168,37 +1257,37 @@ public:
                 //     //TODO: triangulate
                 // });
                 std::vector<float> mesh_p_attrib_info;
-                getAttributeData(id, partId, "P", HAPI_ATTROWNER_POINT, mesh_p_attrib_info);
+                getAttributeData(id, partId, HAPI_ATTRIB_POSITION, HAPI_ATTROWNER_POINT, mesh_p_attrib_info);
                 std::cout << "get: mesh_p_attrib_info.size()" << mesh_p_attrib_info.size() << std::endl;
 
                 std::vector<float> mesh_cd_attrib_data;
                 AttribOwner mesh_cd_attrib_owner = AttribOwner::Vertex;
-                if(!getAttributeData(id, partId, "Cd", HAPI_ATTROWNER_VERTEX, mesh_cd_attrib_data)){
-                    getAttributeData(id, partId, "Cd", HAPI_ATTROWNER_POINT, mesh_cd_attrib_data);
+                if(!getAttributeData(id, partId, HAPI_ATTRIB_COLOR, HAPI_ATTROWNER_VERTEX, mesh_cd_attrib_data)){
+                    getAttributeData(id, partId, HAPI_ATTRIB_COLOR, HAPI_ATTROWNER_POINT, mesh_cd_attrib_data);
                     mesh_cd_attrib_owner = AttribOwner::Point;
                 }
                 std::cout << "get: mesh_cd_attrib_data.size()" << mesh_cd_attrib_data.size() << std::endl;
 
                 std::vector<float> mesh_N_attrib_data;
                 AttribOwner mesh_N_attrib_owner = AttribOwner::Vertex;
-                if(!getAttributeData(id, partId, "N", HAPI_ATTROWNER_VERTEX, mesh_N_attrib_data)){
-                    getAttributeData(id, partId, "N", HAPI_ATTROWNER_POINT, mesh_N_attrib_data);
+                if(!getAttributeData(id, partId, HAPI_ATTRIB_NORMAL, HAPI_ATTROWNER_VERTEX, mesh_N_attrib_data)){
+                    getAttributeData(id, partId, HAPI_ATTRIB_NORMAL, HAPI_ATTROWNER_POINT, mesh_N_attrib_data);
                     mesh_N_attrib_owner = AttribOwner::Point;
                 }
                 std::cout << "get: mesh_N_attrib_data.size()" << mesh_N_attrib_data.size() << std::endl;
                 
                 std::vector<float> mesh_uv_attrib_data;
                 AttribOwner mesh_uv_attrib_owner = AttribOwner::Vertex;
-                if(!getAttributeData(id, partId, "uv", HAPI_ATTROWNER_VERTEX, mesh_uv_attrib_data)){
-                    getAttributeData(id, partId, "uv", HAPI_ATTROWNER_POINT, mesh_uv_attrib_data);
+                if(!getAttributeData(id, partId, HAPI_ATTRIB_UV, HAPI_ATTROWNER_VERTEX, mesh_uv_attrib_data)){
+                    getAttributeData(id, partId, HAPI_ATTRIB_UV, HAPI_ATTROWNER_POINT, mesh_uv_attrib_data);
                     mesh_uv_attrib_owner = AttribOwner::Point;
                 }
                 std::cout << "get: mesh_uv_attrib_data.size()" << mesh_uv_attrib_data.size() << std::endl;
                 
                 std::vector<float> mesh_uv2_attrib_data;
                 AttribOwner mesh_uv2_attrib_owner = AttribOwner::Vertex;
-                if(!getAttributeData(id, partId, "uv2", HAPI_ATTROWNER_VERTEX, mesh_uv2_attrib_data)){
-                    getAttributeData(id, partId, "uv2", HAPI_ATTROWNER_POINT, mesh_uv2_attrib_data);
+                if(!getAttributeData(id, partId, HAPI_ATTRIB_UV2, HAPI_ATTROWNER_VERTEX, mesh_uv2_attrib_data)){
+                    getAttributeData(id, partId, HAPI_ATTRIB_UV2, HAPI_ATTROWNER_POINT, mesh_uv2_attrib_data);
                     mesh_uv2_attrib_owner = AttribOwner::Point;
                 }
                 std::cout << "get: mesh_uv2_attrib_data.size()" << mesh_uv2_attrib_data.size() << std::endl;
@@ -1226,7 +1315,7 @@ public:
                     printError(HoudiniEngineUtility::getLastError().c_str());
                     return;
                 }
-                const char* attr_name = info.isRational ? "Pw" : "P";
+                const char* attr_name = info.isRational ? "Pw" : HAPI_ATTRIB_POSITION;
                 [[maybe_unused]]int components = info.isRational ? 4 : 3;
                 std::vector<float> rawControlPoints;
                 //Using for debug
@@ -1369,25 +1458,29 @@ public:
         return packedPrimData.find(nodeId) != packedPrimData.end();
     }
     godot::Ref<godot::Mesh> createMeshRes(int nodeId, int partId){
-        if(meshGeometries.find(nodeId) == meshGeometries.end()||meshGeometries[nodeId].empty()){
+        if(meshGeometries.find(nodeId) == meshGeometries.end()){
             return {};
         }
-        auto& part = meshGeometries[nodeId][partId];
-        [[maybe_unused]]std::vector<int>& faces = std::get<0>(part);
-        std::vector<float>& positions = std::get<1>(part);
-        std::vector<int>& vertexs = std::get<2>(part);
-        std::pair<AttribOwner,std::vector<float>>& color_Attrib = std::get<3>(part);
-        std::pair<AttribOwner,std::vector<float>>& normal_Attrib = std::get<4>(part);
-        std::pair<AttribOwner,std::vector<float>>& uv_Attrib = std::get<5>(part);
-        std::pair<AttribOwner,std::vector<float>>& uv2_Attrib = std::get<6>(part);
+        auto& inner = meshGeometries[nodeId];
+        if(inner.find(partId) == inner.end()){
+            return {};
+        }
+        auto& part = inner[partId];
+        [[maybe_unused]]auto& faces = part.faceCounts;
+        auto& positions = part.positions;
+        auto& vertexs = part.vertexList;
+        auto& color_Attrib = part.colors;
+        auto& normal_Attrib = part.normals;
+        auto& uv_Attrib = part.uvs;
+        auto& uv2_Attrib = part.uv2s;
         std::vector<float>& colors = color_Attrib.second;
         std::vector<float>& normals = normal_Attrib.second;
         std::vector<float>& uvs = uv_Attrib.second;
         std::vector<float>& uv2s = uv2_Attrib.second;
-        static std::vector<std::string> voidMaterialPaths;
-        std::vector<std::string>& materialPaths = voidMaterialPaths;
+        std::vector<std::string> voidMaterialPaths;
+        std::vector<std::string>* materialPaths = &voidMaterialPaths;
         if(materials.find(nodeId)!=materials.end()&&materials[nodeId].find(partId)!=materials[nodeId].end()){
-            materialPaths = materials[nodeId][partId];
+            materialPaths = &materials[nodeId][partId];
         }
         
         std::vector<godot::Vector3> pos;
@@ -1401,10 +1494,10 @@ public:
         int nor_num = normals.size();
         int uv_num = uvs.size();
         int uv2_num = uv2s.size();
-        int mat_num = materialPaths.size();
+        int mat_num = materialPaths->size();
         std::string lastMatPath;
-        if(!materialPaths.empty())
-            lastMatPath = materialPaths[0];
+        if(!materialPaths->empty())
+            lastMatPath = (*materialPaths)[0];
         for(int i = 0;i!=pos_num;i+=3){
             godot::Vector3 vec;
             vec.x = positions[i];
@@ -1452,7 +1545,7 @@ public:
             if(vertexs[i] >= pos_num)
                 break;
             if(i/3 < mat_num){
-                std::string newPath = materialPaths[i/3];
+                std::string newPath = (*materialPaths)[i/3];
                 if(newPath != lastMatPath){
                     st->commit(arr_mesh);
                     st->clear();
@@ -1522,13 +1615,17 @@ public:
     godot::Ref<godot::Mesh> getMeshRef(int nodeId, int partId){
         return meshRefs[nodeId][partId];
     }
-    std::map<int,godot::Ref<godot::MultiMesh>> createMultiMeshRes(int nodeId, int partId){
-        if(packedPrimData.find(nodeId) == packedPrimData.end()||packedPrimData[nodeId].empty()){
+    std::unordered_map<int,godot::Ref<godot::MultiMesh>> createMultiMeshRes(int nodeId, int partId){
+        if(packedPrimData.find(nodeId) == packedPrimData.end()){
             return {};
         }
-        auto& instancedParts = packedPrimData[nodeId][partId];
-        auto& instancePartIds = std::get<0>(instancedParts);
-        auto& instancePartTrans = std::get<1>(instancedParts);
+        auto& inner = packedPrimData[nodeId];
+        if(inner.find(partId) == inner.end()){
+            return {};
+        }
+        auto& instancedParts = inner[partId];
+        auto& instancePartIds = instancedParts.instancedPartIds;
+        auto& instancePartTrans = instancedParts.transforms;
 
         std::vector<godot::Transform3D> transforms;
         godot::Node3D* transformer = memnew(godot::Node3D());
@@ -1571,7 +1668,7 @@ public:
         }
         return packedPrimMesh[nodeId][partId];
     }
-    std::map<int,godot::Ref<godot::MultiMesh>> getMultiMeshRef(int nodeId, int partId){
+    std::unordered_map<int,godot::Ref<godot::MultiMesh>> getMultiMeshRef(int nodeId, int partId){
         return packedPrimMesh[nodeId][partId];
     }
     std::vector<godot::Ref<godot::Curve3D>> createCurveRes(int nodeId, int partId){
@@ -1580,11 +1677,9 @@ public:
         }
 
         auto& curveData = curveGeometries.at(nodeId).at(partId);
-        auto& info = std::get<0>(curveData);
-        auto& curveCounts = std::get<1>(curveData);
-        auto& controlPoints = std::get<2>(curveData);
-        // auto& weights = std::get<3>(curveData);
-        // auto& knots = std::get<4>(curveData);
+        auto& info = curveData.info;
+        auto& curveCounts = curveData.curveCounts;
+        auto& controlPoints = curveData.controlPoints;
 
         auto& vec = curveRefs[nodeId][partId];
         vec.clear();
@@ -1702,7 +1797,7 @@ public:
     }
     
     bool createInputMeshNode(std::string nodeLabel, int& id, int parentId, godot::Ref<godot::Mesh> mesh){
-        if(!getHESession()->valid()){
+        if(!ensureSession()){
             printError("Failed to create input node: The session is invalid.");
             return false;
         }
@@ -1947,11 +2042,11 @@ public:
         pointInfo.exists = true;
         pointInfo.storage = HAPI_STORAGETYPE_FLOAT;
         pointInfo.owner = HAPI_ATTROWNER_POINT;
-        if(HoudiniApi::AddAttribute(get_session(),id,0,"P",&pointInfo) != HAPI_RESULT_SUCCESS){
+        if(HoudiniApi::AddAttribute(get_session(),id,0,HAPI_ATTRIB_POSITION,&pointInfo) != HAPI_RESULT_SUCCESS){
             printError(HoudiniEngineUtility::getLastError().c_str());
             return -1;
         }
-        if(HoudiniApi::SetAttributeFloatData(get_session(),id,0,"P",&pointInfo,allPositions.data(),0,pointInfo.count) != HAPI_RESULT_SUCCESS){
+        if(HoudiniApi::SetAttributeFloatData(get_session(),id,0,HAPI_ATTRIB_POSITION,&pointInfo,allPositions.data(),0,pointInfo.count) != HAPI_RESULT_SUCCESS){
             printError(HoudiniEngineUtility::getLastError().c_str());
             return -1;
         }
@@ -1970,12 +2065,12 @@ public:
             colorInfo.exists = true;
             colorInfo.storage = HAPI_STORAGETYPE_FLOAT;
             colorInfo.owner = (HAPI_AttributeOwner)AttribOwner::Vertex;
-            if(HoudiniApi::AddAttribute(get_session(),id,0,"Cd",&colorInfo) != HAPI_RESULT_SUCCESS){
+            if(HoudiniApi::AddAttribute(get_session(),id,0,HAPI_ATTRIB_COLOR,&colorInfo) != HAPI_RESULT_SUCCESS){
                 printError(HoudiniEngineUtility::getLastError().c_str());
                 return -1;
             }
             std::cerr << "count: " << colorInfo.count << "\tsize: " << allColors.size()/3 << std::endl;
-            if(HoudiniApi::SetAttributeFloatData(get_session(),id,0,"Cd",&colorInfo,allColors.data(),0,colorInfo.count) != HAPI_RESULT_SUCCESS){
+            if(HoudiniApi::SetAttributeFloatData(get_session(),id,0,HAPI_ATTRIB_COLOR,&colorInfo,allColors.data(),0,colorInfo.count) != HAPI_RESULT_SUCCESS){
                 printError(HoudiniEngineUtility::getLastError().c_str());
                 return -1;
             }
@@ -1987,11 +2082,11 @@ public:
             normalInfo.exists = true;
             normalInfo.storage = HAPI_STORAGETYPE_FLOAT;
             normalInfo.owner = (HAPI_AttributeOwner)AttribOwner::Vertex;
-            if(HoudiniApi::AddAttribute(get_session(),id,0,"N",&normalInfo) != HAPI_RESULT_SUCCESS){
+            if(HoudiniApi::AddAttribute(get_session(),id,0,HAPI_ATTRIB_NORMAL,&normalInfo) != HAPI_RESULT_SUCCESS){
                 printError(HoudiniEngineUtility::getLastError().c_str());
                 return -1;
             }
-            if(HoudiniApi::SetAttributeFloatData(get_session(),id,0,"N",&normalInfo,allNormals.data(),0,normalInfo.count) != HAPI_RESULT_SUCCESS){
+            if(HoudiniApi::SetAttributeFloatData(get_session(),id,0,HAPI_ATTRIB_NORMAL,&normalInfo,allNormals.data(),0,normalInfo.count) != HAPI_RESULT_SUCCESS){
                 printError(HoudiniEngineUtility::getLastError().c_str());
                 return -1;
             }
@@ -2003,11 +2098,11 @@ public:
             uvInfo.exists = true;
             uvInfo.storage = HAPI_STORAGETYPE_FLOAT;
             uvInfo.owner = (HAPI_AttributeOwner)AttribOwner::Vertex;
-            if(HoudiniApi::AddAttribute(get_session(),id,0,"uv",&uvInfo) != HAPI_RESULT_SUCCESS){
+            if(HoudiniApi::AddAttribute(get_session(),id,0,HAPI_ATTRIB_UV,&uvInfo) != HAPI_RESULT_SUCCESS){
                 printError(HoudiniEngineUtility::getLastError().c_str());
                 return -1;
             }
-            if(HoudiniApi::SetAttributeFloatData(get_session(),id,0,"uv",&uvInfo,allUVs.data(),0,uvInfo.count) != HAPI_RESULT_SUCCESS){
+            if(HoudiniApi::SetAttributeFloatData(get_session(),id,0,HAPI_ATTRIB_UV,&uvInfo,allUVs.data(),0,uvInfo.count) != HAPI_RESULT_SUCCESS){
                 printError(HoudiniEngineUtility::getLastError().c_str());
                 return -1;
             }
@@ -2019,11 +2114,11 @@ public:
             uv2Info.exists = true;
             uv2Info.storage = HAPI_STORAGETYPE_FLOAT;
             uv2Info.owner = (HAPI_AttributeOwner)AttribOwner::Vertex;
-            if(HoudiniApi::AddAttribute(get_session(),id,0,"uv2",&uv2Info) != HAPI_RESULT_SUCCESS){
+            if(HoudiniApi::AddAttribute(get_session(),id,0,HAPI_ATTRIB_UV2,&uv2Info) != HAPI_RESULT_SUCCESS){
                 printError(HoudiniEngineUtility::getLastError().c_str());
                 return -1;
             }
-            if(HoudiniApi::SetAttributeFloatData(get_session(),id,0,"uv2",&uv2Info,allUV2s.data(),0,uv2Info.count) != HAPI_RESULT_SUCCESS){
+            if(HoudiniApi::SetAttributeFloatData(get_session(),id,0,HAPI_ATTRIB_UV2,&uv2Info,allUV2s.data(),0,uv2Info.count) != HAPI_RESULT_SUCCESS){
                 printError(HoudiniEngineUtility::getLastError().c_str());
                 return -1;
             }
@@ -2051,7 +2146,7 @@ public:
         return id;
     }
     bool createInputCurveNode(std::string nodeLabel, int& id, int parentId, godot::Ref<godot::Curve3D> curve){
-        if(!getHESession()->valid()){
+        if(!ensureSession()){
             printError("Failed to create input node: The session is invalid.");
             return false;
         }
@@ -2145,12 +2240,12 @@ public:
         attr_info_p.storage = HAPI_STORAGETYPE_FLOAT;
         attr_info_p.owner = HAPI_ATTROWNER_POINT;
 
-        if (HoudiniApi::AddAttribute(get_session(), nodeId, 0, "P", &attr_info_p) != HAPI_RESULT_SUCCESS){
+        if (HoudiniApi::AddAttribute(get_session(), nodeId, 0, HAPI_ATTRIB_POSITION, &attr_info_p) != HAPI_RESULT_SUCCESS){
             printError("Failed to add P attribute: ", HoudiniEngineUtility::getLastError().c_str());
             return -1;
         }
 
-        if (HoudiniApi::SetAttributeFloatData(get_session(), nodeId, 0, "P", &attr_info_p, allPositions.data(), 0, attr_info_p.count) != HAPI_RESULT_SUCCESS){
+        if (HoudiniApi::SetAttributeFloatData(get_session(), nodeId, 0, HAPI_ATTRIB_POSITION, &attr_info_p, allPositions.data(), 0, attr_info_p.count) != HAPI_RESULT_SUCCESS){
             printError("Failed to set P attribute data: ", HoudiniEngineUtility::getLastError().c_str());
             return -1;
         }

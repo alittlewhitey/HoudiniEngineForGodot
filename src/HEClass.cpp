@@ -11,6 +11,8 @@ godot::Ref<HESession> HESession::switchSession(SessionType type){
             HECenter::get_singleton()->stopSession();
         if(type != SessionType::None)
             HECenter::get_singleton()->startSession((::SessionType)type);
+        if(type == SessionType::None)
+            return {};
         return getSession();
     }catch(const std::exception& e){
         printError(e.what());
@@ -72,11 +74,21 @@ bool HESession::saveHIP(godot::String hipPath, bool lock){
     }
     return res;
 }
-bool HESession::loadHIP(godot::Ref<HIPResource> hip, bool append, bool cook){
-    return HECenter::get_singleton()->loadHIP(hip->path, append, cook);
+godot::Array HESession::loadHIP(godot::Ref<HIPResource> hip, bool append, bool cook){
+    std::vector<int> newIds = HECenter::get_singleton()->loadHIP(hip->path, append, cook);
+    godot::Array res;
+    for(auto a : newIds){
+        res.push_back(HECenter::get_singleton()->findNodeRef(a));
+    }
+    return res;
 }
-bool HESession::loadHIPExternal(godot::String hipPath, bool append, bool cook){
-    return HECenter::get_singleton()->loadHIP(globalize_path(hipPath), append, cook);
+godot::Array HESession::loadHIPExternal(godot::String hipPath, bool append, bool cook){
+    std::vector<int> newIds = HECenter::get_singleton()->loadHIP(globalize_path(hipPath), append, cook);
+    godot::Array res;
+    for(auto a : newIds){
+        res.push_back(HECenter::get_singleton()->findNodeRef(a));
+    }
+    return res;
 }
 godot::Ref<HENode> HENode::createNode(godot::String label, godot::String operatorName, godot::Ref<HENode> parentNode){
     try{
@@ -192,10 +204,18 @@ bool HENode::cook(){
 }
 bool HENode::isCookFinished(){
     try{
-        return HECenter::get_singleton()->getCookStatus(id);
+        return HECenter::get_singleton()->getCookStatus(id) == 2;
     }catch(const std::exception& e){
         printError(e.what());
         return false;
+    }
+}
+int HENode::getCookState(){
+    try{
+        return HECenter::get_singleton()->getCookStatus(id);
+    }catch(const std::exception& e){
+        printError(e.what());
+        return 0;
     }
 }
 godot::Variant HENode::getParameter(godot::String name){
@@ -241,19 +261,19 @@ void HENode::setParameter(godot::String name, godot::Variant value){
                 res.push_back(string_cast((godot::String)value));
             }break;
             case godot::Variant::Type::ARRAY:{
-                godot::Array&& arr = (godot::Array)value;
+                godot::Array arr = (godot::Array)value;
                 auto size = arr.size();
                 res.reserve(size);
                 for(int i = 0;i!=size;++i){
                     switch(arr[i].get_type()){
                         case godot::Variant::Type::INT:{
-                            res.push_back((int64_t)value);
+                            res.push_back((int64_t)arr[i]);
                         }break;
                         case godot::Variant::Type::FLOAT:{
-                            res.push_back((double)value);
+                            res.push_back((double)arr[i]);
                         }break;
                         case godot::Variant::Type::STRING:{
-                            res.push_back(string_cast((godot::String)value));
+                            res.push_back(string_cast((godot::String)arr[i]));
                         }break;
                         default:{
                             printWarning("Unsupported type: ", arr[i].get_type());
@@ -293,7 +313,7 @@ godot::Array HENode::getChildList(godot::PackedInt32Array types, godot::PackedIn
             v_types[i] = (HAPI_NodeType)types[i];
         }
         int64_t flag_size = flags.size();
-        std::vector<HAPI_NodeFlags> v_flags(type_size);
+        std::vector<HAPI_NodeFlags> v_flags(flag_size);
         for(int64_t i = 0;i!=flag_size;++i){
             v_flags[i] = (HAPI_NodeFlags)flags[i];
         }

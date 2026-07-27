@@ -6,7 +6,7 @@ extends Node3D
 var _node: HENode
 @export_tool_button(\"Test\")
 var test := func():
-	HESession.switchSession(HESession.InProcess)
+	HESession.switchSession(HESession.NewNamedPipe)
 	var asset = HESession.getSession().loadHDA(load(\"res://hda/0_he_sop_box.hda\"))
 	var operator = asset.ownedNodeOperators[0]
 	var node = HENode.createNode(operator, operator) as HESopNode
@@ -53,20 +53,12 @@ var test3 := func():
 	await node.cookFinished
 	HESession.getSession().saveHIP(\"res://temp.hip\",false)
 
-#@export_tool_button(\"Test4\")
-#var test4 := func():
-	#HESession.switchSession(HESession.InProcess)
-	#var asset = HESession.getSession().loadHDA(load(\"res://hda/subnet.hda\"))
-	#var node = HENode.createNode(\"test\",asset.ownedNodeOperators[0])
-	#print(node)
-	#node.cook()
-	#if await node.cookFinished:
-		#print(\"Cook Finished\")
-	#for subnode in node.getChildList():
-		#print(subnode)
-		#subnode.cook()
-		#if await subnode.cookFinished:
-			#print(\"Cook Finished\")
+@export_tool_button(\"Test4\")
+var test4 := func():
+	HESession.switchSession(HESession.InProcess)
+	var arr = HESession.getSession().loadHIP(load(\"res://temp.hip\"))
+	for a in arr:
+		print(a)
 "
 
 [sub_resource type="Curve3D" id="Curve3D_4xowi"]

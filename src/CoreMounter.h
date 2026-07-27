@@ -25,14 +25,12 @@ public:
             get_editor_interface()->get_editor_main_screen()->add_child(center);
         }
     }
-    // void _exit_tree() override {
-    //     godot::UtilityFunctions::print("[Houdini Engine] EditorPlugin exiting tree, removing HECenter.");
-        
-    //     auto center = HECenter::get_singleton();
-    //     if (center && center->is_inside_tree()) {
-    //         center->get_parent()->remove_child(center);
-    //     }
-    // }
+    void _exit_tree() override {
+        auto center = HECenter::get_singleton();
+        if (center && center->is_inside_tree()) {
+            center->get_parent()->remove_child(center);
+        }
+    }
 };
 
 #endif

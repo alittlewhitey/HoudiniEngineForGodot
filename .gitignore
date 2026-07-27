@@ -36,3 +36,5 @@ log.txt
 *.bak
 extract.py
 .godot_cpp_branch
+.reasonix
+.cache

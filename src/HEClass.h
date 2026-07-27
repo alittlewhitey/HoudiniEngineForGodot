@@ -28,6 +28,15 @@ enum SessionType
     ExistingSharedMemory = 6
 };
 HE_ENUM_CAST(SessionType)
+enum CookState
+{
+    COOK_STATE_NONE,
+    COOK_STATE_COOKING,
+    COOK_STATE_SUCCESS,
+    COOK_STATE_FAILED,
+    COOK_STATE_NODE_INVALID
+};
+HE_ENUM_CAST(CookState)
 class HESession;
 class HEUtil: public godot::RefCounted{
     GDCLASS(HEUtil,godot::RefCounted)
@@ -54,6 +63,12 @@ class HENode: public godot::RefCounted{
         godot::ClassDB::bind_method(godot::D_METHOD("queryConnect","inputIdx"),&HENode::queryConnect);
         godot::ClassDB::bind_method(godot::D_METHOD("deleteNode"),&HENode::deleteNode);
         godot::ClassDB::bind_method(godot::D_METHOD("isCookFinished"),&HENode::isCookFinished);
+        godot::ClassDB::bind_method(godot::D_METHOD("getCookState"),&HENode::getCookState);
+        BIND_ENUM_CONSTANT(COOK_STATE_NONE);
+        BIND_ENUM_CONSTANT(COOK_STATE_COOKING);
+        BIND_ENUM_CONSTANT(COOK_STATE_SUCCESS);
+        BIND_ENUM_CONSTANT(COOK_STATE_FAILED);
+        BIND_ENUM_CONSTANT(COOK_STATE_NODE_INVALID);
         godot::ClassDB::bind_method(godot::D_METHOD("getParameter","name"),&HENode::getParameter);
         godot::ClassDB::bind_method(godot::D_METHOD("setParameter","name","value"),&HENode::setParameter);
         godot::ClassDB::bind_method(godot::D_METHOD("getParameterList"),&HENode::getParameterList);
@@ -82,6 +97,7 @@ public:
     godot::Ref<HENode> queryConnect(int inputIdx);
     void deleteNode();
     bool isCookFinished();
+    int getCookState();
     godot::Variant getParameter(godot::String name);
     void setParameter(godot::String name, godot::Variant value);
     godot::PackedStringArray getParameterList();
@@ -159,8 +175,8 @@ public:
     godot::Ref<HEAsset> loadHDA(godot::Ref<HDAResource> hda);
     godot::Ref<HEAsset> loadHDAExternal(godot::String hdaPath);
     bool saveHIP(godot::String hipPath, bool lock = true);
-    bool loadHIP(godot::Ref<HIPResource> hip, bool append = false, bool cook = true);
-    bool loadHIPExternal(godot::String hipPath, bool append = false, bool cook = true);
+    godot::Array loadHIP(godot::Ref<HIPResource> hip, bool append = false, bool cook = true);
+    godot::Array loadHIPExternal(godot::String hipPath, bool append = false, bool cook = true);
 };
 class HEGeometry;
 class HEObjNode: public HENode{

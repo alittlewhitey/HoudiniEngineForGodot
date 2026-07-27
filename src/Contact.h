@@ -1,18 +1,15 @@
 #ifndef HOUDINI_ENGINE_CONTACT_H
 #define HOUDINI_ENGINE_CONTACT_H
 #include "DebugSymbol.h"
-
 #include <iostream>
 #include <functional>
-#include <atomic>
+#include <mutex>
 #include <deque>
-#include <thread>
-#include <chrono>
 class Contact{
 public:
     typedef uint32_t TaskID;
 private:
-    static std::atomic<bool> is_changing;
+    static std::mutex mutex_;
     static std::deque<std::pair<TaskID,std::function<void()>>> call_pool;
     static TaskID counter;
 public:

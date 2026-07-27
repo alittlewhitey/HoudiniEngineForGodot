@@ -185,8 +185,6 @@ public:
     virtual void _exit_tree()override{
         remove_import_plugin(HDA_importer);
         remove_import_plugin(HIP_importer);
-        HDA_importer.unref();
-        HIP_importer.unref();
     }
 };
 
