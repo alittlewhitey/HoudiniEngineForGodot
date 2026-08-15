@@ -24,3 +24,4 @@ config/useEnvLibPath=false
 config/houdiniRootPath="/Applications/Houdini/Current/Frameworks/Houdini.framework/Resources"
 config/houdiniLibPath="/Applications/Houdini/Current/Frameworks/Houdini.framework/Libraries"
 config/logFilePath="/Users/littlewhite/Root/Clones/HoudiniEngineForGodot/project/log.txt"
+option/autoCook=true

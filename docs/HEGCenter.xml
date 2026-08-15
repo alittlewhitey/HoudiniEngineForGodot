@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="HEGCenter" inherits="Node" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+		Core of Houdini Engine Plugin
+		[b]You will never use this class![/b]
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="freeGDNode">
+			<return type="bool" />
+			<param index="0" name="node" type="Node" />
+			<description>
+				Only use for internal
+			</description>
+		</method>
+		<method name="stopFreeGDNode">
+			<return type="bool" />
+			<param index="0" name="node" type="Node" />
+			<description>
+				Only use for internal
+			</description>
+		</method>
+	</methods>
+</class>

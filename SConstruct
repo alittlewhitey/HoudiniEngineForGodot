@@ -51,8 +51,11 @@ ARGUMENTS.clear()
 ARGUMENTS.update(original_args)
 
 env.Append(CPPPATH=["deps"])
-env.Append(CPPPATH=["deps/Houdini/"])
-env.Append(CPPPATH=["src/"])
+env.Append(CPPPATH=["layers/back/hapi7/headers/"])
+
+env.Append(CPPPATH=["layers/back/core/headers/"])
+env.Append(CPPPATH=["layers/back/plugins/"])
+env.Append(CPPPATH=["layers/front/godot4/headers/"])
 
 compiler = env['CXX']
 if compiler == "$CC":
@@ -67,10 +70,10 @@ elif(compiler == "cl"):
 else:
     pass
 
-sources = Glob("src/*.cpp") + Glob("deps/Houdini/*.cpp")
+sources = Glob("layers/front/godot4/src/*.cpp") + Glob("layers/back/core/src/*.cpp") + Glob("layers/back/plugins/*.cpp") + Glob("layers/back/hapi7/src/*.cpp")
 
 try:
-    doc_data = env.GodotCPPDocData("src/gen/doc_data.gen.cpp", source=Glob("docs/*.xml"))
+    doc_data = env.GodotCPPDocData("layers/front/godot4/src/gen/doc_data.gen.cpp", source=Glob("docs/*.xml"))
     sources.append(doc_data)
 except AttributeError:
     print("Not including class reference as we're targeting a pre-4.3 baseline.")

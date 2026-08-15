@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="HEGSession" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="connectNode">
+			<return type="bool" />
+			<param index="0" name="connectingNode" type="HEGNode" />
+			<param index="1" name="inputIdx" type="int" />
+			<param index="2" name="connectedNode" type="HEGNode" />
+			<param index="3" name="connectedOutputIdx" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="createNode">
+			<return type="HEGNode" />
+			<param index="0" name="label" type="String" />
+			<param index="1" name="operatorName" type="String" />
+			<param index="2" name="parentNode" type="HEGNode" default="null" />
+			<description>
+			</description>
+		</method>
+		<method name="deleteNode">
+			<return type="void" />
+			<param index="0" name="node" type="HEGNode" />
+			<description>
+			</description>
+		</method>
+		<method name="getSession" qualifiers="static">
+			<return type="HEGSession" />
+			<description>
+			</description>
+		</method>
+		<method name="loadHDA">
+			<return type="HEGAsset" />
+			<param index="0" name="hda" type="HEGHdaResource" />
+			<description>
+			</description>
+		</method>
+		<method name="loadHDAExternal">
+			<return type="HEGAsset" />
+			<param index="0" name="hdaPath" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="switchSession" qualifiers="static">
+			<return type="HEGSession" />
+			<param index="0" name="type" type="int" enum="SessionType" />
+			<description>
+			</description>
+		</method>
+		<method name="valid">
+			<return type="bool" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<constants>
+		<constant name="None" value="0" enum="SessionType">
+		</constant>
+		<constant name="InProcess" value="1" enum="SessionType">
+		</constant>
+		<constant name="NewNamedPipe" value="2" enum="SessionType">
+		</constant>
+		<constant name="NewTCPSocket" value="3" enum="SessionType">
+		</constant>
+		<constant name="ExistingNamedPipe" value="4" enum="SessionType">
+		</constant>
+		<constant name="ExistingTCPSocket" value="5" enum="SessionType">
+		</constant>
+		<constant name="ExistingSharedMemory" value="6" enum="SessionType">
+		</constant>
+	</constants>
+</class>

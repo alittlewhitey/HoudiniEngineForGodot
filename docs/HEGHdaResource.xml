@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="HEGHdaResource" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="assetId" type="int" setter="set_assetId" getter="get_assetId" default="-1">
+		</member>
+		<member name="path" type="String" setter="set_path" getter="get_path" default="&quot;&quot;">
+		</member>
+	</members>
+</class>

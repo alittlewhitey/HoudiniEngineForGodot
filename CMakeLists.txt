@@ -117,7 +117,12 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.godot_cpp_branch")
     endif()
 endif()
 file(WRITE "${CMAKE_CURRENT_SOURCE_DIR}/.godot_cpp_branch" ${GODOT_CPP_BRANCH})
-if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp/bin/libgodot-cpp.${Platform}.editor.${Arch}.a")
+if(${BuildType} MATCHES "debug")
+    set(GODOTCPP_LIB_NAME "godot-cpp.${Platform}.editor.dev.${Arch}")
+else()
+    set(GODOTCPP_LIB_NAME "godot-cpp.${Platform}.editor.${Arch}")
+endif()
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp/bin/lib${GODOTCPP_LIB_NAME}.a")
     if(${BuildType} MATCHES "debug")
         if(${Platform} MATCHES "windows")
             if(${USE_MINGW} MATCHES yes)
@@ -172,27 +177,51 @@ if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp/bin/libgodot-cpp.${Pla
         endif()
     endif()
 endif()
-if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/gen/doc_data.gen.cpp")
-    file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/gen)
-    file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/src/gen/doc_data.gen.cpp "")
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/layers/front/godot4/src/gen/doc_data.gen.cpp")
+    file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/layers/front/godot4/src/gen)
+    file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/layers/front/godot4/src/gen/doc_data.gen.cpp "")
 endif()
 execute_process(
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/cmake_docgen.py
 )
 set(TARGET_NAME "HoudiniEngineForGodot.${Platform}.${Arch}")
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/deps)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/deps/Houdini)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/layers/front/godot4/headers)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/layers/back/core/headers)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/layers/back/hapi7/headers)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp/gdextension)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp/gen/include)
 link_directories(${CMAKE_CURRENT_SOURCE_DIR}/deps/godot-cpp/bin)
-aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/deps/Houdini DEP_SRC)
-aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src BIND_SRC)
-aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/gen DOCDATA_SRC)
-add_library(${TARGET_NAME} SHARED ${DEP_SRC} ${BIND_SRC} ${DOCDATA_SRC})
-target_link_libraries(${TARGET_NAME} PRIVATE "godot-cpp.${Platform}.editor.${Arch}")
+aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/layers/back/hapi7/src DEP_SRC)
+aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/layers/back/core/src CORE_SRC)
+aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/layers/back/plugins PLUGIN_SRC)
+aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/layers/front/godot4/src BIND_SRC)
+aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/layers/front/godot4/src/gen DOCDATA_SRC)
+
+# Back layer: HAPI 7 adapter. No godot-cpp dependency.
+add_library(he_back_hapi7 STATIC ${DEP_SRC})
+target_include_directories(he_back_hapi7 PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/layers/back/hapi7/headers)
+
+# Core layer: host-independent core. No godot-cpp dependency.
+add_library(he_back_core STATIC ${CORE_SRC})
+target_include_directories(he_back_core PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/layers/back/core/headers)
+
+# Built-in pure C++ plugins.
+add_library(he_back_plugins STATIC ${PLUGIN_SRC})
+target_include_directories(he_back_plugins PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/layers/back/plugins
+    ${CMAKE_CURRENT_SOURCE_DIR}/layers/back/core/headers)
+target_link_libraries(he_back_plugins PRIVATE he_back_core)
+
+# Front layer: Godot 4 GDExtension.
+add_library(${TARGET_NAME} SHARED ${BIND_SRC} ${DOCDATA_SRC})
+target_link_libraries(${TARGET_NAME} PRIVATE
+    he_back_plugins
+    he_back_hapi7
+    ${GODOTCPP_LIB_NAME})
 if(${Platform} MATCHES "windows")
     set(STATIC_CPP "$<BOOL:${GODOTCPP_USE_STATIC_CPP}>")
     set_target_properties(${TARGET_NAME} PROPERTIES PDB_OUTPUT_DIRECTORY "$<1:${CMAKE_SOURCE_DIR}/bin>")
@@ -217,6 +246,10 @@ elseif(${Platform} MATCHES "macos")
         TARGET ${TARGET_NAME}
         POST_BUILD
         COMMAND cp build/lib${TARGET_NAME}.dylib project/addons/HoudiniEngineForGodot/bin
+        # The linker-signed dylib is occasionally rejected by macOS with
+        # "SIGKILL (Code Signature Invalid)". Re-sign with an ad-hoc identity
+        # after copying so the editor never loads a stale/invalid signature.
+        COMMAND codesign --force --sign - ${CMAKE_CURRENT_SOURCE_DIR}/project/addons/HoudiniEngineForGodot/bin/lib${TARGET_NAME}.dylib
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 endif()

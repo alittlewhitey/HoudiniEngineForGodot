@@ -25,4 +25,4 @@ def call_function_from_file(relative_path, function_name, *args, **kwargs):
 if __name__ == "__main__":
     doc_dir = "docs"
     all_files = collect_files(doc_dir)
-    call_function_from_file("deps/godot-cpp/doc_source_generator.py","generate_doc_source","src/gen/doc_data.gen.cpp",all_files)
+    call_function_from_file("deps/godot-cpp/doc_source_generator.py","generate_doc_source","layers/front/godot4/src/gen/doc_data.gen.cpp",all_files)

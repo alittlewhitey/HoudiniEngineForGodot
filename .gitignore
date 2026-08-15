@@ -12,7 +12,7 @@ temp/
 __pycache__
 
 deps/godot-cpp/*
-src/gen
+layers/front/godot4/src/gen
 
 project/.godot
 project/addons/HoudiniEngineForGodot/bin/*

@@ -1,0 +1,851 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="HEGHapi" inherits="Object" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="AddAttribute" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="partId" type="int" />
+			<param index="3" name="name" type="String" />
+			<param index="4" name="attrInfo" type="HEGRefDictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="Cleanup" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<description>
+			</description>
+		</method>
+		<method name="ClearConnectionError" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<description>
+			</description>
+		</method>
+		<method name="CloseSession" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<description>
+			</description>
+		</method>
+		<method name="CommitGeo" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="ConnectNodeInput" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="inputIndex" type="int" />
+			<param index="3" name="nodeId_toConnect" type="int" />
+			<param index="4" name="outputIndex" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="CookNode" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="cookOptions" type="HEGRefDictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="CookOptions_Create" qualifiers="static">
+			<return type="Dictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="CreateInProcessSession" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="sessionInfo" type="HEGRefDictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="CreateInputNode" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="parentId" type="int" />
+			<param index="2" name="nodeId" type="HEGInt" />
+			<param index="3" name="name" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="CreateNode" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="parentId" type="int" />
+			<param index="2" name="operatorName" type="String" />
+			<param index="3" name="nodeLabel" type="String" />
+			<param index="4" name="cookOnCreation" type="bool" />
+			<param index="5" name="nodeId" type="HEGInt" />
+			<description>
+			</description>
+		</method>
+		<method name="CreateThriftNamedPipeSession" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="pipeName" type="String" />
+			<param index="2" name="sessionInfo" type="HEGRefDictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="CreateThriftSharedMemorySession" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="sharedMemName" type="String" />
+			<param index="2" name="sessionInfo" type="HEGRefDictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="CreateThriftSocketSession" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="hostName" type="String" />
+			<param index="2" name="port" type="int" />
+			<param index="3" name="sessionInfo" type="HEGRefDictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="DeleteAttribute" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="partId" type="int" />
+			<param index="3" name="name" type="String" />
+			<param index="4" name="attrInfo" type="HEGRefDictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="DeleteNode" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="DisconnectNodeInput" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="inputIndex" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="GeoInfo_Create" qualifiers="static">
+			<return type="Dictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="GetAssetInfo" qualifiers="static">
+			<return type="Dictionary" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="GetAttrInfo" qualifiers="static">
+			<return type="Dictionary" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="partId" type="int" />
+			<param index="3" name="name" type="String" />
+			<param index="4" name="owner" type="int" enum="HAPI_AttributeOwner" />
+			<description>
+			</description>
+		</method>
+		<method name="GetAttributeFloatData" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="partId" type="int" />
+			<param index="3" name="name" type="String" />
+			<param index="4" name="owner" type="HEGRefDictionary" />
+			<param index="5" name="_unnamed_arg5" type="int" />
+			<param index="6" name="_unnamed_arg6" type="HEGRefArray" />
+			<param index="7" name="_unnamed_arg7" type="int" />
+			<param index="8" name="_unnamed_arg8" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="GetAttributeIntData" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="partId" type="int" />
+			<param index="3" name="name" type="String" />
+			<param index="4" name="owner" type="HEGRefDictionary" />
+			<param index="5" name="_unnamed_arg5" type="int" />
+			<param index="6" name="_unnamed_arg6" type="HEGRefArray" />
+			<param index="7" name="_unnamed_arg7" type="int" />
+			<param index="8" name="_unnamed_arg8" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="GetAttributeStringData" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="partId" type="int" />
+			<param index="3" name="name" type="String" />
+			<param index="4" name="owner" type="HEGRefDictionary" />
+			<param index="5" name="_unnamed_arg5" type="HEGRefArray" />
+			<param index="6" name="_unnamed_arg6" type="int" />
+			<param index="7" name="_unnamed_arg7" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="GetConnectionError" qualifiers="static">
+			<return type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="GetCookingCurrentCount" qualifiers="static">
+			<return type="int" />
+			<param index="0" name="session" type="HEGSession" />
+			<description>
+			</description>
+		</method>
+		<method name="GetCookingTotalCount" qualifiers="static">
+			<return type="int" />
+			<param index="0" name="session" type="HEGSession" />
+			<description>
+			</description>
+		</method>
+		<method name="GetDisplayGeoInfo" qualifiers="static">
+			<return type="Dictionary" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="GetGeoInfo" qualifiers="static">
+			<return type="Dictionary" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="GetInstanceTransformsOnPart" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="partId" type="int" />
+			<param index="3" name="rst_order" type="int" enum="HAPI_RSTOrder" />
+			<param index="4" name="transforms" type="HEGRefArray" />
+			<param index="5" name="start" type="int" />
+			<param index="6" name="length" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="GetInstancedObjectIds" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="objectIds" type="HEGRefArray" />
+			<param index="3" name="start" type="int" />
+			<param index="4" name="length" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="GetInstancedPartIds" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="partId" type="int" />
+			<param index="3" name="partIds" type="HEGRefArray" />
+			<param index="4" name="start" type="int" />
+			<param index="5" name="length" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="GetInstancerPartTransforms" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="partId" type="int" />
+			<param index="3" name="rst_order" type="int" enum="HAPI_RSTOrder" />
+			<param index="4" name="transforms" type="HEGRefArray" />
+			<param index="5" name="start" type="int" />
+			<param index="6" name="length" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="GetLastCookError" qualifiers="static">
+			<return type="String" />
+			<param index="0" name="session" type="HEGSession" />
+			<description>
+			</description>
+		</method>
+		<method name="GetLastError" qualifiers="static">
+			<return type="String" />
+			<param index="0" name="session" type="HEGSession" />
+			<description>
+			</description>
+		</method>
+		<method name="GetMaterialInfo" qualifiers="static">
+			<return type="Dictionary" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="GetNodeCookResult" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="stringValue" type="String" />
+			<param index="2" name="length" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="GetNodeCookResultLength" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="verbosity" type="int" enum="HAPI_StatusVerbosity" />
+			<param index="3" name="length" type="HEGInt" />
+			<description>
+			</description>
+		</method>
+		<method name="GetNodeFromPath" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="parentId" type="int" />
+			<param index="2" name="path" type="String" />
+			<param index="3" name="nodeId" type="HEGInt" />
+			<description>
+			</description>
+		</method>
+		<method name="GetNodeInfo" qualifiers="static">
+			<return type="Dictionary" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="GetNodeInputName" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="inputIndex" type="int" />
+			<param index="3" name="nameHandle" type="HEGInt" />
+			<description>
+			</description>
+		</method>
+		<method name="GetNodeOutputName" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="outputIndex" type="int" />
+			<param index="3" name="nameHandle" type="HEGInt" />
+			<description>
+			</description>
+		</method>
+		<method name="GetNodePath" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="relativeToNodeId" type="int" />
+			<param index="3" name="pathHandle" type="HEGInt" />
+			<description>
+			</description>
+		</method>
+		<method name="GetObjectInfo" qualifiers="static">
+			<return type="Dictionary" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="GetObjectTransform" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="relativeToNodeId" type="int" />
+			<param index="3" name="rst_order" type="int" enum="HAPI_RSTOrder" />
+			<param index="4" name="transform" type="HEGRefDictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="GetOutputGeoCount" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="count" type="HEGInt" />
+			<description>
+			</description>
+		</method>
+		<method name="GetOutputGeoInfos" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="geoInfos" type="HEGRefArray" />
+			<param index="3" name="count" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="GetOutputNodeId" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="output" type="int" />
+			<param index="3" name="outputNodeId" type="HEGInt" />
+			<description>
+			</description>
+		</method>
+		<method name="GetParameters" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="parameters" type="HEGRefArray" />
+			<param index="3" name="start" type="int" />
+			<param index="4" name="length" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="GetParmFloatValue" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="parmName" type="String" />
+			<param index="3" name="index" type="int" />
+			<param index="4" name="value" type="HEGFloat" />
+			<description>
+			</description>
+		</method>
+		<method name="GetParmIdFromName" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="parmName" type="String" />
+			<param index="3" name="parmId" type="HEGInt" />
+			<description>
+			</description>
+		</method>
+		<method name="GetParmInfo" qualifiers="static">
+			<return type="Dictionary" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="parmId" type="int" />
+			<param index="3" name="parmInfo" type="HEGRefDictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="GetParmIntValue" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="parmName" type="String" />
+			<param index="3" name="index" type="int" />
+			<param index="4" name="value" type="HEGInt" />
+			<description>
+			</description>
+		</method>
+		<method name="GetParmNodeValue" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="parmName" type="String" />
+			<param index="3" name="value" type="HEGInt" />
+			<description>
+			</description>
+		</method>
+		<method name="GetParmStringValue" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="parmName" type="String" />
+			<param index="3" name="index" type="int" />
+			<param index="4" name="evaluate" type="bool" />
+			<param index="5" name="value" type="HEGInt" />
+			<description>
+			</description>
+		</method>
+		<method name="GetPartInfo" qualifiers="static">
+			<return type="Dictionary" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="partId" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="GetStatus" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="statusType" type="int" enum="HAPI_StatusType" />
+			<param index="2" name="status" type="HEGInt" />
+			<description>
+			</description>
+		</method>
+		<method name="GetStatusString" qualifiers="static">
+			<return type="String" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="statusType" type="int" enum="HAPI_StatusType" />
+			<description>
+			</description>
+		</method>
+		<method name="GetString" qualifiers="static">
+			<return type="String" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="stringHandle" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="Initialize" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="cookOptions" type="Dictionary" />
+			<param index="2" name="useCookingThread" type="bool" />
+			<param index="3" name="cookingThreadStackSize" type="int" />
+			<param index="4" name="houdiniEnvironmentFiles" type="String" />
+			<param index="5" name="otlSearchPath" type="String" />
+			<param index="6" name="dsoSearchPath" type="String" />
+			<param index="7" name="imageDsoSearchPath" type="String" />
+			<param index="8" name="audioDsoSearchPath" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="Interrupt" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<description>
+			</description>
+		</method>
+		<method name="IsInitialized" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<description>
+			</description>
+		</method>
+		<method name="IsNodeValid" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="uniqueNodeId" type="int" />
+			<param index="3" name="answer" type="HEGBool" />
+			<description>
+			</description>
+		</method>
+		<method name="LoadAssetLibraryFromFile" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="filePath" type="String" />
+			<param index="2" name="allowOverwrite" type="bool" />
+			<param index="3" name="assetId" type="HEGInt" />
+			<description>
+			</description>
+		</method>
+		<method name="LoadAssetLibraryFromMemory" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="buffer" type="String" />
+			<param index="2" name="allowOverwrite" type="bool" />
+			<param index="3" name="assetId" type="HEGInt" />
+			<description>
+			</description>
+		</method>
+		<method name="LoadGeoFromFile" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="filePath" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="LoadGeoFromMemory" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="format" type="String" />
+			<param index="3" name="buffer" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="LoadHIPFile" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="filePath" type="String" />
+			<param index="2" name="cookOnLoad" type="bool" />
+			<description>
+			</description>
+		</method>
+		<method name="LoadNodeFromFile" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="fileName" type="String" />
+			<param index="2" name="parentId" type="int" />
+			<param index="3" name="nodeLabel" type="String" />
+			<param index="4" name="cookOnLoad" type="bool" />
+			<param index="5" name="newNodeId" type="HEGInt" />
+			<description>
+			</description>
+		</method>
+		<method name="MaterialInfo_Create" qualifiers="static">
+			<return type="Dictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="NodeInfo_Create" qualifiers="static">
+			<return type="Dictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="ObjectInfo_Create" qualifiers="static">
+			<return type="Dictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="ParmInfo_Create" qualifiers="static">
+			<return type="Dictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="PartInfo_Create" qualifiers="static">
+			<return type="Dictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="RemoveCustomString" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="stringHandle" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="RenameNode" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="newName" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="RevertGeo" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="RevertParmToDefault" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="parmName" type="String" />
+			<param index="3" name="index" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="RevertParmToDefaults" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="parmName" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="SaveGeoToFile" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="filePath" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="SaveNodeToFile" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="fileName" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="SaveToHip" qualifiers="static">
+			<return type="bool" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="filename" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="SessionInfo_Create" qualifiers="static">
+			<return type="Dictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="SetAttributeFloatData" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="partId" type="int" />
+			<param index="3" name="name" type="String" />
+			<param index="4" name="attrInfo" type="Dictionary" />
+			<param index="5" name="dataArray" type="HEGRefArray" />
+			<param index="6" name="start" type="int" />
+			<param index="7" name="length" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="SetAttributeIntData" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="partId" type="int" />
+			<param index="3" name="name" type="String" />
+			<param index="4" name="attrInfo" type="Dictionary" />
+			<param index="5" name="dataArray" type="HEGRefArray" />
+			<param index="6" name="start" type="int" />
+			<param index="7" name="length" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="SetAttributeStringData" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="partId" type="int" />
+			<param index="3" name="name" type="String" />
+			<param index="4" name="attrInfo" type="Dictionary" />
+			<param index="5" name="dataArray" type="HEGRefArray" />
+			<param index="6" name="start" type="int" />
+			<param index="7" name="length" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="SetCurveCounts" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="partId" type="int" />
+			<param index="3" name="curveCounts" type="Array" />
+			<param index="4" name="start" type="int" />
+			<param index="5" name="length" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="SetCurveInfo" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="partId" type="int" />
+			<param index="3" name="curveInfo" type="Dictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="SetCurveKnots" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="partId" type="int" />
+			<param index="3" name="knots" type="Array" />
+			<param index="4" name="start" type="int" />
+			<param index="5" name="length" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="SetCurveOrders" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="partId" type="int" />
+			<param index="3" name="orders" type="Array" />
+			<param index="4" name="start" type="int" />
+			<param index="5" name="length" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="SetCustomString" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="string_value" type="String" />
+			<param index="2" name="handle_value" type="HEGInt" />
+			<description>
+			</description>
+		</method>
+		<method name="SetFaceCounts" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="partId" type="int" />
+			<param index="3" name="faceCounts" type="Array" />
+			<param index="4" name="start" type="int" />
+			<param index="5" name="length" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="SetInputCurveInfo" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="partId" type="int" />
+			<param index="3" name="curveInfo" type="Dictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="SetInputCurvePositions" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="partId" type="int" />
+			<param index="3" name="positions" type="Array" />
+			<param index="4" name="start" type="int" />
+			<param index="5" name="length" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="SetNodeDisplay" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="onOff" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="SetObjectTransform" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="nodeId" type="int" />
+			<param index="2" name="transform" type="Dictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="SetServerEnvInt" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="envName" type="String" />
+			<param index="2" name="value" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="SetServerEnvString" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="envName" type="String" />
+			<param index="2" name="value" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="SetSessionSync" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="enable" type="bool" />
+			<description>
+			</description>
+		</method>
+		<method name="SetSessionSyncInfo" qualifiers="static">
+			<return type="int" enum="HAPI_Result" />
+			<param index="0" name="session" type="HEGSession" />
+			<param index="1" name="syncInfo" type="Dictionary" />
+			<description>
+			</description>
+		</method>
+	</methods>
+</class>
