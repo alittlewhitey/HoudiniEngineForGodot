@@ -9,6 +9,7 @@ var _root: Node = null
 var _node: HEGNode = null
 var _scroll: ScrollContainer
 var _content: VBoxContainer
+var _header_row: HBoxContainer
 var _header_label: Label
 var _error_label: Label
 var _search_edit: LineEdit
@@ -21,6 +22,7 @@ func _ready() -> void:
 	size_flags_horizontal = SIZE_EXPAND_FILL
 	size_flags_vertical = SIZE_EXPAND_FILL
 	_build_ui()
+	_update_dock_minimum_size()
 	HEUSessionService.instance().session_changed.connect(_on_session_changed)
 	_show_placeholder("No HEU Asset selected")
 
@@ -47,33 +49,36 @@ func _build_ui() -> void:
 	vbox.add_theme_constant_override("separation", 4)
 	add_child(vbox)
 
-	var header_row := HBoxContainer.new()
-	vbox.add_child(header_row)
+	_header_row = HBoxContainer.new()
+	vbox.add_child(_header_row)
 
 	_header_label = Label.new()
 	_header_label.text = "HEU Asset"
+	_header_label.custom_minimum_size = Vector2(0, 0)
 	_header_label.size_flags_horizontal = SIZE_EXPAND_FILL
-	header_row.add_child(_header_label)
+	_header_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_header_label.clip_text = true
+	_header_row.add_child(_header_label)
 
 	_auto_cook_check = CheckBox.new()
 	_auto_cook_check.text = "Auto Cook"
 	_auto_cook_check.toggled.connect(_on_auto_cook_toggled)
-	header_row.add_child(_auto_cook_check)
+	_header_row.add_child(_auto_cook_check)
 
 	var recook_button := Button.new()
 	recook_button.text = "Recook"
 	recook_button.pressed.connect(_on_recook_pressed)
-	header_row.add_child(recook_button)
+	_header_row.add_child(recook_button)
 
 	var rebuild_button := Button.new()
 	rebuild_button.text = "Rebuild"
 	rebuild_button.pressed.connect(_on_rebuild_pressed)
-	header_row.add_child(rebuild_button)
+	_header_row.add_child(rebuild_button)
 
 	var reset_button := Button.new()
 	reset_button.text = "Reset"
 	reset_button.pressed.connect(_on_reset_pressed)
-	header_row.add_child(reset_button)
+	_header_row.add_child(reset_button)
 
 	var search_row := HBoxContainer.new()
 	vbox.add_child(search_row)
@@ -104,6 +109,25 @@ func _build_ui() -> void:
 	_content.size_flags_horizontal = SIZE_EXPAND_FILL
 	_content.size_flags_vertical = SIZE_EXPAND_FILL
 	_scroll.add_child(_content)
+
+
+func _update_dock_minimum_size() -> void:
+	if _header_row == null:
+		return
+	var min_width := 0.0
+	var control_count := 0
+	for child in _header_row.get_children():
+		if child == _header_label:
+			continue
+		min_width += child.get_combined_minimum_size().x
+		control_count += 1
+	if control_count > 1:
+		min_width += _header_row.get_theme_constant("separation") * float(control_count - 1)
+	custom_minimum_size.x = min_width
+
+
+func get_dock_minimum_width_for_test() -> float:
+	return custom_minimum_size.x
 
 
 func _attach_root() -> void:
@@ -254,6 +278,7 @@ func _rebuild_parameters() -> void:
 		return
 
 	_header_label.text = "%s - %s" % [_root.name, _node.getName()]
+	_header_label.tooltip_text = _header_label.text
 	_update_error_label()
 
 	var search_text := _search_edit.text.strip_edges().to_lower()

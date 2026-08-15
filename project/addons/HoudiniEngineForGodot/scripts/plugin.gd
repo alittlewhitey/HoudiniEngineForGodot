@@ -20,7 +20,7 @@ func _enter_tree() -> void:
     add_control_to_bottom_panel(_asset_browser_dock, "HEU Assets")
 
     _parameter_dock = _create_dock(ParameterDockScene, "HEU Params", "HEU Params")
-    _parameter_dock.custom_minimum_size = Vector2(300, 360)
+    _parameter_dock.custom_minimum_size = Vector2(0, 360)
     add_control_to_dock(EditorPlugin.DOCK_SLOT_RIGHT_UL, _parameter_dock)
 
     _add_menu_items()
@@ -170,6 +170,8 @@ func _run_ui_smoke_test() -> void:
     await get_tree().process_frame
     await get_tree().process_frame
     var visible_rows: int = _parameter_dock.get_visible_row_count()
+    var dock_min_width: float = _parameter_dock.get_dock_minimum_width_for_test()
+    print("[HEU-UI-SMOKE] computed_dock_min_width=", dock_min_width)
     var folder_titles: Array[String] = _parameter_dock.get_folder_titles()
     var folder_ok: bool = folder_titles.has("Board Settings") \
         and folder_titles.has("Landscape Settings") \

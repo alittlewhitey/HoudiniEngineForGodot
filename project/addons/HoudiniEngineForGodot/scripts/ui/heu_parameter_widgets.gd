@@ -6,8 +6,10 @@ extends RefCounted
 ## HEGNode.getParameterInfos(). All writes go through a commit callable so the
 ## parameter dock owns debounce + cook scheduling.
 
-const LABEL_WIDTH := 170.0
-const EDITOR_MIN_WIDTH := 140.0
+
+
+const EDITOR_MIN_WIDTH := 80.0
+const LABEL_MIN_WIDTH := 56.0
 
 
 static func create_row(info: Dictionary, value: Variant, node: HEGNode, commit: Callable, refresh_requested: Callable = Callable()) -> HEUParameterRow:
@@ -49,7 +51,9 @@ class HEUParameterRow:
 
 		_label = Label.new()
 		_label.text = p_label
-		_label.custom_minimum_size = Vector2(HEUParameterWidgetFactory.LABEL_WIDTH, 0)
+		_label.custom_minimum_size = Vector2(HEUParameterWidgetFactory.LABEL_MIN_WIDTH, 0)
+		_label.size_flags_horizontal = SIZE_EXPAND_FILL
+		_label.size_flags_stretch_ratio = 1.0
 		_label.size_flags_vertical = SIZE_SHRINK_CENTER
 		_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		if not p_help.is_empty():
@@ -184,6 +188,7 @@ class HEUParameterRow:
 		spin.allow_greater = true
 		spin.step = 1.0
 		spin.custom_minimum_size = Vector2(HEUParameterWidgetFactory.EDITOR_MIN_WIDTH, 0)
+		spin.size_flags_horizontal = SIZE_SHRINK_END
 		if info.get("hasMin", false):
 			spin.min_value = float(info.get("min", -2147483648))
 		else:
@@ -203,6 +208,7 @@ class HEUParameterRow:
 		spin.allow_greater = true
 		spin.step = 0.01
 		spin.custom_minimum_size = Vector2(HEUParameterWidgetFactory.EDITOR_MIN_WIDTH, 0)
+		spin.size_flags_horizontal = SIZE_SHRINK_END
 		var lo := -1.0e30
 		var hi := 1.0e30
 		if info.get("hasMin", false):
@@ -222,7 +228,7 @@ class HEUParameterRow:
 
 	func _create_vector_editor(component_count: int, value: Variant) -> void:
 		var holder := HBoxContainer.new()
-		holder.size_flags_horizontal = SIZE_EXPAND_FILL
+		holder.size_flags_horizontal = SIZE_SHRINK_END
 		add_child(holder)
 		var components := _variant_to_vector_components(value, component_count)
 		for i in range(component_count):
@@ -231,7 +237,7 @@ class HEUParameterRow:
 			spin.allow_greater = true
 			spin.step = 0.01
 			spin.value = float(components[i])
-			spin.custom_minimum_size = Vector2(76, 0)
+			spin.custom_minimum_size = Vector2(64, 0)
 			spin.value_changed.connect(_on_vector_component_changed)
 			holder.add_child(spin)
 			_editors.append(spin)
@@ -240,7 +246,8 @@ class HEUParameterRow:
 	func _create_path_editor(value: Variant, script_type: int) -> void:
 		var line := LineEdit.new()
 		line.text = str(value) if value != null and not (value is Array) else ""
-		line.custom_minimum_size = Vector2(220, 0)
+		line.custom_minimum_size = Vector2(140, 0)
+		line.size_flags_horizontal = SIZE_SHRINK_END
 		line.text_submitted.connect(func(_text: String) -> void: _commit_from_string(_text))
 		line.focus_exited.connect(func() -> void: _commit_from_string(line.text))
 		add_child(line)
@@ -258,7 +265,8 @@ class HEUParameterRow:
 		var line := LineEdit.new()
 		var node_value: int = node.getParameterNodeValue(parm_name)
 		line.text = str(node_value) if node_value >= 0 else str(value)
-		line.custom_minimum_size = Vector2(160, 0)
+		line.custom_minimum_size = Vector2(90, 0)
+		line.size_flags_horizontal = SIZE_SHRINK_END
 		line.text_submitted.connect(func(text: String) -> void:
 			if text.is_valid_int():
 				node.setParameterNodeValue(parm_name, text.to_int())
@@ -271,7 +279,8 @@ class HEUParameterRow:
 
 	func _create_choice_editor(value: Variant, choices: Array) -> void:
 		var option := OptionButton.new()
-		option.custom_minimum_size = Vector2(HEUParameterWidgetFactory.EDITOR_MIN_WIDTH, 0)
+		option.custom_minimum_size = Vector2(100, 0)
+		option.size_flags_horizontal = SIZE_SHRINK_END
 		var selected_index := 0
 		var index := 0
 		for choice in choices:
@@ -289,7 +298,8 @@ class HEUParameterRow:
 	func _create_string_editor(value: Variant) -> void:
 		var line := LineEdit.new()
 		line.text = str(value) if value != null else ""
-		line.custom_minimum_size = Vector2(HEUParameterWidgetFactory.EDITOR_MIN_WIDTH, 0)
+		line.custom_minimum_size = Vector2(100, 0)
+		line.size_flags_horizontal = SIZE_SHRINK_END
 		line.text_submitted.connect(func(_text: String) -> void: _commit_from_string(_text))
 		line.focus_exited.connect(func() -> void: _commit_from_string(line.text))
 		add_child(line)
@@ -300,7 +310,7 @@ class HEUParameterRow:
 		_array_values = (value as Array).duplicate() if value is Array else []
 
 		_array_rows = VBoxContainer.new()
-		_array_rows.size_flags_horizontal = SIZE_EXPAND_FILL
+		_array_rows.size_flags_horizontal = SIZE_SHRINK_END
 		add_child(_array_rows)
 
 		_array_header = Label.new()
@@ -334,7 +344,7 @@ class HEUParameterRow:
 
 			var item_line := LineEdit.new()
 			item_line.text = _array_item_to_text(_array_values[i])
-			item_line.custom_minimum_size = Vector2(180, 0)
+			item_line.custom_minimum_size = Vector2(100, 0)
 			item_line.text_submitted.connect(_on_array_item_text.bind(i))
 			item_line.focus_exited.connect(_on_array_item_focus_exited.bind(i, item_line))
 			row.add_child(item_line)
@@ -441,7 +451,7 @@ class HEUParameterRow:
 
 	func _create_multiparm_editor(value: Variant) -> void:
 		var holder := HBoxContainer.new()
-		holder.size_flags_horizontal = SIZE_EXPAND_FILL
+		holder.size_flags_horizontal = SIZE_SHRINK_END
 		add_child(holder)
 
 		var count_label := Label.new()
